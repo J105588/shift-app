@@ -7,6 +7,9 @@ import Navbar from '@/components/Navbar'
 import ScheduleTimetable from '@/components/ScheduleTimetable'
 import { Clock } from 'lucide-react'
 
+// 動的レンダリングを強制（Supabase認証が必要なため）
+export const dynamic = 'force-dynamic'
+
 export default function Dashboard() {
   const supabase = createClient()
   const [user, setUser] = useState<any>(null)

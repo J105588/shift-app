@@ -13,6 +13,9 @@ import { ja } from 'date-fns/locale/ja'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { Users, Calendar as CalIcon } from 'lucide-react'
 
+// 動的レンダリングを強制（Supabase認証が必要なため）
+export const dynamic = 'force-dynamic'
+
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'ja': ja } })
 
 export default function AdminPage() {

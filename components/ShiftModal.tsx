@@ -34,6 +34,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       if (data) setUsers(data as Profile[])
     }
     if (isOpen) fetchUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   // フォーム初期値設定
@@ -371,7 +372,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
                 placeholder="例: 受付、案内、販売など"
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                required={mode === 'single' || editShift || titleMode === 'same'}
+                required={mode === 'single' || !!editShift || titleMode === 'same'}
               />
             </div>
           ) : (
