@@ -25,7 +25,7 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return window.location.href = '/'
       setUser(user)
-      
+
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(profile)
 
@@ -46,7 +46,7 @@ export default function Dashboard() {
         const myShifts = formatted
           .filter((e: any) => e.resourceId === user.id && e.start > now)
           .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
-        
+
         if (myShifts.length > 0) setNextShift(myShifts[0])
       }
     }
@@ -58,7 +58,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar user={user} profile={profile} />
-      
+
       <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
         {/* ウェルカムカード */}
         <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200">
@@ -69,7 +69,7 @@ export default function Dashboard() {
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">今日も1日頑張りましょう！</p>
             </div>
-            
+
             {nextShift ? (
               <div className="bg-blue-50 border-2 border-blue-200 px-6 py-4 rounded-lg flex items-center gap-4 w-full lg:w-auto">
                 <div className="bg-blue-100 p-3 rounded-lg">
@@ -92,31 +92,33 @@ export default function Dashboard() {
         </div>
 
         {/* カレンダー */}
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-200 h-[600px] sm:h-[700px]">
-          <div className="mb-4 pb-4 border-b border-slate-200">
+        <div className="bg-white p-2 sm:p-6 rounded-lg shadow-sm border border-slate-200 h-[600px] sm:h-[700px] flex flex-col">
+          <div className="mb-2 sm:mb-4 pb-2 sm:pb-4 border-b border-slate-200 flex-none">
             <h3 className="text-lg font-bold text-slate-900">シフト一覧</h3>
           </div>
-          <Calendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            defaultView={Views.AGENDA}
-            views={[Views.MONTH, Views.AGENDA]}
-            culture='ja'
-            messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日", agenda: "リスト" }}
-            eventPropGetter={(event) => ({
-              style: {
-                backgroundColor: event.resourceId === user.id ? '#3b82f6' : '#64748b',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                padding: '4px 8px',
-                color: 'white',
-                fontWeight: '600'
-              }
-            })}
-          />
+          <div className="flex-1 min-h-0">
+            <Calendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              defaultView={Views.AGENDA}
+              views={[Views.MONTH, Views.AGENDA]}
+              culture='ja'
+              messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日", agenda: "リスト" }}
+              eventPropGetter={(event) => ({
+                style: {
+                  backgroundColor: event.resourceId === user.id ? '#3b82f6' : '#64748b',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.875rem',
+                  padding: '4px 8px',
+                  color: 'white',
+                  fontWeight: '600'
+                }
+              })}
+            />
+          </div>
         </div>
       </main>
     </div>

@@ -160,36 +160,55 @@
   background-color: #f8fafc !important;
 }
 
-/* モバイル対応の文字サイズ */
+/* モバイル対応の文字サイズとレイアウト */
 @media (max-width: 640px) {
   .rbc-toolbar {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 12px;
     padding: 12px !important;
-  }
-  
-  .rbc-toolbar button {
-    padding: 6px 12px !important;
-    font-size: 0.75rem !important;
+    align-items: stretch;
   }
   
   .rbc-toolbar-label {
+    order: -1; /* 日付を一番上に */
     width: 100%;
     text-align: center;
-    font-weight: bold;
-    margin: 8px 0;
-    font-size: 0.95rem !important;
+    font-weight: 800;
+    font-size: 1.1rem !important;
+    margin: 4px 0 8px 0;
+  }
+
+  .rbc-btn-group {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .rbc-btn-group > button {
+    flex: 1; /* ボタンを均等幅に */
+    padding: 8px 4px !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap;
   }
   
   .rbc-header {
-    padding: 8px 4px !important;
-    font-size: 0.75rem !important;
+    padding: 8px 2px !important;
+    font-size: 0.7rem !important;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
   }
   
   .rbc-event {
-    font-size: 0.75rem !important;
+    font-size: 0.7rem !important;
     padding: 2px 4px !important;
+    line-height: 1.2;
+  }
+  
+  /* 月表示の日付セルを少し大きくしてタップしやすく */
+  .rbc-date-cell {
+    padding: 4px !important;
+    font-size: 0.9rem !important;
   }
 }
 
