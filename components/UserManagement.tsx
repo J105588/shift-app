@@ -8,7 +8,7 @@ export default function UserManagement() {
   const supabase = createClient()
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
-
+  
   // フォーム用
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -38,7 +38,7 @@ export default function UserManagement() {
       })
 
       const data = await res.json()
-
+      
       if (!res.ok) throw new Error(data.error)
 
       alert('ユーザーを作成しました！')
@@ -67,20 +67,20 @@ export default function UserManagement() {
         <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">表示名</label>
-            <input
-              type="text"
-              placeholder="例: 佐藤"
+            <input 
+              type="text" 
+              placeholder="例: 佐藤" 
               required
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
-              value={displayName}
+              value={displayName} 
               onChange={e => setDisplayName(e.target.value)}
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">権限</label>
-            <select
+            <select 
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
-              value={role}
+              value={role} 
               onChange={e => setRole(e.target.value)}
             >
               <option value="staff">一般スタッフ</option>
@@ -89,27 +89,27 @@ export default function UserManagement() {
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">ログインID（メール）</label>
-            <input
-              type="email"
-              placeholder="staff@festival.com"
+            <input 
+              type="email" 
+              placeholder="staff@festival.com" 
               required
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
-              value={email}
+              value={email} 
               onChange={e => setEmail(e.target.value)}
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">初期パスワード</label>
-            <input
-              type="text"
-              placeholder="初期パスワードを設定"
+            <input 
+              type="text" 
+              placeholder="初期パスワードを設定" 
               required
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
-              value={password}
+              value={password} 
               onChange={e => setPassword(e.target.value)}
             />
           </div>
-          <button
+          <button 
             disabled={isSubmitting}
             className="md:col-span-2 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg mt-2"
           >
@@ -131,9 +131,7 @@ export default function UserManagement() {
           <h3 className="font-bold text-lg text-slate-900">登録スタッフ一覧</h3>
           <p className="text-sm text-slate-600 mt-1">{users.length}人のスタッフが登録されています</p>
         </div>
-
-        {/* PC表示: テーブル */}
-        <div className="hidden sm:block overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -163,10 +161,11 @@ export default function UserManagement() {
                   <tr key={user.id} className="hover:bg-slate-50 transition-colors duration-150">
                     <td className="p-4 font-semibold text-slate-900">{user.display_name}</td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                        user.role === 'admin' 
+                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
                           : 'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}>
+                      }`}>
                         {user.role === 'admin' ? '👑 管理者' : '👤 スタッフ'}
                       </span>
                     </td>
@@ -179,40 +178,6 @@ export default function UserManagement() {
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* モバイル表示: カード */}
-        <div className="sm:hidden divide-y divide-slate-100">
-          {loading ? (
-            <div className="p-8 text-center text-slate-500">
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
-                読み込み中...
-              </span>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="p-8 text-center text-slate-500">
-              スタッフが登録されていません
-            </div>
-          ) : (
-            users.map(user => (
-              <div key={user.id} className="p-4 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div className="font-bold text-slate-900">{user.display_name}</div>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}>
-                    {user.role === 'admin' ? '👑 管理者' : '👤 スタッフ'}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500">
-                  登録日: {/* @ts-ignore */}
-                  {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '-'}
-                </div>
-              </div>
-            ))
-          )}
         </div>
       </div>
     </div>

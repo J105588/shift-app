@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 import ShiftModal from '@/components/ShiftModal'
-import UserManagement from '@/components/UserManagement'
-import { Calendar, dateFnsLocalizer, Views, View } from 'react-big-calendar'
+import UserManagement from '@/components/UserManagement' // 後で作ります
+import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
 import { parse } from 'date-fns/parse'
 import { startOfWeek } from 'date-fns/startOfWeek'
@@ -21,7 +21,7 @@ export default function AdminPage() {
   const [profile, setProfile] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<'calendar' | 'users'>('calendar')
-
+  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedShift, setSelectedShift] = useState<any>(null)
@@ -32,7 +32,7 @@ export default function AdminPage() {
       if (!user) return window.location.href = '/'
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (data?.role !== 'admin') return window.location.href = '/dashboard'
-
+      
       setUser(user)
       setProfile(data)
       fetchShifts()
@@ -48,30 +48,11 @@ export default function AdminPage() {
         title: `${s.profiles?.display_name}: ${s.title}`,
         start: new Date(s.start_time),
         end: new Date(s.end_time),
-        resource: s
+        resource: s 
       }))
       setEvents(formatted)
     }
   }
-
-  // ビューの切り替え（モバイル対応）
-  const [view, setView] = useState<View>(Views.WEEK)
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 640) {
-        setView(Views.AGENDA)
-      } else {
-        setView(Views.WEEK)
-      }
-    }
-
-    // 初期チェック
-    handleResize()
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   const handleSelectSlot = ({ start }: { start: Date }) => {
     setSelectedShift(null)
@@ -89,59 +70,60 @@ export default function AdminPage() {
   return (
     <div className="flex flex-col h-screen bg-slate-50">
       <Navbar user={user} profile={profile} />
-
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 shadow-sm">
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-          <button
+      
+      <div className="bg-white border-b border-slate-200 px-6 py-3 shadow-sm">
+        <div className="flex gap-2">
+          <button 
             onClick={() => setActiveTab('calendar')}
-            className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === 'calendar'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'calendar' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
           >
-            <CalIcon size={18} />
+            <CalIcon size={18} /> 
             <span className="hidden sm:inline">シフト管理</span>
             <span className="sm:hidden">シフト</span>
           </button>
-          <button
+          <button 
             onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === 'users'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'users' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
           >
-            <Users size={18} />
+            <Users size={18} /> 
             <span className="hidden sm:inline">スタッフ管理</span>
             <span className="sm:hidden">スタッフ</span>
           </button>
         </div>
       </div>
 
-      <main className="flex-1 p-2 sm:p-6 overflow-hidden">
+      <main className="flex-1 p-4 sm:p-6 overflow-hidden">
         {activeTab === 'calendar' ? (
-          <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-2 sm:p-6 overflow-hidden flex flex-col">
-            <div className="mb-2 sm:mb-4 pb-2 sm:pb-4 border-b border-slate-200 flex-none">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+          <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-4 sm:p-6 overflow-hidden">
+            <div className="mb-4 pb-4 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                 <CalIcon className="text-blue-600" size={24} />
                 シフトカレンダー
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1">日付をクリックして追加、シフトをクリックして編集</p>
+              <p className="text-sm text-slate-600 mt-1">日付をクリックして追加、シフトをクリックして編集</p>
             </div>
-            <div className="flex-1 min-h-0">
+            <div className="h-[calc(100%-100px)]">
               <Calendar
                 localizer={localizer}
                 events={events}
                 startAccessor="start"
                 endAccessor="end"
                 style={{ height: '100%' }}
-                view={view}
-                onView={setView}
-                views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+                defaultView={Views.WEEK}
+                views={[Views.MONTH, Views.WEEK, Views.DAY]}
                 culture='ja'
                 selectable
                 onSelectSlot={handleSelectSlot}
                 onSelectEvent={handleSelectEvent}
-                messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日", agenda: "リスト" }}
+                messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日" }}
               />
             </div>
           </div>
@@ -152,7 +134,7 @@ export default function AdminPage() {
         )}
       </main>
 
-      <ShiftModal
+      <ShiftModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSaved={fetchShifts}
