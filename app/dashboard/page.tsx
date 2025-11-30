@@ -49,7 +49,7 @@ export default function Dashboard() {
     init()
   }, [])
 
-  if (!profile) return <div className="p-10 text-center">読み込み中...</div>
+  if (!profile || !user) return <div className="p-10 text-center">読み込み中...</div>
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -88,14 +88,12 @@ export default function Dashboard() {
         </div>
 
         {/* タイムテーブル */}
-        {user && (
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <ScheduleTimetable
-              events={events}
-              currentUserId={user.id}
-            />
-          </div>
-        )}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+          <ScheduleTimetable
+            events={events}
+            currentUserId={user.id}
+          />
+        </div>
       </main>
     </div>
   )

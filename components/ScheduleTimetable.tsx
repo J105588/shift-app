@@ -119,7 +119,7 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange 
   // 週ビュー
   if (viewMode === 'week') {
     return (
-      <div className="w-full">
+      <div className="w-full min-h-[600px]">
         {/* ヘッダーコントロール */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg p-4 border-b border-blue-200">
           <div className="flex items-center justify-between mb-4">
@@ -335,7 +335,7 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange 
   // 日ビュー
   if (viewMode === 'day' && selectedDate) {
     return (
-      <div className="w-full">
+      <div className="w-full min-h-[400px]">
         {/* ヘッダーコントロール */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg p-4 border-b border-blue-200">
           <div className="flex items-center justify-between mb-4">

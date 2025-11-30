@@ -39,9 +39,9 @@ export default function UserManagement() {
 
       const data = await res.json()
       
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) throw new Error(data.error || 'ユーザー作成に失敗しました')
 
-      alert('ユーザーを作成しました！')
+      alert(data.message || 'ユーザーを作成しました！')
       setEmail(''); setPassword(''); setDisplayName('');
       fetchUsers() // リスト更新
     } catch (err: any) {
