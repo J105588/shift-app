@@ -68,17 +68,17 @@ export default function AdminPage() {
   if (!profile) return null
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-rose-50 via-pink-50/50 to-fuchsia-50/50">
       <Navbar user={user} profile={profile} />
       
-      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-6 py-3 shadow-sm">
+      <div className="bg-white/70 backdrop-blur-sm border-b border-pink-100/50 px-6 py-3 shadow-sm">
         <div className="flex gap-2">
           <button 
             onClick={() => setActiveTab('calendar')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
               activeTab === 'calendar' 
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-gradient-to-r from-rose-300/80 to-pink-300/80 text-rose-700 shadow-sm border border-pink-200/50' 
+                : 'text-rose-600/70 hover:bg-rose-50/50 hover:text-rose-700'
             }`}
           >
             <CalIcon size={18} /> 
@@ -89,8 +89,8 @@ export default function AdminPage() {
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
               activeTab === 'users' 
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-gradient-to-r from-rose-300/80 to-pink-300/80 text-rose-700 shadow-sm border border-pink-200/50' 
+                : 'text-rose-600/70 hover:bg-rose-50/50 hover:text-rose-700'
             }`}
           >
             <Users size={18} /> 
@@ -102,13 +102,13 @@ export default function AdminPage() {
 
       <main className="flex-1 p-4 sm:p-6 overflow-hidden">
         {activeTab === 'calendar' ? (
-          <div className="h-full bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/60 p-4 sm:p-6 overflow-hidden">
-            <div className="mb-4 pb-4 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <CalIcon className="text-indigo-600" size={24} />
+          <div className="h-full bg-white/70 backdrop-blur-sm rounded-2xl shadow-md border border-pink-100/50 p-4 sm:p-6 overflow-hidden">
+            <div className="mb-4 pb-4 border-b border-pink-100/50">
+              <h2 className="text-xl font-semibold text-rose-700 flex items-center gap-2">
+                <CalIcon className="text-rose-500" size={24} />
                 シフトカレンダー
               </h2>
-              <p className="text-sm text-slate-500 mt-1">日付をクリックして追加、シフトをクリックして編集</p>
+              <p className="text-sm text-rose-500/70 mt-1">日付をクリックして追加、シフトをクリックして編集</p>
             </div>
             <div className="h-[calc(100%-100px)]">
               <Calendar
