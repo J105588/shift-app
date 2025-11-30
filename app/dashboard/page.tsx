@@ -56,35 +56,35 @@ export default function Dashboard() {
   if (!profile) return <div className="p-10 text-center">読み込み中...</div>
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50/50 to-fuchsia-50/50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar user={user} profile={profile} />
       
       <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
         {/* ウェルカムカード */}
-        <div className="bg-white/70 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-md border border-pink-100/50">
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-semibold text-rose-600 mb-2">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
                 こんにちは、{profile.display_name}さん
               </h2>
-              <p className="text-rose-500/70 text-sm sm:text-base font-medium">今日も1日頑張りましょう！✨</p>
+              <p className="text-slate-600 text-sm sm:text-base">今日も1日頑張りましょう！</p>
             </div>
             
             {nextShift ? (
-              <div className="bg-gradient-to-r from-rose-200/60 to-pink-200/60 px-6 py-4 rounded-xl shadow-sm flex items-center gap-4 w-full lg:w-auto border border-pink-200/50">
-                <div className="bg-white/50 backdrop-blur-sm p-3 rounded-xl">
-                  <Clock size={28} className="text-rose-500" />
+              <div className="bg-blue-50 border-2 border-blue-200 px-6 py-4 rounded-lg flex items-center gap-4 w-full lg:w-auto">
+                <div className="bg-blue-100 p-3 rounded-lg">
+                  <Clock size={28} className="text-blue-600" />
                 </div>
                 <div>
-                  <div className="text-xs text-rose-600/80 font-semibold uppercase tracking-wider mb-1">次のシフト</div>
-                  <div className="font-semibold text-rose-700 text-lg">
+                  <div className="text-xs text-blue-600 font-semibold uppercase tracking-wider mb-1">次のシフト</div>
+                  <div className="font-bold text-slate-900 text-lg">
                     {format(nextShift.start, 'M/d(E) HH:mm', { locale: ja })} 〜
                   </div>
-                  <div className="text-sm text-rose-600/70 mt-1">{nextShift.title.split(': ')[1]}</div>
+                  <div className="text-sm text-slate-600 mt-1">{nextShift.title.split(': ')[1]}</div>
                 </div>
               </div>
             ) : (
-              <div className="bg-rose-50/50 px-6 py-4 rounded-xl border border-pink-200/50 text-rose-500/70 text-sm font-medium">
+              <div className="bg-slate-50 px-6 py-4 rounded-lg border-2 border-slate-200 text-slate-600 text-sm font-medium">
                 予定されているシフトはありません
               </div>
             )}
@@ -92,9 +92,9 @@ export default function Dashboard() {
         </div>
 
         {/* カレンダー */}
-        <div className="bg-white/70 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-md border border-pink-100/50 h-[600px] sm:h-[700px]">
-          <div className="mb-4 pb-4 border-b border-pink-100">
-            <h3 className="text-lg font-semibold text-rose-600">シフト一覧</h3>
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-200 h-[600px] sm:h-[700px]">
+          <div className="mb-4 pb-4 border-b border-slate-200">
+            <h3 className="text-lg font-bold text-slate-900">シフト一覧</h3>
           </div>
           <Calendar
             localizer={localizer}
@@ -107,12 +107,13 @@ export default function Dashboard() {
             messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日", agenda: "リスト" }}
             eventPropGetter={(event) => ({
               style: {
-                backgroundColor: event.resourceId === user.id ? '#fda4af' : '#fbcfe8',
+                backgroundColor: event.resourceId === user.id ? '#3b82f6' : '#64748b',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '0.85rem',
+                fontSize: '0.875rem',
                 padding: '4px 8px',
-                color: event.resourceId === user.id ? '#881337' : '#831843'
+                color: 'white',
+                fontWeight: '600'
               }
             })}
           />

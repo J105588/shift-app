@@ -10,86 +10,89 @@
 
 /* 今日の日付のハイライト色変更 */
 .rbc-today {
-  background-color: #fef3f2 !important;
-  border-left: 2px solid #fda4af !important;
+  background-color: #eff6ff !important;
+  border-left: 3px solid #3b82f6 !important;
 }
 
 /* イベントのスタイル改善 */
 .rbc-event {
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   border: none !important;
   padding: 4px 8px !important;
-  font-weight: 500 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
   transition: all 0.2s ease !important;
+  color: white !important;
 }
 
 .rbc-event:hover {
   transform: translateY(-1px) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ツールバーのスタイル改善 */
 .rbc-toolbar {
   padding: 16px !important;
-  background: linear-gradient(to right, #fdf2f8, #fce7f3) !important;
+  background-color: #f8fafc !important;
   border-radius: 12px 12px 0 0 !important;
   margin-bottom: 0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .rbc-toolbar button {
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   padding: 8px 16px !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   transition: all 0.2s ease !important;
-  border: 1px solid transparent !important;
-  color: #64748b !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  background-color: white !important;
 }
 
 .rbc-toolbar button:hover {
-  background-color: #fce7f3 !important;
-  color: #be185d !important;
-  border-color: #fbcfe8 !important;
+  background-color: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
   transform: translateY(-1px) !important;
 }
 
 .rbc-toolbar button.rbc-active {
-  background-color: #fce7f3 !important;
-  color: #be185d !important;
-  border-color: #fbcfe8 !important;
+  background-color: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
 }
 
 .rbc-toolbar-label {
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   font-size: 1.1rem !important;
-  color: #64748b !important;
+  color: #1e293b !important;
 }
 
 /* ヘッダーのスタイル改善 */
 .rbc-header {
   padding: 12px 8px !important;
-  font-weight: 500 !important;
-  background-color: #fef7f7 !important;
-  border-bottom: 1px solid #fce7f3 !important;
-  color: #64748b !important;
+  font-weight: 600 !important;
+  background-color: #f1f5f9 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  color: #334155 !important;
 }
 
 .rbc-header + .rbc-header {
-  border-left: 1px solid #fce7f3 !important;
+  border-left: 1px solid #cbd5e1 !important;
 }
 
 /* 時間スロットのスタイル */
 .rbc-time-slot {
-  border-top: 1px solid #fef7f7 !important;
+  border-top: 1px solid #e2e8f0 !important;
 }
 
 .rbc-time-slot.rbc-now {
-  background-color: #fef3f2 !important;
+  background-color: #eff6ff !important;
 }
 
 /* 日付セルのスタイル */
 .rbc-day-slot .rbc-time-slot {
-  border-top: 1px solid #fef7f7 !important;
+  border-top: 1px solid #e2e8f0 !important;
 }
 
 .rbc-time-view {
@@ -97,7 +100,7 @@
 }
 
 .rbc-day-view .rbc-day-slot {
-  border-right: 1px solid #fce7f3 !important;
+  border-right: 1px solid #e2e8f0 !important;
 }
 
 /* 月表示の改善 */
@@ -106,7 +109,7 @@
 }
 
 .rbc-month-row {
-  border-bottom: 1px solid #fce7f3 !important;
+  border-bottom: 2px solid #e2e8f0 !important;
 }
 
 .rbc-date-cell {
@@ -115,18 +118,18 @@
 }
 
 .rbc-date-cell a {
-  color: #94a3b8 !important;
-  font-weight: 500 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
   transition: all 0.2s ease !important;
 }
 
 .rbc-date-cell a:hover {
-  color: #ec4899 !important;
-  transform: scale(1.05) !important;
+  color: #3b82f6 !important;
+  transform: scale(1.1) !important;
 }
 
 .rbc-off-range-bg {
-  background-color: #fef7f7 !important;
+  background-color: #f8fafc !important;
 }
 
 /* アジェンダ表示の改善 */
@@ -142,17 +145,19 @@
 .rbc-agenda-date-cell,
 .rbc-agenda-time-cell {
   padding: 12px !important;
-  background-color: #fef7f7 !important;
-  font-weight: 500 !important;
-  color: #64748b !important;
+  background-color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .rbc-agenda-event-cell {
   padding: 12px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .rbc-agenda-event-cell:hover {
-  background-color: #fdf2f8 !important;
+  background-color: #f8fafc !important;
 }
 
 /* モバイル対応の文字サイズ */
