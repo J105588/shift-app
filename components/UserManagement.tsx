@@ -52,16 +52,16 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 overflow-y-auto h-full pb-20">
+    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 overflow-y-auto h-full pb-20">
       {/* 登録フォーム */}
-      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-sm border border-slate-200">
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
           <div className="p-2 bg-blue-100 rounded-lg">
             <UserPlus className="text-blue-600" size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-xl text-slate-900">新規スタッフ登録</h3>
-            <p className="text-sm text-slate-600">新しいスタッフのアカウントを作成します</p>
+            <h3 className="font-bold text-lg sm:text-xl text-slate-900">新規スタッフ登録</h3>
+            <p className="text-xs sm:text-sm text-slate-600">新しいスタッフのアカウントを作成します</p>
           </div>
         </div>
         <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -71,7 +71,7 @@ export default function UserManagement() {
               type="text" 
               placeholder="例: 佐藤" 
               required
-              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
+              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
               value={displayName} 
               onChange={e => setDisplayName(e.target.value)}
             />
@@ -79,7 +79,7 @@ export default function UserManagement() {
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">権限</label>
             <select 
-              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
+              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
               value={role} 
               onChange={e => setRole(e.target.value)}
             >
@@ -93,7 +93,7 @@ export default function UserManagement() {
               type="email" 
               placeholder="staff@festival.com" 
               required
-              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
+              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
               value={email} 
               onChange={e => setEmail(e.target.value)}
             />
@@ -104,14 +104,14 @@ export default function UserManagement() {
               type="text" 
               placeholder="初期パスワードを設定" 
               required
-              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white"
+              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
               value={password} 
               onChange={e => setPassword(e.target.value)}
             />
           </div>
           <button 
             disabled={isSubmitting}
-            className="md:col-span-2 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg mt-2"
+            className="md:col-span-2 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg mt-2 touch-manipulation min-h-[48px]"
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
@@ -127,11 +127,13 @@ export default function UserManagement() {
 
       {/* ユーザーリスト */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-200 bg-slate-50">
-          <h3 className="font-bold text-lg text-slate-900">登録スタッフ一覧</h3>
-          <p className="text-sm text-slate-600 mt-1">{users.length}人のスタッフが登録されています</p>
+        <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50">
+          <h3 className="font-bold text-base sm:text-lg text-slate-900">登録スタッフ一覧</h3>
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">{users.length}人のスタッフが登録されています</p>
         </div>
-        <div className="overflow-x-auto">
+        
+        {/* デスクトップ: テーブル表示 */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
@@ -178,6 +180,45 @@ export default function UserManagement() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* モバイル: カード表示 */}
+        <div className="md:hidden divide-y divide-slate-200">
+          {loading ? (
+            <div className="p-8 text-center text-slate-500">
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                読み込み中...
+              </span>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">
+              スタッフが登録されていません
+            </div>
+          ) : (
+            users.map(user => (
+              <div key={user.id} className="p-4 hover:bg-slate-50 transition-colors duration-150">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-900 text-base mb-2">
+                      {user.display_name}
+                    </div>
+                    <div className="text-xs text-slate-500 mb-3">
+                      {/* @ts-ignore */}
+                      登録日: {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '-'}
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 ${
+                    user.role === 'admin' 
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}>
+                    {user.role === 'admin' ? '👑 管理者' : '👤 スタッフ'}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

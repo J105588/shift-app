@@ -68,17 +68,18 @@ export default function AdminPage() {
   if (!profile) return null
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col min-h-screen bg-slate-50">
       <Navbar user={user} profile={profile} />
       
-      <div className="bg-white border-b border-slate-200 px-6 py-3 shadow-sm">
-        <div className="flex gap-2">
+      {/* タブナビゲーション - モバイル対応 */}
+      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-3 shadow-sm sticky top-0 z-10">
+        <div className="flex gap-2 sm:gap-3">
           <button 
             onClick={() => setActiveTab('calendar')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
               activeTab === 'calendar' 
                 ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
             }`}
           >
             <CalIcon size={18} /> 
@@ -87,10 +88,10 @@ export default function AdminPage() {
           </button>
           <button 
             onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
               activeTab === 'users' 
                 ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
             }`}
           >
             <Users size={18} /> 
@@ -100,17 +101,18 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <main className="flex-1 p-4 sm:p-6 overflow-hidden">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto pb-20">
         {activeTab === 'calendar' ? (
-          <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-4 sm:p-6 overflow-hidden">
-            <div className="mb-4 pb-4 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <CalIcon className="text-blue-600" size={24} />
+          <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-3 sm:p-4 md:p-6 overflow-hidden">
+            <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-200">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+                <CalIcon className="text-blue-600" size={20} />
                 シフトカレンダー
               </h2>
-              <p className="text-sm text-slate-600 mt-1">日付をクリックして追加、シフトをクリックして編集</p>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1">日付をクリックして追加、シフトをクリックして編集</p>
             </div>
-            <div className="h-[calc(100%-100px)]">
+            {/* デスクトップ: react-big-calendar */}
+            <div className="hidden md:block h-[calc(100vh-280px)] min-h-[500px]">
               <Calendar
                 localizer={localizer}
                 events={events}
@@ -126,9 +128,40 @@ export default function AdminPage() {
                 messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日" }}
               />
             </div>
+            {/* モバイル: 簡易リスト表示 */}
+            <div className="md:hidden space-y-3">
+              {events.length === 0 ? (
+                <div className="text-center py-12">
+                  <CalIcon className="mx-auto text-slate-300 mb-4" size={48} />
+                  <p className="text-slate-500 font-medium">シフトが登録されていません</p>
+                  <p className="text-sm text-slate-400 mt-2">デスクトップでカレンダーから追加できます</p>
+                </div>
+              ) : (
+                events
+                  .sort((a, b) => a.start.getTime() - b.start.getTime())
+                  .map((event: any) => (
+                    <div
+                      key={event.id}
+                      onClick={() => handleSelectEvent(event)}
+                      className="bg-white border-2 border-slate-200 rounded-lg p-4 active:scale-95 transition-all cursor-pointer touch-manipulation"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="font-bold text-slate-900 text-base mb-1">
+                            {event.title}
+                          </div>
+                          <div className="text-sm text-slate-600">
+                            {format(event.start, 'M/d(E) HH:mm', { locale: ja })} 〜 {format(event.end, 'HH:mm', { locale: ja })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
           </div>
         ) : (
-          <div className="h-full overflow-hidden">
+          <div className="h-full overflow-y-auto">
             <UserManagement />
           </div>
         )}
