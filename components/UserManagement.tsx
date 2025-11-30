@@ -37,15 +37,27 @@ export default function UserManagement() {
         body: JSON.stringify({ email, password, displayName, role }),
       })
 
-      const data = await res.json()
+      let data
+      try {
+        data = await res.json()
+      } catch (parseError) {
+        // JSON解析に失敗した場合
+        const text = await res.text()
+        throw new Error(`サーバーエラー (${res.status}): ${text || 'レスポンスの解析に失敗しました'}`)
+      }
       
-      if (!res.ok) throw new Error(data.error || 'ユーザー作成に失敗しました')
-
-      alert(data.message || 'ユーザーを作成しました！')
-      setEmail(''); setPassword(''); setDisplayName('');
-      fetchUsers() // リスト更新
+      // 成功時（200-299）またはデータが書き込まれている場合
+      if (res.ok || data.success) {
+        alert(data.message || 'ユーザーを作成しました！')
+        setEmail(''); setPassword(''); setDisplayName('');
+        fetchUsers() // リスト更新
+      } else {
+        // エラー時
+        throw new Error(data.error || `ユーザー作成に失敗しました (${res.status})`)
+      }
     } catch (err: any) {
-      alert('エラー: ' + err.message)
+      console.error('Create user error:', err)
+      alert('エラー: ' + (err.message || 'ユーザー作成中にエラーが発生しました'))
     } finally {
       setIsSubmitting(false)
     }
