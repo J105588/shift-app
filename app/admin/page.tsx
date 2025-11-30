@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 import ShiftModal from '@/components/ShiftModal'
-import UserManagement from '@/components/UserManagement' // 後で作ります
+import UserManagement from '@/components/UserManagement' 
+import AdminCalendar from '@/components/AdminCalendar'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
 import { parse } from 'date-fns/parse'
@@ -61,6 +62,11 @@ export default function AdminPage() {
     setSelectedShift(null)
     setSelectedDate(start)
     setIsModalOpen(true)
+  }
+
+  // AdminCalendar用のラッパー（Dateを直接受け取る）
+  const handleSelectSlotForMobile = (start: Date) => {
+    handleSelectSlot({ start })
   }
 
   const handleSelectEvent = (event: any) => {
@@ -131,36 +137,13 @@ export default function AdminPage() {
                 messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日" }}
               />
             </div>
-            {/* モバイル: 簡易リスト表示 */}
-            <div className="md:hidden space-y-3">
-              {events.length === 0 ? (
-                <div className="text-center py-12">
-                  <CalIcon className="mx-auto text-slate-300 mb-4" size={48} />
-                  <p className="text-slate-500 font-medium">シフトが登録されていません</p>
-                  <p className="text-sm text-slate-400 mt-2">デスクトップでカレンダーから追加できます</p>
-                </div>
-              ) : (
-                events
-                  .sort((a, b) => a.start.getTime() - b.start.getTime())
-                  .map((event: any) => (
-                    <div
-                      key={event.id}
-                      onClick={() => handleSelectEvent(event)}
-                      className="bg-white border-2 border-slate-200 rounded-lg p-4 active:scale-95 transition-all cursor-pointer touch-manipulation"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="font-bold text-slate-900 text-base mb-1">
-                            {event.title}
-                          </div>
-                          <div className="text-sm text-slate-600">
-                            {format(event.start, 'M/d(E) HH:mm', { locale: ja })} 〜 {format(event.end, 'HH:mm', { locale: ja })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-              )}
+            {/* モバイル: カスタムカレンダー */}
+            <div className="md:hidden">
+              <AdminCalendar
+                events={events}
+                onSelectSlot={handleSelectSlotForMobile}
+                onSelectEvent={handleSelectEvent}
+              />
             </div>
           </div>
         ) : (
