@@ -1,16 +1,34 @@
 'use client'
+import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 import { LogOut, Shield, CalendarDays, User } from 'lucide-react'
 
 export default function Navbar({ user, profile }: { user: any, profile: any }) {
   const supabase = createClient()
-  const router = useRouter()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.refresh()
+    if (isLoggingOut) return // 二重送信防止
+    
+    setIsLoggingOut(true)
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Logout error:', error)
+        alert('ログアウト中にエラーが発生しました: ' + error.message)
+        setIsLoggingOut(false)
+        return
+      }
+      
+      // ログアウト成功後、完全なページリロードでログインページにリダイレクト
+      // これにより、すべての状態とクッキーが確実にクリアされる
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Logout error:', error)
+      alert('ログアウト中にエラーが発生しました')
+      setIsLoggingOut(false)
+    }
   }
 
   return (
@@ -51,11 +69,21 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
                 <span className="hidden md:block text-sm font-semibold text-slate-900">{profile?.display_name || 'ユーザー'}</span>
               </div>
               <button 
-                onClick={handleLogout} 
-                className="flex items-center gap-2 text-sm text-slate-600 hover:text-red-600 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors duration-200 font-medium"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-red-600 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
               >
-                <LogOut size={16} />
-                <span className="hidden sm:inline">ログアウト</span>
+                {isLoggingOut ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></span>
+                    <span className="hidden sm:inline">ログアウト中...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={16} />
+                    <span className="hidden sm:inline">ログアウト</span>
+                  </>
+                )}
               </button>
             </div>
           )}

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile, Shift } from '@/lib/types'
-import { X } from 'lucide-react'
+import { X, Users, UserCheck, Copy } from 'lucide-react'
 
 type Props = {
   isOpen: boolean
@@ -15,12 +15,17 @@ type Props = {
 export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, editShift }: Props) {
   const supabase = createClient()
   const [users, setUsers] = useState<Profile[]>([])
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  const [mode, setMode] = useState<'single' | 'multiple'>('single')
+  const [titleMode, setTitleMode] = useState<'same' | 'individual'>('same')
   const [formData, setFormData] = useState({
     user_id: '',
     title: '',
     start: '',
     end: ''
   })
+  const [individualTitles, setIndividualTitles] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // 初期化とユーザー一覧取得
   useEffect(() => {
@@ -34,55 +39,148 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
   // フォーム初期値設定
   useEffect(() => {
     if (editShift) {
-      // 編集モード
+      // 編集モード: 単一ユーザーモード
+      setMode('single')
       setFormData({
         user_id: editShift.user_id,
         title: editShift.title,
         start: new Date(editShift.start_time).toISOString().slice(0, 16),
         end: new Date(editShift.end_time).toISOString().slice(0, 16)
       })
+      setSelectedUserIds([])
+      setIndividualTitles({})
     } else if (initialDate) {
       // 新規作成モード（クリックした日付をセット）
-      // ※UTCとJSTのズレ簡易補正（簡易版）
+      setMode('multiple') // デフォルトで複数選択モード
       const start = new Date(initialDate)
       start.setHours(9, 0, 0, 0) // デフォルト9時
       const end = new Date(start)
       end.setHours(12, 0, 0, 0) // デフォルト12時
       
-      // toISOString().slice(0, 16) は "YYYY-MM-DDTHH:mm" 形式にするハック
-      // 注: 本番運用では date-fns-tz などで厳密なタイムゾーン管理推奨
       const offset = start.getTimezoneOffset() * 60000
       const localStart = new Date(start.getTime() - offset).toISOString().slice(0, 16)
       const localEnd = new Date(end.getTime() - offset).toISOString().slice(0, 16)
 
       setFormData({ user_id: '', title: '受付', start: localStart, end: localEnd })
+      setSelectedUserIds([])
+      setIndividualTitles({})
     }
-  }, [editShift, initialDate])
+  }, [editShift, initialDate, isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.user_id) return alert('担当者を選択してください')
+    setIsSubmitting(true)
 
-    const payload = {
-      user_id: formData.user_id,
-      title: formData.title,
-      start_time: new Date(formData.start).toISOString(),
-      end_time: new Date(formData.end).toISOString(),
-    }
+    try {
+      if (editShift) {
+        // 編集モード: 単一シフト更新
+        if (!formData.user_id) {
+          alert('担当者を選択してください')
+          setIsSubmitting(false)
+          return
+        }
 
-    let error
-    if (editShift) {
-      const { error: e } = await supabase.from('shifts').update(payload).eq('id', editShift.id)
-      error = e
-    } else {
-      const { error: e } = await supabase.from('shifts').insert([payload])
-      error = e
-    }
+        const payload = {
+          user_id: formData.user_id,
+          title: formData.title,
+          start_time: new Date(formData.start).toISOString(),
+          end_time: new Date(formData.end).toISOString(),
+        }
 
-    if (error) alert('エラー: ' + error.message)
-    else {
+        const { error } = await supabase.from('shifts').update(payload).eq('id', editShift.id)
+        if (error) throw error
+      } else if (mode === 'single') {
+        // 単一ユーザーモード
+        if (!formData.user_id) {
+          alert('担当者を選択してください')
+          setIsSubmitting(false)
+          return
+        }
+
+        const payload = {
+          user_id: formData.user_id,
+          title: formData.title,
+          start_time: new Date(formData.start).toISOString(),
+          end_time: new Date(formData.end).toISOString(),
+        }
+
+        const { error } = await supabase.from('shifts').insert([payload])
+        if (error) throw error
+      } else {
+        // 複数ユーザーモード: 一括作成
+        if (selectedUserIds.length === 0) {
+          alert('少なくとも1人のユーザーを選択してください')
+          setIsSubmitting(false)
+          return
+        }
+
+        if (titleMode === 'same' && !formData.title) {
+          alert('業務内容を入力してください')
+          setIsSubmitting(false)
+          return
+        }
+
+        if (titleMode === 'individual') {
+          const missingTitles = selectedUserIds.filter(userId => !individualTitles[userId] || individualTitles[userId].trim() === '')
+          if (missingTitles.length > 0) {
+            const userNames = missingTitles.map(id => users.find(u => u.id === id)?.display_name).filter(Boolean).join('、')
+            alert(`以下のユーザーの業務内容が未入力です: ${userNames}`)
+            setIsSubmitting(false)
+            return
+          }
+        }
+
+        const payloads = selectedUserIds.map(userId => ({
+          user_id: userId,
+          title: titleMode === 'same' 
+            ? formData.title 
+            : (individualTitles[userId] || formData.title),
+          start_time: new Date(formData.start).toISOString(),
+          end_time: new Date(formData.end).toISOString(),
+        }))
+
+        const { error } = await supabase.from('shifts').insert(payloads)
+        if (error) throw error
+      }
+
       onSaved()
       onClose()
+    } catch (error: any) {
+      alert('エラー: ' + (error.message || 'シフトの保存に失敗しました'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleUserToggle = (userId: string) => {
+    setSelectedUserIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    )
+    // 個別タイトルモードの場合、新規選択ユーザーにデフォルトタイトルを設定
+    if (titleMode === 'individual' && !selectedUserIds.includes(userId)) {
+      setIndividualTitles(prev => ({
+        ...prev,
+        [userId]: formData.title || '受付'
+      }))
+    }
+  }
+
+  const handleSelectAll = () => {
+    if (selectedUserIds.length === users.length) {
+      setSelectedUserIds([])
+      setIndividualTitles({})
+    } else {
+      const allIds = users.map(u => u.id)
+      setSelectedUserIds(allIds)
+      if (titleMode === 'individual') {
+        const titles: Record<string, string> = {}
+        allIds.forEach(id => {
+          titles[id] = individualTitles[id] || formData.title || '受付'
+        })
+        setIndividualTitles(titles)
+      }
     }
   }
 
@@ -103,7 +201,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-t-2xl sm:rounded-lg w-full sm:max-w-md shadow-xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200 max-h-[90vh] sm:max-h-[85vh] flex flex-col"
+        className="bg-white rounded-t-2xl sm:rounded-lg w-full sm:max-w-2xl shadow-xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200 max-h-[95vh] sm:max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-blue-600 p-4 sm:p-5 flex justify-between items-center flex-shrink-0">
@@ -118,32 +216,196 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         </div>
         
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-white overflow-y-auto flex-1">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">担当者</label>
-            <select 
-              className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
-              value={formData.user_id}
-              onChange={(e) => setFormData({...formData, user_id: e.target.value})}
-              required
-            >
-              <option value="">選択してください</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.display_name}</option>
-              ))}
-            </select>
-          </div>
+          {/* モード選択（編集時は表示しない） */}
+          {!editShift && (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">作成モード</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('single')
+                    setSelectedUserIds([])
+                    setFormData({...formData, user_id: ''})
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
+                    mode === 'single'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <UserCheck size={18} />
+                  1人ずつ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('multiple')
+                    setFormData({...formData, user_id: ''})
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
+                    mode === 'multiple'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Users size={18} />
+                  複数人一括
+                </button>
+              </div>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">役割・内容</label>
-            <input 
-              type="text" 
-              className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-              placeholder="例: 受付、案内、販売など"
-              value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-              required
-            />
-          </div>
+          {/* ユーザー選択 */}
+          {mode === 'single' || editShift ? (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">担当者</label>
+              <select 
+                className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
+                value={formData.user_id}
+                onChange={(e) => setFormData({...formData, user_id: e.target.value})}
+                required
+              >
+                <option value="">選択してください</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.display_name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-slate-700">担当者を選択</label>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+                >
+                  {selectedUserIds.length === users.length ? 'すべて解除' : 'すべて選択'}
+                </button>
+              </div>
+              <div className="border-2 border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto bg-slate-50">
+                {users.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">ユーザーが登録されていません</p>
+                ) : (
+                  <div className="space-y-2">
+                    {users.map(u => (
+                      <label
+                        key={u.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedUserIds.includes(u.id)}
+                          onChange={() => handleUserToggle(u.id)}
+                          className="w-5 h-5 text-blue-600 border-2 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="flex-1 text-sm font-medium text-slate-900">{u.display_name}</span>
+                        {selectedUserIds.includes(u.id) && (
+                          <span className="text-xs text-blue-600 font-semibold">✓</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedUserIds.length > 0 && (
+                <p className="text-xs text-slate-600 mt-2">
+                  {selectedUserIds.length}人を選択中
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* 業務内容設定 */}
+          {mode === 'multiple' && !editShift && (
+            <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-4">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">業務内容の設定方法</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleMode('same')
+                    setIndividualTitles({})
+                  }}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                    titleMode === 'same'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  全員同じ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleMode('individual')
+                    // 選択済みユーザーにデフォルトタイトルを設定
+                    const titles: Record<string, string> = {}
+                    selectedUserIds.forEach(id => {
+                      titles[id] = individualTitles[id] || formData.title || '受付'
+                    })
+                    setIndividualTitles(titles)
+                  }}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                    titleMode === 'individual'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  個別設定
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 業務内容入力 */}
+          {titleMode === 'same' || mode === 'single' || editShift ? (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                役割・内容{mode === 'multiple' && '（全員共通）'}
+              </label>
+              <input 
+                type="text" 
+                className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                placeholder="例: 受付、案内、販売など"
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                required={mode === 'single' || editShift || titleMode === 'same'}
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">各担当者の業務内容</label>
+              <div className="space-y-3 border-2 border-slate-200 rounded-lg p-3 bg-slate-50 max-h-64 overflow-y-auto">
+                {selectedUserIds.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">まずユーザーを選択してください</p>
+                ) : (
+                  selectedUserIds.map(userId => {
+                    const user = users.find(u => u.id === userId)
+                    return (
+                      <div key={userId} className="bg-white p-3 rounded-lg border border-slate-200">
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                          {user?.display_name}
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full border-2 border-slate-200 p-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-sm"
+                          placeholder="例: 受付、案内、販売など"
+                          value={individualTitles[userId] || ''}
+                          onChange={(e) => setIndividualTitles({
+                            ...individualTitles,
+                            [userId]: e.target.value
+                          })}
+                          required
+                        />
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -170,16 +432,34 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
 
           <div className="pt-4 flex flex-col sm:flex-row gap-3 sticky bottom-0 bg-white pb-2 sm:pb-0">
             <button 
-              type="submit" 
-              className="flex-1 bg-blue-600 text-white py-3 sm:py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 shadow-md hover:shadow-lg touch-manipulation min-h-[48px]"
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-blue-600 text-white py-3 sm:py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg touch-manipulation min-h-[48px] flex items-center justify-center gap-2"
             >
-              保存
+              {isSubmitting ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  {mode === 'multiple' ? '作成中...' : '保存中...'}
+                </>
+              ) : (
+                <>
+                  {mode === 'multiple' && selectedUserIds.length > 0 && (
+                    <Copy size={16} />
+                  )}
+                  {mode === 'multiple' && selectedUserIds.length > 0
+                    ? `${selectedUserIds.length}件のシフトを作成`
+                    : editShift
+                    ? '保存'
+                    : '作成'}
+                </>
+              )}
             </button>
             {editShift && (
               <button 
                 type="button" 
-                onClick={handleDelete} 
-                className="w-full sm:w-auto sm:px-6 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 active:bg-red-200 font-semibold transition-colors duration-200 border-2 border-red-200 hover:border-red-300 touch-manipulation min-h-[48px]"
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto sm:px-6 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 active:bg-red-200 font-semibold transition-colors duration-200 border-2 border-red-200 hover:border-red-300 touch-manipulation min-h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 削除
               </button>
