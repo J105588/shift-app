@@ -1,17 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
-import { parse } from 'date-fns/parse'
-import { startOfWeek } from 'date-fns/startOfWeek'
-import { getDay } from 'date-fns/getDay'
 import { ja } from 'date-fns/locale/ja'
 import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
-import 'react-big-calendar/lib/css/react-big-calendar.css'
+import ScheduleTimetable from '@/components/ScheduleTimetable'
 import { Clock } from 'lucide-react'
-
-const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'ja': ja } })
 
 export default function Dashboard() {
   const supabase = createClient()
@@ -38,6 +32,8 @@ export default function Dashboard() {
           start: new Date(s.start_time),
           end: new Date(s.end_time),
           resourceId: s.user_id,
+          displayName: s.profiles?.display_name || '不明',
+          shiftTitle: s.title,
         }))
         setEvents(formatted)
 
@@ -91,33 +87,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* カレンダー */}
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-200 h-[600px] sm:h-[700px]">
-          <div className="mb-4 pb-4 border-b border-slate-200">
-            <h3 className="text-lg font-bold text-slate-900">シフト一覧</h3>
+        {/* タイムテーブル */}
+        {user && (
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <ScheduleTimetable
+              events={events}
+              currentUserId={user.id}
+            />
           </div>
-          <Calendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            defaultView={Views.AGENDA}
-            views={[Views.MONTH, Views.AGENDA]}
-            culture='ja'
-            messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日", agenda: "リスト" }}
-            eventPropGetter={(event) => ({
-              style: {
-                backgroundColor: event.resourceId === user.id ? '#3b82f6' : '#64748b',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                padding: '4px 8px',
-                color: 'white',
-                fontWeight: '600'
-              }
-            })}
-          />
-        </div>
+        )}
       </main>
     </div>
   )
