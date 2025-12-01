@@ -1,9 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import dynamic from 'next/dynamic'
-
-const PwaUpdateListener = dynamic(() => import('@/components/PwaUpdateListener'), { ssr: false })
+import ClientProviders from '@/components/ClientProviders'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -54,8 +52,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body className={inter.className}>
-        <PwaUpdateListener />
-        {children}
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   )
