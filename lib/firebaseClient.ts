@@ -23,7 +23,7 @@ export const initFirebaseApp = () => {
 
 /**
  * Service Worker の登録を待つ
- * Firebase はデフォルトでルートスコープの Service Worker を探します
+ * Firebase Cloud Messaging 用に /firebase-messaging-sw.js を登録する
  */
 const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
@@ -31,17 +31,13 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
   }
 
   try {
-    // 既に登録されている Service Worker を取得（ルートスコープ）
-    const registrations = await navigator.serviceWorker.getRegistrations()
-    let registration = registrations.find(reg => 
-      reg.scope === window.location.origin + '/' || 
-      reg.active?.scriptURL.includes('firebase-messaging-sw.js')
-    )
-    
+    // 既に登録されている Service Worker を取得（FCM 専用スコープ）
+    let registration = await navigator.serviceWorker.getRegistration('/firebase-cloud-messaging-push-scope')
+
     if (!registration) {
-      // 登録されていない場合は、firebase-messaging-sw.js をルートスコープで登録
+      // 登録されていない場合は、firebase-messaging-sw.js を専用スコープで登録
       registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/'
+        scope: '/firebase-cloud-messaging-push-scope'
       })
     }
 
@@ -89,7 +85,10 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
   }
 }
 
-export const getFirebaseMessaging = async (): Promise<Messaging | null> => {
+export const getFirebaseMessaging = async (): Promise<{
+  messaging: Messaging
+  registration: ServiceWorkerRegistration
+} | null> => {
   if (typeof window === 'undefined') return null
   const ok = initFirebaseApp()
   if (!ok) return null
@@ -109,7 +108,8 @@ export const getFirebaseMessaging = async (): Promise<Messaging | null> => {
       return null
     }
 
-    return getMessaging()
+    const messaging = getMessaging()
+    return { messaging, registration }
   } catch (e) {
     console.warn('Failed to get Firebase Messaging:', e)
     return null
@@ -118,12 +118,17 @@ export const getFirebaseMessaging = async (): Promise<Messaging | null> => {
 
 export const getFcmToken = async (): Promise<string | null> => {
   if (typeof window === 'undefined') return null
-  const messaging = await getFirebaseMessaging()
-  if (!messaging) return null
+  const messagingResult = await getFirebaseMessaging()
+  if (!messagingResult) return null
+
+  const { messaging, registration } = messagingResult
 
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
   try {
-    const token = await getToken(messaging, vapidKey ? { vapidKey } : undefined)
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration,
+    })
     return token || null
   } catch (e) {
     console.error('Failed to get FCM token:', e)
@@ -132,10 +137,10 @@ export const getFcmToken = async (): Promise<string | null> => {
 }
 
 export const subscribeInAppMessages = async () => {
-  const messaging = await getFirebaseMessaging()
-  if (!messaging) return
+  const messagingResult = await getFirebaseMessaging()
+  if (!messagingResult) return
 
-  onMessage(messaging, (payload) => {
+  onMessage(messagingResult.messaging, (payload) => {
     console.log('FCM message received in page:', payload)
   })
 }
