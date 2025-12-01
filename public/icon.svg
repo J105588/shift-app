@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="64" fill="#2563eb"/>
+  <rect x="80" y="120" width="352" height="312" rx="16" fill="white" opacity="0.2"/>
+  <rect x="100" y="140" width="312" height="272" rx="12" fill="white"/>
+  <rect x="120" y="180" width="60" height="40" rx="4" fill="#2563eb"/>
+  <rect x="200" y="180" width="60" height="40" rx="4" fill="#2563eb"/>
+  <rect x="280" y="180" width="60" height="40" rx="4" fill="#2563eb"/>
+  <rect x="360" y="180" width="60" height="40" rx="4" fill="#2563eb"/>
+  <rect x="120" y="240" width="60" height="40" rx="4" fill="#3b82f6"/>
+  <rect x="200" y="240" width="60" height="40" rx="4" fill="#3b82f6"/>
+  <rect x="280" y="240" width="60" height="40" rx="4" fill="#3b82f6"/>
+  <rect x="360" y="240" width="60" height="40" rx="4" fill="#3b82f6"/>
+  <rect x="120" y="300" width="60" height="40" rx="4" fill="#60a5fa"/>
+  <rect x="200" y="300" width="60" height="40" rx="4" fill="#60a5fa"/>
+  <rect x="280" y="300" width="60" height="40" rx="4" fill="#60a5fa"/>
+  <rect x="360" y="300" width="60" height="40" rx="4" fill="#60a5fa"/>
+  <text x="256" y="160" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#2563eb" text-anchor="middle">シフト</text>
+</svg>
+
