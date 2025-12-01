@@ -194,12 +194,32 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           payload.supervisor_id = formData.supervisor_id
         }
 
-        const { error } = await supabase.from('shifts').insert([payload])
+        const { data: inserted, error } = await supabase.from('shifts').insert([payload]).select()
         if (error) {
           console.error('シフト挿入エラー:', error)
           throw error
         }
-        if (error) throw error
+        // シフト開始前のリマインダー通知ジョブを作成（1時間前、30分前、5分前）
+        if (inserted && inserted[0]) {
+          const s = inserted[0] as any
+          const start = new Date(s.start_time)
+          const reminders = [60, 30, 5].map((minutes) => {
+            const scheduled = new Date(start.getTime() - minutes * 60 * 1000)
+            return {
+              target_user_id: s.user_id,
+              title: 'シフトのご案内',
+              body: `${start.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}〜${new Date(s.end_time).toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}「${s.title}」のシフトが${minutes}分後に開始します。`,
+              scheduled_at: scheduled.toISOString(),
+            }
+          })
+          await supabase.from('notifications').insert(reminders)
+        }
       } else {
         // 複数ユーザーモード: 一括作成
         if (selectedUserIds.length === 0) {
@@ -241,12 +261,36 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           return payload
         })
 
-        const { error } = await supabase.from('shifts').insert(payloads)
+        const { data: inserted, error } = await supabase.from('shifts').insert(payloads).select()
         if (error) {
           console.error('シフト一括挿入エラー:', error)
           throw error
         }
-        if (error) throw error
+        // 作成された各シフトに対してリマインダー通知ジョブを作成
+        if (inserted && inserted.length > 0) {
+          const reminderRows: any[] = []
+          inserted.forEach((s: any) => {
+            const start = new Date(s.start_time)
+            ;[60, 30, 5].forEach((minutes) => {
+              const scheduled = new Date(start.getTime() - minutes * 60 * 1000)
+              reminderRows.push({
+                target_user_id: s.user_id,
+                title: 'シフトのご案内',
+                body: `${start.toLocaleTimeString('ja-JP', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}〜${new Date(s.end_time).toLocaleTimeString('ja-JP', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}「${s.title}」のシフトが${minutes}分後に開始します。`,
+                scheduled_at: scheduled.toISOString(),
+              })
+            })
+          })
+          if (reminderRows.length > 0) {
+            await supabase.from('notifications').insert(reminderRows)
+          }
+        }
       }
 
       onSaved()

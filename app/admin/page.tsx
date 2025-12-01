@@ -6,6 +6,7 @@ import ShiftModal from '@/components/ShiftModal'
 import UserManagement from '@/components/UserManagement' 
 import AdminCalendar from '@/components/AdminCalendar'
 import SpreadsheetView from '@/components/SpreadsheetView'
+import AdminNotifications from '@/components/AdminNotifications'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
 import { parse } from 'date-fns/parse'
@@ -30,7 +31,7 @@ export default function AdminPage() {
   const [events, setEvents] = useState<any[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [users, setUsers] = useState<Profile[]>([])
-  const [activeTab, setActiveTab] = useState<'calendar' | 'users'>('calendar')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'users' | 'notifications'>('calendar')
   const [calendarView, setCalendarView] = useState<'calendar' | 'spreadsheet'>('calendar')
   const [isPwaUpdating, setIsPwaUpdating] = useState(false)
   
@@ -211,6 +212,18 @@ export default function AdminPage() {
             <span className="hidden sm:inline">スタッフ管理</span>
             <span className="sm:hidden">スタッフ</span>
           </button>
+          <button 
+            onClick={() => setActiveTab('notifications')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
+              activeTab === 'notifications' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+            }`}
+          >
+            <RefreshCw size={18} /> 
+            <span className="hidden sm:inline">通知</span>
+            <span className="sm:hidden">通知</span>
+          </button>
         </div>
       </div>
 
@@ -328,9 +341,13 @@ export default function AdminPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'users' ? (
           <div className="h-full overflow-y-auto">
             <UserManagement />
+          </div>
+        ) : (
+          <div className="h-full overflow-y-auto">
+            <AdminNotifications />
           </div>
         )}
       </main>
