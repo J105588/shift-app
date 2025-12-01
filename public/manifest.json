@@ -1,12 +1,13 @@
 {
-  "name": "文化祭シフト管理",
-  "short_name": "シフト管理",
-  "description": "みんなでシフトを共有しよう",
+  "name": "文実シフト管理",
+  "short_name": "文実シフト管理",
+  "description": "シフトを共有しよう",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "orientation": "portrait-primary",
+  "scope": "/",
   "icons": [
     {
       "src": "/favicon.ico",
@@ -24,7 +25,21 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
-  ]
+  ],
+  "prefer_related_applications": false,
+  "categories": ["productivity", "utilities"]
 }
 

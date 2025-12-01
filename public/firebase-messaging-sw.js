@@ -33,6 +33,11 @@ messaging.onBackgroundMessage((payload) => {
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
     data: payload.data || {},
+    // iOS向けの設定
+    requireInteraction: false,
+    silent: false,
+    vibrate: [200, 100, 200], // iOSでは無視されるが、Android用
+    tag: payload.messageId || 'fcm-notification',
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
@@ -45,15 +50,25 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
   // 通知の data に URL が含まれている場合はそのページを開く
-  if (event.notification.data && event.notification.data.url) {
-    event.waitUntil(
-      clients.openWindow(event.notification.data.url)
-    );
-  } else {
-    // デフォルトでアプリのルートを開く
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
+  const urlToOpen = event.notification.data?.url || '/';
+  
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      // 既に開いているウィンドウがある場合はフォーカス
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // 新しいウィンドウを開く
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
 

@@ -14,7 +14,7 @@ async function generateIcons() {
     return;
   }
 
-  const sizes = [192, 512];
+  const sizes = [192, 512, 180]; // 180はiOS用のApple Touch Icon
 
   for (const size of sizes) {
     try {
@@ -26,6 +26,20 @@ async function generateIcons() {
     } catch (error) {
       console.error(`✗ icon-${size}x${size}.png の生成に失敗しました:`, error);
     }
+  }
+
+  // iOS用のApple Touch Icon（180x180）を生成（既に上で生成済みだが、明示的にコピー）
+  try {
+    const appleTouchIconPath = path.join(outputDir, 'apple-touch-icon.png');
+    if (!fs.existsSync(appleTouchIconPath)) {
+      await sharp(svgPath)
+        .resize(180, 180)
+        .png()
+        .toFile(appleTouchIconPath);
+      console.log('✓ apple-touch-icon.png を生成しました（iOS用）');
+    }
+  } catch (error) {
+    console.error('✗ apple-touch-icon.png の生成に失敗しました:', error);
   }
 
   // favicon.pngを生成

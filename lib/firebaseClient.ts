@@ -24,11 +24,16 @@ export const initFirebaseApp = () => {
 /**
  * Service Worker の登録を待つ
  * Firebase Cloud Messaging 用に /firebase-messaging-sw.js を登録する
+ * iOS 16.4以降でも動作するように最適化
  */
 const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
     return null
   }
+
+  // iOS の検出（簡易版）
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
   try {
     // 既に登録されている Service Worker を取得（FCM 専用スコープ）
@@ -36,9 +41,22 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
 
     if (!registration) {
       // 登録されていない場合は、firebase-messaging-sw.js を専用スコープで登録
-      registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/firebase-cloud-messaging-push-scope'
-      })
+      // iOSでは、Service Workerの登録が少し異なる場合があるため、エラーハンドリングを強化
+      try {
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          scope: '/firebase-cloud-messaging-push-scope'
+        })
+      } catch (registerError) {
+        // iOSでスコープ指定が問題になる場合があるため、ルートスコープで再試行
+        if (isIOS) {
+          console.warn('Failed to register with custom scope, trying root scope:', registerError)
+          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+            scope: '/'
+          })
+        } else {
+          throw registerError
+        }
+      }
     }
 
     // Service Worker がアクティブになるまで待つ
@@ -142,6 +160,41 @@ export const subscribeInAppMessages = async () => {
 
   onMessage(messagingResult.messaging, (payload) => {
     console.log('FCM message received in page:', payload)
+    
+    // iOSを含むフォアグラウンド時の通知表示
+    // iOS 16.4以降では、Service Worker経由の通知も動作しますが、
+    // フォアグラウンド時は明示的に通知を表示する必要があります
+    if (payload.notification) {
+      const { title, body, icon } = payload.notification
+      
+      // ブラウザの通知APIを使用（iOS 16.4以降でサポート）
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const notification = new Notification(title || '通知', {
+            body: body || '',
+            icon: icon || '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            tag: payload.messageId || 'fcm-notification',
+            data: payload.data || {},
+          })
+
+          // 通知クリック時の処理
+          notification.onclick = (event) => {
+            event.preventDefault()
+            window.focus()
+            
+            // 通知の data に URL が含まれている場合はそのページを開く
+            if (payload.data && payload.data.url) {
+              window.open(payload.data.url, '_blank')
+            }
+            
+            notification.close()
+          }
+        } catch (error) {
+          console.error('Failed to show notification:', error)
+        }
+      }
+    }
   })
 }
 
