@@ -50,32 +50,71 @@ export default function AdminPage() {
   }, [])
 
   const fetchShifts = async () => {
-    // シフトデータを取得（統括者情報も含む）
-    const { data: shiftsData } = await supabase
-      .from('shifts')
-      .select(`
-        *,
-        profiles(display_name),
-        supervisor:profiles!shifts_supervisor_id_fkey(display_name)
-      `)
-    
-    if (shiftsData) {
-      // カレンダー用のイベントデータ
-      const formatted = shiftsData.map((s: any) => ({
-        id: s.id,
-        title: `${s.profiles?.display_name}: ${s.title}`,
-        start: new Date(s.start_time),
-        end: new Date(s.end_time),
-        resource: s 
-      }))
-      setEvents(formatted)
-      setShifts(shiftsData as Shift[])
-    }
+    try {
+      // シフトデータを取得（統括者情報も含む）
+      // まずは基本的なクエリで試す（supervisor_idが存在しない場合のエラーを避けるため）
+      const { data: shiftsData, error: shiftsError } = await supabase
+        .from('shifts')
+        .select('*, profiles!shifts_user_id_fkey(display_name)')
+      
+      if (shiftsError) {
+        console.error('シフト取得エラー:', shiftsError)
+        // supervisor_idカラムが存在しない場合は、基本的なクエリのみ使用
+        const { data: basicData, error: basicError } = await supabase
+          .from('shifts')
+          .select('*, profiles(display_name)')
+        
+        if (basicError) {
+          console.error('基本シフト取得エラー:', basicError)
+          return
+        }
+        
+        if (basicData) {
+          const formatted = basicData.map((s: any) => ({
+            id: s.id,
+            title: `${s.profiles?.display_name}: ${s.title}`,
+            start: new Date(s.start_time),
+            end: new Date(s.end_time),
+            resource: s 
+          }))
+          setEvents(formatted)
+          setShifts(basicData as Shift[])
+        }
+      } else if (shiftsData) {
+        // supervisor情報も取得を試みる
+        const shiftsWithSupervisor = await Promise.all(
+          shiftsData.map(async (shift: any) => {
+            if (shift.supervisor_id) {
+              const { data: supervisorData } = await supabase
+                .from('profiles')
+                .select('display_name')
+                .eq('id', shift.supervisor_id)
+                .single()
+              return { ...shift, supervisor: supervisorData }
+            }
+            return shift
+          })
+        )
+        
+        // カレンダー用のイベントデータ
+        const formatted = shiftsWithSupervisor.map((s: any) => ({
+          id: s.id,
+          title: `${s.profiles?.display_name}: ${s.title}`,
+          start: new Date(s.start_time),
+          end: new Date(s.end_time),
+          resource: s 
+        }))
+        setEvents(formatted)
+        setShifts(shiftsWithSupervisor as Shift[])
+      }
 
-    // ユーザー一覧を取得
-    const { data: usersData } = await supabase.from('profiles').select('*').order('display_name')
-    if (usersData) {
-      setUsers(usersData as Profile[])
+      // ユーザー一覧を取得
+      const { data: usersData } = await supabase.from('profiles').select('*').order('display_name')
+      if (usersData) {
+        setUsers(usersData as Profile[])
+      }
+    } catch (error) {
+      console.error('fetchShiftsエラー:', error)
     }
   }
 

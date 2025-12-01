@@ -106,13 +106,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
         }
-        if (formData.supervisor_id) {
+        // supervisor_idが空文字列でない場合のみ追加、それ以外はnullを明示的に設定しない（カラムが存在しない場合のエラーを避ける）
+        if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
           payload.supervisor_id = formData.supervisor_id
-        } else {
-          payload.supervisor_id = null
         }
 
         const { error } = await supabase.from('shifts').update(payload).eq('id', editShift.id)
+        if (error) {
+          console.error('シフト更新エラー:', error)
+          throw error
+        }
         if (error) throw error
       } else if (mode === 'single') {
         // 単一ユーザーモード
@@ -128,11 +131,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
         }
-        if (formData.supervisor_id) {
+        // supervisor_idが空文字列でない場合のみ追加
+        if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
           payload.supervisor_id = formData.supervisor_id
         }
 
         const { error } = await supabase.from('shifts').insert([payload])
+        if (error) {
+          console.error('シフト挿入エラー:', error)
+          throw error
+        }
         if (error) throw error
       } else {
         // 複数ユーザーモード: 一括作成
@@ -167,20 +175,27 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
             start_time: new Date(formData.start).toISOString(),
             end_time: new Date(formData.end).toISOString(),
           }
-          if (formData.supervisor_id) {
+          // supervisor_idが空文字列でない場合のみ追加
+          if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
             payload.supervisor_id = formData.supervisor_id
           }
           return payload
         })
 
         const { error } = await supabase.from('shifts').insert(payloads)
+        if (error) {
+          console.error('シフト一括挿入エラー:', error)
+          throw error
+        }
         if (error) throw error
       }
 
       onSaved()
       onClose()
     } catch (error: any) {
-      alert('エラー: ' + (error.message || 'シフトの保存に失敗しました'))
+      console.error('シフト保存エラー:', error)
+      const errorMessage = error.message || error.details || 'シフトの保存に失敗しました'
+      alert(`エラー: ${errorMessage}\n\n詳細: ${JSON.stringify(error, null, 2)}`)
     } finally {
       setIsSubmitting(false)
     }
