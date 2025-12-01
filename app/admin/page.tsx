@@ -15,6 +15,8 @@ import { ja } from 'date-fns/locale/ja'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { Users, Calendar as CalIcon, Table2 } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
+import { RefreshCw } from 'lucide-react'
+import { forceReloadPwa } from '@/lib/pwa'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -30,6 +32,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<Profile[]>([])
   const [activeTab, setActiveTab] = useState<'calendar' | 'users'>('calendar')
   const [calendarView, setCalendarView] = useState<'calendar' | 'spreadsheet'>('calendar')
+  const [isPwaUpdating, setIsPwaUpdating] = useState(false)
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -134,6 +137,26 @@ export default function AdminPage() {
     setIsModalOpen(true)
   }
 
+  const handlePwaUpdate = async () => {
+    setIsPwaUpdating(true)
+    try {
+      const version = `${Date.now()}`
+      const { error } = await supabase.from('app_updates').insert({
+        version,
+        triggered_by: user?.id || null,
+      })
+      if (error) throw error
+
+      alert('すべての端末に最新バージョンの適用を通知しました。')
+      await forceReloadPwa()
+    } catch (error: any) {
+      console.error('PWA update error:', error)
+      alert(`PWAの更新に失敗しました: ${error?.message || '詳細不明'}`)
+    } finally {
+      setIsPwaUpdating(false)
+    }
+  }
+
   if (!profile) return null
 
   return (
@@ -170,7 +193,36 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto pb-20">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto pb-20 space-y-4">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 sm:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <RefreshCw size={18} className="text-blue-600" />
+              PWAアップデート
+            </h3>
+            <p className="text-sm text-slate-600 mt-1">
+              既存のキャッシュを削除し、最新のアプリに強制更新します。インストール済み端末で不具合が出た際に実行してください。
+            </p>
+          </div>
+          <button
+            onClick={handlePwaUpdate}
+            disabled={isPwaUpdating}
+            className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isPwaUpdating ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                実行中...
+              </>
+            ) : (
+              <>
+                <RefreshCw size={16} />
+                キャッシュをリセット
+              </>
+            )}
+          </button>
+        </div>
+
         {activeTab === 'calendar' ? (
           <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-3 sm:p-4 md:p-6 overflow-hidden">
             <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-200">
