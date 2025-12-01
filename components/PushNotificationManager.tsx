@@ -28,6 +28,8 @@ export default function PushNotificationManager() {
 
       // 権限リクエスト
       let permission = Notification.permission
+      const wasPermissionDefault = permission === 'default'
+      
       if (permission === 'default') {
         // iOSでは、ユーザーが明示的に許可する必要がある
         try {
@@ -44,6 +46,28 @@ export default function PushNotificationManager() {
           console.info('iOSでは、Safariの設定から通知を許可してください。')
         }
         return
+      }
+
+      // 通知が許可された直後にテスト通知を送信（初回許可時のみ）
+      if (wasPermissionDefault && permission === 'granted') {
+        try {
+          const testNotification = new Notification('文実シフト管理', {
+            body: 'これは文実によるテスト通信です',
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            tag: 'test-notification',
+            requireInteraction: false,
+          })
+
+          // テスト通知を3秒後に自動的に閉じる
+          setTimeout(() => {
+            testNotification.close()
+          }, 3000)
+
+          console.log('テスト通知を送信しました')
+        } catch (error) {
+          console.error('テスト通知の送信に失敗しました:', error)
+        }
       }
 
       // Service Worker のサポート確認（iOS 16.4以降で必要）
