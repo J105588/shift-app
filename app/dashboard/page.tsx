@@ -24,30 +24,44 @@ export default function Dashboard() {
       setUser(user)
       
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      console.log('[Dashboard] Logged-in user:', user)
+      console.log('[Dashboard] Loaded profile:', profile)
       setProfile(profile)
 
-      // シフト取得（自分のシフトのみ）
-      const { data: shifts } = await supabase
+      // シフト取得（全シフトを取得してからクライアント側で本人の分だけに絞り込む）
+      const { data: shifts, error: shiftsError } = await supabase
         .from('shifts')
-        .select('*, profiles(display_name)')
-        .eq('user_id', user.id)
+        .select('*, profiles!shifts_user_id_fkey(display_name)')
         .order('start_time', { ascending: true })
-      
+
+      if (shiftsError) {
+        console.error('[Dashboard] Error fetching shifts:', shiftsError)
+      }
+
       if (shifts) {
+        console.log('[Dashboard] Raw shifts fetched (count):', shifts.length)
+        console.log('[Dashboard] Raw shifts sample (first 5):', shifts.slice(0, 5))
         const formatted = shifts.map((s: any) => ({
           id: s.id,
-          title: s.title, // 自分のシフトなので名前は不要
+          title: `${s.profiles?.display_name || '不明'}: ${s.title}`,
           start: new Date(s.start_time),
           end: new Date(s.end_time),
           resourceId: s.user_id,
-          displayName: s.profiles?.display_name || profile.display_name || '不明',
+          displayName: s.profiles?.display_name || '不明',
           shiftTitle: s.title,
         }))
-        setEvents(formatted)
+        console.log('[Dashboard] Formatted events sample (first 5):', formatted.slice(0, 5))
+        
+        // 自分のシフトだけを画面に表示
+        const myEvents = formatted.filter((e: any) => e.resourceId === user.id)
+        console.log('[Dashboard] Current user id:', user.id)
+        console.log('[Dashboard] Filtered events for current user (count):', myEvents.length)
+        console.log('[Dashboard] Filtered events sample (first 5):', myEvents.slice(0, 5))
+        setEvents(myEvents)
 
         // 自分の次のシフトを探す
         const now = new Date()
-        const myShifts = formatted
+        const myShifts = myEvents
           .filter((e: any) => e.start > now)
           .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
         
