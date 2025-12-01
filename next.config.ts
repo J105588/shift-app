@@ -3,6 +3,10 @@ import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // webpackを明示的に使用（next-pwaがwebpackベースのため）
+  webpack: (config, { isServer }) => {
+    return config;
+  },
 };
 
 const pwaConfig = withPWA({
