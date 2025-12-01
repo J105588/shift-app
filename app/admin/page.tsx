@@ -38,20 +38,6 @@ export default function AdminPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedShift, setSelectedShift] = useState<any>(null)
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return window.location.href = '/'
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (data?.role !== 'admin') return window.location.href = '/dashboard'
-      
-      setUser(user)
-      setProfile(data)
-      fetchShifts()
-    }
-    checkAdmin()
-  }, [])
-
   const fetchShifts = async () => {
     try {
       // シフトデータを取得（統括者情報も含む）
@@ -120,6 +106,41 @@ export default function AdminPage() {
       console.error('fetchShiftsエラー:', error)
     }
   }
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return window.location.href = '/'
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (data?.role !== 'admin') return window.location.href = '/dashboard'
+      
+      setUser(user)
+      setProfile(data)
+      fetchShifts()
+    }
+    checkAdmin()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // shiftsテーブルの変更をリアルタイムで監視し、画面とDBを同期
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:shifts_admin')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shifts' },
+        () => {
+          fetchShifts()
+        }
+      )
+
+    channel.subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSelectSlot = ({ start }: { start: Date }) => {
     setSelectedShift(null)

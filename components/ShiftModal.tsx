@@ -94,6 +94,60 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     setIsSubmitting(true)
 
     try {
+      // 重複シフトチェック（新規作成・複数作成時のみ）
+      if (!editShift) {
+        const targetUserIds =
+          mode === 'multiple'
+            ? selectedUserIds
+            : formData.user_id
+            ? [formData.user_id]
+            : []
+
+        if (targetUserIds.length > 0 && formData.start && formData.end) {
+          const startIso = new Date(formData.start).toISOString()
+          const endIso = new Date(formData.end).toISOString()
+
+          // start_time < 新しい終了 && end_time > 新しい開始 → 重なっている
+          const { data: overlaps, error: overlapError } = await supabase
+            .from('shifts')
+            .select('*, profiles!shifts_user_id_fkey(display_name)')
+            .in('user_id', targetUserIds)
+            .lt('start_time', endIso)
+            .gt('end_time', startIso)
+
+          if (overlapError) {
+            console.warn('重複シフトチェック中のエラー:', overlapError)
+          }
+
+          if (overlaps && overlaps.length > 0) {
+            const lines = overlaps.map((s: any) => {
+              const start = new Date(s.start_time)
+              const end = new Date(s.end_time)
+              const timeStr = `${start.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}〜${end.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}`
+              const name = s.profiles?.display_name || '不明'
+              return `・${name}：${timeStr}「${s.title}」`
+            })
+
+            const proceed = window.confirm(
+              `以下のスタッフは、この時間帯にすでにシフトが入っています。\n\n${lines.join(
+                '\n'
+              )}\n\nそれでも新しいシフトを作成しますか？`
+            )
+
+            if (!proceed) {
+              setIsSubmitting(false)
+              return
+            }
+          }
+        }
+      }
+
       if (editShift) {
         // 編集モード: 単一シフト更新
         if (!formData.user_id) {
