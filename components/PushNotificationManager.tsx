@@ -26,7 +26,7 @@ export default function PushNotificationManager() {
       if (!token) return
 
       // Supabaseにトークンを保存（同じトークンが既にあれば更新）
-      await supabase.from('push_subscriptions').upsert(
+      const { error: upsertError } = await supabase.from('push_subscriptions').upsert(
         {
           user_id: user.id,
           token,
@@ -36,6 +36,12 @@ export default function PushNotificationManager() {
         }
       )
 
+      if (upsertError) {
+        console.error('Failed to save FCM token to Supabase:', upsertError)
+        return
+      }
+
+      console.log('FCM token saved successfully')
       subscribeInAppMessages()
     }
 
