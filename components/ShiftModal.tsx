@@ -23,7 +23,8 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     title: '',
     start: '',
     end: '',
-    supervisor_id: ''
+    supervisor_id: '',
+    description: ''
   })
   const [individualTitles, setIndividualTitles] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -63,7 +64,8 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         title: editShift.title,
         start: new Date(editShift.start_time).toISOString().slice(0, 16),
         end: new Date(editShift.end_time).toISOString().slice(0, 16),
-        supervisor_id: editShift.supervisor_id || ''
+        supervisor_id: editShift.supervisor_id || '',
+        description: editShift.description || ''
       })
       setSelectedUserIds([])
       setIndividualTitles({})
@@ -80,7 +82,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       const localStart = new Date(start.getTime() - offset).toISOString().slice(0, 16)
       const localEnd = new Date(end.getTime() - offset).toISOString().slice(0, 16)
 
-      setFormData({ user_id: '', title: '受付', start: localStart, end: localEnd, supervisor_id: '' })
+      setFormData({ user_id: '', title: '受付', start: localStart, end: localEnd, supervisor_id: '', description: '' })
       setSelectedUserIds([])
       setIndividualTitles({})
       setUseTemplate(true)
@@ -105,6 +107,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           title: formData.title,
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
+          description: formData.description || null,
         }
         // supervisor_idが空文字列でない場合のみ追加、それ以外はnullを明示的に設定しない（カラムが存在しない場合のエラーを避ける）
         if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
@@ -130,6 +133,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           title: formData.title,
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
+          description: formData.description || null,
         }
         // supervisor_idが空文字列でない場合のみ追加
         if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
@@ -174,6 +178,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
               : (individualTitles[userId] || formData.title),
             start_time: new Date(formData.start).toISOString(),
             end_time: new Date(formData.end).toISOString(),
+            description: formData.description || null,
           }
           // supervisor_idが空文字列でない場合のみ追加
           if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
@@ -493,6 +498,19 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           )}
 
           {/* 統括者選択 */}
+          {/* 仕事内容メモ */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              仕事内容のメモ（任意）
+            </label>
+            <textarea
+              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-sm min-h-[80px]"
+              placeholder="例: 校門付近での案内、30分ごとに交代 など"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
               <UserCog size={16} className="text-blue-600" />

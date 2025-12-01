@@ -13,6 +13,8 @@ export type Profile = {
     supervisor_id?: string | null
     profiles?: Profile
     supervisor?: Profile
+    // 仕事内容の詳細メモ（任意）
+    description?: string | null
   }
   
   // カレンダー表示用

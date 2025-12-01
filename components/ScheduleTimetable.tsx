@@ -12,15 +12,17 @@ type CalendarEvent = {
   resourceId: string
   displayName?: string
   shiftTitle?: string
+  description?: string
 }
 
 type Props = {
   events: CalendarEvent[]
   currentUserId: string
   onDateChange?: (date: Date) => void
+  onEventClick?: (event: CalendarEvent) => void
 }
 
-export default function ScheduleTimetable({ events, currentUserId, onDateChange }: Props) {
+export default function ScheduleTimetable({ events, currentUserId, onDateChange, onEventClick }: Props) {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week')
@@ -225,14 +227,17 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange 
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
                             }`}
-                            onClick={() => handleDateClick(event.start)}
+                            onClick={() => {
+                              handleDateClick(event.start)
+                              onEventClick?.(event)
+                            }}
                           >
                             <div className="font-semibold mb-1 flex items-center gap-1">
                               <Clock size={12} />
                               {formatTime(event.start)} - {formatTime(event.end)}
                             </div>
                             <div className="text-xs opacity-90">
-                              {event.displayName || event.shiftTitle || event.title}
+                              {event.shiftTitle || event.title || event.displayName}
                             </div>
                           </div>
                         ))}
@@ -299,7 +304,10 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange 
                               ? 'bg-blue-500 text-white shadow-md'
                               : 'bg-white text-slate-700 border-2 border-slate-200'
                           }`}
-                          onClick={() => handleDateClick(event.start)}
+                          onClick={() => {
+                            handleDateClick(event.start)
+                            onEventClick?.(event)
+                          }}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
@@ -317,7 +325,7 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange 
                           <div className={`text-sm font-medium ${
                             isMyShift(event) ? 'text-blue-50' : 'text-slate-900'
                           }`}>
-                            {event.displayName || event.shiftTitle || event.title}
+                            {event.shiftTitle || event.title || event.displayName}
                           </div>
                         </div>
                       ))}
@@ -416,7 +424,7 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange 
                     <span className={`font-semibold ${
                       isMyShift(event) ? 'text-white' : 'text-slate-900'
                     }`}>
-                      {event.displayName || event.shiftTitle || event.title}
+                      {event.shiftTitle || event.title || event.displayName}
                     </span>
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import { ja } from 'date-fns/locale/ja'
 import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 import ScheduleTimetable from '@/components/ScheduleTimetable'
+import ShiftDetailModal from '@/components/ShiftDetailModal'
 import { Clock } from 'lucide-react'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
@@ -16,6 +17,11 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
   const [nextShift, setNextShift] = useState<any>(null)
+  const [rawShifts, setRawShifts] = useState<any[]>([])
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null)
+  const [coworkers, setCoworkers] = useState<any[]>([])
+  const [supervisorName, setSupervisorName] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -41,6 +47,7 @@ export default function Dashboard() {
       if (shifts) {
         console.log('[Dashboard] Raw shifts fetched (count):', shifts.length)
         console.log('[Dashboard] Raw shifts sample (first 5):', shifts.slice(0, 5))
+        setRawShifts(shifts)
         const formatted = shifts.map((s: any) => ({
           id: s.id,
           title: `${s.profiles?.display_name || '不明'}: ${s.title}`,
@@ -49,6 +56,8 @@ export default function Dashboard() {
           resourceId: s.user_id,
           displayName: s.profiles?.display_name || '不明',
           shiftTitle: s.title,
+          description: s.description,
+          supervisor_id: s.supervisor_id,
         }))
         console.log('[Dashboard] Formatted events sample (first 5):', formatted.slice(0, 5))
         
@@ -70,6 +79,43 @@ export default function Dashboard() {
     }
     init()
   }, [])
+
+  const handleEventClick = async (event: any) => {
+    if (!user || rawShifts.length === 0) return
+
+    setSelectedEvent(event)
+
+    // 同じ仕事内容・時間帯のシフトを検索
+    const sameJobShifts = rawShifts.filter((s: any) => {
+      const sameTitle = s.title === (event.shiftTitle || event.title)
+      const sameStart = new Date(s.start_time).getTime() === event.start.getTime()
+      const sameEnd = new Date(s.end_time).getTime() === event.end.getTime()
+      return sameTitle && sameStart && sameEnd
+    })
+
+    const coworkersList = sameJobShifts.map((s: any) => ({
+      id: s.user_id,
+      displayName: s.profiles?.display_name || '不明',
+      isCurrentUser: s.user_id === user.id,
+    }))
+
+    setCoworkers(coworkersList)
+
+    // 統括者名の取得（あれば）
+    const supervisorId = sameJobShifts[0]?.supervisor_id
+    if (supervisorId) {
+      const { data: supervisorProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', supervisorId)
+        .single()
+      setSupervisorName(supervisorProfile?.display_name || null)
+    } else {
+      setSupervisorName(null)
+    }
+
+    setIsDetailOpen(true)
+  }
 
   if (!profile || !user) return <div className="p-10 text-center">読み込み中...</div>
 
@@ -114,9 +160,28 @@ export default function Dashboard() {
           <ScheduleTimetable
             events={events}
             currentUserId={user.id}
+            onEventClick={handleEventClick}
           />
         </div>
       </main>
+
+      <ShiftDetailModal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        shift={
+          selectedEvent
+            ? {
+                id: selectedEvent.id,
+                title: selectedEvent.shiftTitle || selectedEvent.title,
+                start: selectedEvent.start,
+                end: selectedEvent.end,
+                description: selectedEvent.description,
+              }
+            : null
+        }
+        coworkers={coworkers}
+        supervisorName={supervisorName}
+      />
     </div>
   )
 }
