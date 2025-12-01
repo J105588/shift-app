@@ -42,7 +42,7 @@ export default function PushNotificationManager() {
       }
 
       console.log('FCM token saved successfully')
-      subscribeInAppMessages()
+      await subscribeInAppMessages()
     }
 
     setup()
