@@ -1,16 +1,33 @@
 /**
- * メイン:
- *  - 期限の来た通知を Supabase から取得
- *  - Firebase Cloud Messaging HTTP v1 API で配信
- *  - sent_at を更新して二重送信を防止
- *
- * 必要な Script Properties:
- *  - SUPABASE_URL
- *  - SUPABASE_SERVICE_ROLE_KEY
- *  - FCM_PROJECT_ID              : Firebase プロジェクト ID
- *  - FCM_SA_CLIENT_EMAIL         : サービスアカウントの client_email
- *  - FCM_SA_PRIVATE_KEY          : サービスアカウントの private_key（改行は \n で保存してOK）
+ * ====================================================================
+ * Firebase Cloud Messaging (FCM) 通知送信スクリプト (HTTP v1 API)
+ * ====================================================================
+ * 
+ * 【概要】
+ * Supabase から配信時刻(scheduled_at)を過ぎた未送信通知を取得し、
+ * FCM を経由してユーザーにプッシュ通知を送信します。
+ * 送信後は sent_at を更新して二重送信を防ぎます。
+ * 
+ * 【設定: スクリプトプロパティ】
+ * 以下の値を「プロジェクトの設定 > スクリプトプロパティ」に設定してください。
+ * 
+ * - SUPABASE_URL
+ * - SUPABASE_SERVICE_ROLE_KEY
+ * - FCM_PROJECT_ID          : Firebase プロジェクト ID
+ * - FCM_SA_CLIENT_EMAIL     : サービスアカウントの client_email
+ * - FCM_SA_PRIVATE_KEY      : サービスアカウントの private_key
+ *                             (-----BEGIN... から ...END----- まで全て)
+ * 
+ * 【トリガー設定】
+ * - 関数: processNotifications
+ * - イベントのソース: 時間主導型
+ * - タイプ: 分ベースのタイマー (1分おき)
  */
+
+// 1回の実行で処理する通知の最大件数 (タイムアウト対策)
+// 処理が重い場合はこの数字を小さくしてください (例: 20〜50推奨)
+const BATCH_SIZE = 50;
+
 function processNotifications() {
   const props = PropertiesService.getScriptProperties();
   const SUPABASE_URL = props.getProperty('SUPABASE_URL');
@@ -20,63 +37,84 @@ function processNotifications() {
   const FCM_SA_PRIVATE_KEY = props.getProperty('FCM_SA_PRIVATE_KEY');
 
   if (!SUPABASE_URL || !SUPABASE_KEY || !FCM_PROJECT_ID || !FCM_SA_CLIENT_EMAIL || !FCM_SA_PRIVATE_KEY) {
-    throw new Error('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / FCM_PROJECT_ID / FCM_SA_CLIENT_EMAIL / FCM_SA_PRIVATE_KEY が設定されていません。');
+    throw new Error('設定エラー: スクリプトプロパティに必要な値が設定されていません。');
   }
 
+  // 現在時刻 (ISO 8601)
   const nowIso = new Date().toISOString();
 
-  // 1. 送信対象の notifications を取得（scheduled_at <= now かつ sent_at IS NULL）
-  const notifications = fetchDueNotifications(SUPABASE_URL, SUPABASE_KEY, nowIso);
+  try {
+    // 1. 送信対象の notifications を取得（件数制限付き）
+    const notifications = fetchDueNotifications(SUPABASE_URL, SUPABASE_KEY, nowIso, BATCH_SIZE);
 
-  if (!notifications || notifications.length === 0) {
-    console.log('送信対象の通知はありません');
-    return;
-  }
-
-  notifications.forEach(function (notif) {
-    try {
-      // 2. 対象ユーザーの push_subscriptions から FCM トークンを取得
-      const tokens = fetchUserTokens(SUPABASE_URL, SUPABASE_KEY, notif.target_user_id);
-      if (!tokens || tokens.length === 0) {
-        console.log('トークンなし user_id=' + notif.target_user_id);
-        markNotificationSent(SUPABASE_URL, SUPABASE_KEY, notif.id);
-        return;
-      }
-
-      // 3. 各トークンに FCM (HTTP v1) で通知送信
-      tokens.forEach(function (t) {
-        sendFcmNotificationV1(
-          FCM_PROJECT_ID,
-          FCM_SA_CLIENT_EMAIL,
-          FCM_SA_PRIVATE_KEY,
-          t.token,
-          notif.title,
-          notif.body
-        );
-      });
-
-      // 4. sent_at を更新して二重送信を防ぐ
-      markNotificationSent(SUPABASE_URL, SUPABASE_KEY, notif.id);
-    } catch (e) {
-      console.error('通知送信中エラー id=' + notif.id, e);
+    if (!notifications || notifications.length === 0) {
+      // 送信対象なし。正常終了。
+      return;
     }
-  });
+
+    console.log('送信対象件数: ' + notifications.length + '件');
+
+    // FCMアクセストークンは1回の実行につき1回取得して使い回す（効率化）
+    const accessToken = getFcmAccessToken_(FCM_PROJECT_ID, FCM_SA_CLIENT_EMAIL, FCM_SA_PRIVATE_KEY);
+
+    // 各通知を処理
+    notifications.forEach(function (notif) {
+      processSingleNotification(notif, SUPABASE_URL, SUPABASE_KEY, FCM_PROJECT_ID, accessToken);
+    });
+
+  } catch (e) {
+    console.error('全体処理エラー: ' + e.toString());
+    // ここでエラーになっても、次のトリガーで再試行されます
+  }
+}
+
+/**
+ * 1件の通知処理をカプセル化
+ */
+function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, accessToken) {
+  try {
+    // 2. 対象ユーザーの push_subscriptions から FCM トークンを取得
+    const tokens = fetchUserTokens(supabaseUrl, supabaseKey, notif.target_user_id);
+
+    if (!tokens || tokens.length === 0) {
+      console.log('スキップ: トークンなし (notification_id: ' + notif.id + ', user_id: ' + notif.target_user_id + ')');
+      // トークンがない場合も「送信済み」扱いにして、無限ループを防ぐ
+      markNotificationSent(supabaseUrl, supabaseKey, notif.id);
+      return;
+    }
+
+    // 3. 各デバイス(トークン)に送信
+    tokens.forEach(function (t) {
+      sendFcmNotificationV1WithToken(projectId, accessToken, t.token, notif.title, notif.body);
+    });
+
+    // 4. 成功したら sent_at を更新
+    markNotificationSent(supabaseUrl, supabaseKey, notif.id);
+
+  } catch (e) {
+    console.error('個別通知エラー (id=' + notif.id + '): ' + e.toString());
+    // 個別のエラーは握りつぶし、他の通知の処理を止めないようにする
+  }
 }
 
 /**
  * Supabase から「期限が来た未送信通知」を取得
+ * limitパラメータを追加して大量データを分割処理
  */
-function fetchDueNotifications(SUPABASE_URL, SUPABASE_KEY, nowIso) {
-  var url = SUPABASE_URL + '/rest/v1/notifications'
+function fetchDueNotifications(supabaseUrl, supabaseKey, nowIso, limit) {
+  // API URL構築
+  var url = supabaseUrl + '/rest/v1/notifications'
     + '?select=id,target_user_id,title,body,scheduled_at'
     + '&scheduled_at=lte.' + encodeURIComponent(nowIso)
-    + '&sent_at=is.null';
+    + '&sent_at=is.null'
+    + '&limit=' + limit  // 件数制限
+    + '&order=scheduled_at.asc'; // 古いものから順に処理
 
   var options = {
     method: 'get',
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+      apikey: supabaseKey,
+      Authorization: 'Bearer ' + supabaseKey,
       'Content-Type': 'application/json',
     },
     muteHttpExceptions: true,
@@ -86,23 +124,22 @@ function fetchDueNotifications(SUPABASE_URL, SUPABASE_KEY, nowIso) {
   if (res.getResponseCode() >= 300) {
     throw new Error('fetchDueNotifications error: ' + res.getContentText());
   }
-  var data = JSON.parse(res.getContentText());
-  return data;
+  return JSON.parse(res.getContentText());
 }
 
 /**
  * Supabase からユーザーの FCM トークン一覧を取得
  */
-function fetchUserTokens(SUPABASE_URL, SUPABASE_KEY, userId) {
-  var url = SUPABASE_URL + '/rest/v1/push_subscriptions'
+function fetchUserTokens(supabaseUrl, supabaseKey, userId) {
+  var url = supabaseUrl + '/rest/v1/push_subscriptions'
     + '?select=token'
     + '&user_id=eq.' + encodeURIComponent(userId);
 
   var options = {
     method: 'get',
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+      apikey: supabaseKey,
+      Authorization: 'Bearer ' + supabaseKey,
       'Content-Type': 'application/json',
     },
     muteHttpExceptions: true,
@@ -112,34 +149,25 @@ function fetchUserTokens(SUPABASE_URL, SUPABASE_KEY, userId) {
   if (res.getResponseCode() >= 300) {
     throw new Error('fetchUserTokens error: ' + res.getContentText());
   }
-  var data = JSON.parse(res.getContentText());
-  return data;
+  return JSON.parse(res.getContentText());
 }
 
 /**
  * FCM HTTP v1 用のアクセストークンをサービスアカウントで取得
  */
 function getFcmAccessToken_(projectId, clientEmail, privateKey) {
-  // privateKey は Properties に保存するときに \n を含む文字列になりがちなので復元する
+  // 改行コードの復元
   var pk = privateKey.replace(/\\n/g, '\n');
 
   var now = Math.floor(new Date().getTime() / 1000);
-  var jwtHeader = {
-    alg: 'RS256',
-    typ: 'JWT',
-  };
+  var jwtHeader = { alg: 'RS256', typ: 'JWT' };
   var jwtClaimSet = {
     iss: clientEmail,
     scope: 'https://www.googleapis.com/auth/firebase.messaging',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
-    exp: now + 3600, // 1時間有効
+    exp: now + 3600,
   };
-
-  function base64UrlEncode_(obj) {
-    var str = Utilities.base64EncodeWebSafe(JSON.stringify(obj)).replace(/=+$/, '');
-    return str;
-  }
 
   var unsignedJwt = base64UrlEncode_(jwtHeader) + '.' + base64UrlEncode_(jwtClaimSet);
   var signatureBytes = Utilities.computeRsaSha256Signature(unsignedJwt, pk);
@@ -166,10 +194,16 @@ function getFcmAccessToken_(projectId, clientEmail, privateKey) {
 }
 
 /**
- * FCM HTTP v1 でプッシュ通知を送信
+ * Base64 URL Encode Helper
  */
-function sendFcmNotificationV1(projectId, clientEmail, privateKey, token, title, body) {
-  var accessToken = getFcmAccessToken_(projectId, clientEmail, privateKey);
+function base64UrlEncode_(obj) {
+  return Utilities.base64EncodeWebSafe(JSON.stringify(obj)).replace(/=+$/, '');
+}
+
+/**
+ * FCM HTTP v1 でプッシュ通知を送信 (アクセストークン再利用版)
+ */
+function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body) {
   var url = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/messages:send';
 
   var payload = {
@@ -179,9 +213,12 @@ function sendFcmNotificationV1(projectId, clientEmail, privateKey, token, title,
         title: title,
         body: body,
       },
-      data: {
-        // 必要なら任意データをここに
-      },
+      // Webアプリの場合、クリック時のリンクなどを設定可能
+      webpush: {
+        fcm_options: {
+           link: "/" // 必要に応じて通知クリック時のURLを指定
+        }
+      }
     },
   };
 
@@ -196,18 +233,21 @@ function sendFcmNotificationV1(projectId, clientEmail, privateKey, token, title,
   };
 
   var res = UrlFetchApp.fetch(url, options);
+  
+  // 404や410エラー (UNREGISTERED) の場合は、トークンが無効なので削除する処理を入れても良いですが、
+  // ここではログ出力にとどめます。
   if (res.getResponseCode() >= 300) {
-    console.error('FCM v1 送信エラー: ' + res.getContentText());
+    console.warn('FCM送信失敗 (' + token + '): ' + res.getContentText());
   } else {
-    console.log('FCM v1 送信成功: ' + token);
+    // console.log('FCM送信成功'); // ログ量削減のためコメントアウト
   }
 }
 
 /**
  * 通知を「送信済み」にマークする
  */
-function markNotificationSent(SUPABASE_URL, SUPABASE_KEY, notifId) {
-  var url = SUPABASE_URL + '/rest/v1/notifications'
+function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
+  var url = supabaseUrl + '/rest/v1/notifications'
     + '?id=eq.' + encodeURIComponent(notifId);
 
   var body = {
@@ -217,8 +257,8 @@ function markNotificationSent(SUPABASE_URL, SUPABASE_KEY, notifId) {
   var options = {
     method: 'patch',
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+      apikey: supabaseKey,
+      Authorization: 'Bearer ' + supabaseKey,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },
