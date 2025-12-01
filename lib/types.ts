@@ -10,7 +10,9 @@ export type Profile = {
     title: string
     start_time: string
     end_time: string
+    supervisor_id?: string | null
     profiles?: Profile
+    supervisor?: Profile
   }
   
   // カレンダー表示用

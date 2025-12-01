@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar'
 import ShiftModal from '@/components/ShiftModal'
 import UserManagement from '@/components/UserManagement' 
 import AdminCalendar from '@/components/AdminCalendar'
+import SpreadsheetView from '@/components/SpreadsheetView'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
 import { parse } from 'date-fns/parse'
@@ -12,7 +13,8 @@ import { startOfWeek } from 'date-fns/startOfWeek'
 import { getDay } from 'date-fns/getDay'
 import { ja } from 'date-fns/locale/ja'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
-import { Users, Calendar as CalIcon } from 'lucide-react'
+import { Users, Calendar as CalIcon, Table2 } from 'lucide-react'
+import { Profile, Shift } from '@/lib/types'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -24,7 +26,10 @@ export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
+  const [shifts, setShifts] = useState<Shift[]>([])
+  const [users, setUsers] = useState<Profile[]>([])
   const [activeTab, setActiveTab] = useState<'calendar' | 'users'>('calendar')
+  const [calendarView, setCalendarView] = useState<'calendar' | 'spreadsheet'>('calendar')
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -45,9 +50,18 @@ export default function AdminPage() {
   }, [])
 
   const fetchShifts = async () => {
-    const { data } = await supabase.from('shifts').select('*, profiles(display_name)')
-    if (data) {
-      const formatted = data.map((s: any) => ({
+    // シフトデータを取得（統括者情報も含む）
+    const { data: shiftsData } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        profiles(display_name),
+        supervisor:profiles!shifts_supervisor_id_fkey(display_name)
+      `)
+    
+    if (shiftsData) {
+      // カレンダー用のイベントデータ
+      const formatted = shiftsData.map((s: any) => ({
         id: s.id,
         title: `${s.profiles?.display_name}: ${s.title}`,
         start: new Date(s.start_time),
@@ -55,6 +69,13 @@ export default function AdminPage() {
         resource: s 
       }))
       setEvents(formatted)
+      setShifts(shiftsData as Shift[])
+    }
+
+    // ユーザー一覧を取得
+    const { data: usersData } = await supabase.from('profiles').select('*').order('display_name')
+    if (usersData) {
+      setUsers(usersData as Profile[])
     }
   }
 
@@ -114,37 +135,86 @@ export default function AdminPage() {
         {activeTab === 'calendar' ? (
           <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-3 sm:p-4 md:p-6 overflow-hidden">
             <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-200">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-                <CalIcon className="text-blue-600" size={20} />
-                シフトカレンダー
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1">日付をクリックして追加、シフトをクリックして編集</p>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <CalIcon className="text-blue-600" size={20} />
+                    シフト管理
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                    {calendarView === 'calendar' 
+                      ? '日付をクリックして追加、シフトをクリックして編集'
+                      : '全スタッフのシフトを一覧表示'}
+                  </p>
+                </div>
+                {/* ビュー切り替えボタン */}
+                <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => setCalendarView('calendar')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded transition-all ${
+                      calendarView === 'calendar'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <CalIcon size={16} className="inline mr-1" />
+                    カレンダー
+                  </button>
+                  <button
+                    onClick={() => setCalendarView('spreadsheet')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded transition-all ${
+                      calendarView === 'spreadsheet'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Table2 size={16} className="inline mr-1" />
+                    表形式
+                  </button>
+                </div>
+              </div>
             </div>
-            {/* デスクトップ: react-big-calendar */}
-            <div className="hidden md:block h-[calc(100vh-280px)] min-h-[500px]">
-              <Calendar
-                localizer={localizer}
-                events={events}
-                startAccessor="start"
-                endAccessor="end"
-                style={{ height: '100%' }}
-                defaultView={Views.WEEK}
-                views={[Views.MONTH, Views.WEEK, Views.DAY]}
-                culture='ja'
-                selectable
-                onSelectSlot={handleSelectSlot}
-                onSelectEvent={handleSelectEvent}
-                messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日" }}
-              />
-            </div>
-            {/* モバイル: カスタムカレンダー */}
-            <div className="md:hidden">
-              <AdminCalendar
-                events={events}
-                onSelectSlot={handleSelectSlotForMobile}
-                onSelectEvent={handleSelectEvent}
-              />
-            </div>
+            
+            {calendarView === 'calendar' ? (
+              <>
+                {/* デスクトップ: react-big-calendar */}
+                <div className="hidden md:block h-[calc(100vh-280px)] min-h-[500px]">
+                  <Calendar
+                    localizer={localizer}
+                    events={events}
+                    startAccessor="start"
+                    endAccessor="end"
+                    style={{ height: '100%' }}
+                    defaultView={Views.WEEK}
+                    views={[Views.MONTH, Views.WEEK, Views.DAY]}
+                    culture='ja'
+                    selectable
+                    onSelectSlot={handleSelectSlot}
+                    onSelectEvent={handleSelectEvent}
+                    messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日" }}
+                  />
+                </div>
+                {/* モバイル: カスタムカレンダー */}
+                <div className="md:hidden">
+                  <AdminCalendar
+                    events={events}
+                    onSelectSlot={handleSelectSlotForMobile}
+                    onSelectEvent={handleSelectEvent}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="overflow-x-auto">
+                <SpreadsheetView
+                  shifts={shifts}
+                  users={users}
+                  onShiftClick={(shift) => {
+                    setSelectedShift(shift)
+                    setIsModalOpen(true)
+                  }}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="h-full overflow-y-auto">

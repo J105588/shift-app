@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile, Shift } from '@/lib/types'
-import { X, Users, UserCheck, Copy } from 'lucide-react'
+import { X, Users, UserCheck, Copy, UserCog } from 'lucide-react'
 
 type Props = {
   isOpen: boolean
@@ -22,10 +22,26 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     user_id: '',
     title: '',
     start: '',
-    end: ''
+    end: '',
+    supervisor_id: ''
   })
   const [individualTitles, setIndividualTitles] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [useTemplate, setUseTemplate] = useState(true)
+
+  // よく使う仕事内容のテンプレート
+  const jobTemplates = [
+    '受付',
+    '案内',
+    '販売',
+    '会計',
+    '準備',
+    '片付け',
+    '休憩',
+    '統括',
+    'サポート',
+    'その他'
+  ]
 
   // 初期化とユーザー一覧取得
   useEffect(() => {
@@ -46,10 +62,12 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         user_id: editShift.user_id,
         title: editShift.title,
         start: new Date(editShift.start_time).toISOString().slice(0, 16),
-        end: new Date(editShift.end_time).toISOString().slice(0, 16)
+        end: new Date(editShift.end_time).toISOString().slice(0, 16),
+        supervisor_id: editShift.supervisor_id || ''
       })
       setSelectedUserIds([])
       setIndividualTitles({})
+      setUseTemplate(jobTemplates.includes(editShift.title))
     } else if (initialDate) {
       // 新規作成モード（クリックした日付をセット）
       setMode('multiple') // デフォルトで複数選択モード
@@ -62,9 +80,10 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       const localStart = new Date(start.getTime() - offset).toISOString().slice(0, 16)
       const localEnd = new Date(end.getTime() - offset).toISOString().slice(0, 16)
 
-      setFormData({ user_id: '', title: '受付', start: localStart, end: localEnd })
+      setFormData({ user_id: '', title: '受付', start: localStart, end: localEnd, supervisor_id: '' })
       setSelectedUserIds([])
       setIndividualTitles({})
+      setUseTemplate(true)
     }
   }, [editShift, initialDate, isOpen])
 
@@ -81,11 +100,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           return
         }
 
-        const payload = {
+        const payload: any = {
           user_id: formData.user_id,
           title: formData.title,
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
+        }
+        if (formData.supervisor_id) {
+          payload.supervisor_id = formData.supervisor_id
+        } else {
+          payload.supervisor_id = null
         }
 
         const { error } = await supabase.from('shifts').update(payload).eq('id', editShift.id)
@@ -98,11 +122,14 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           return
         }
 
-        const payload = {
+        const payload: any = {
           user_id: formData.user_id,
           title: formData.title,
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
+        }
+        if (formData.supervisor_id) {
+          payload.supervisor_id = formData.supervisor_id
         }
 
         const { error } = await supabase.from('shifts').insert([payload])
@@ -131,14 +158,20 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           }
         }
 
-        const payloads = selectedUserIds.map(userId => ({
-          user_id: userId,
-          title: titleMode === 'same' 
-            ? formData.title 
-            : (individualTitles[userId] || formData.title),
-          start_time: new Date(formData.start).toISOString(),
-          end_time: new Date(formData.end).toISOString(),
-        }))
+        const payloads = selectedUserIds.map(userId => {
+          const payload: any = {
+            user_id: userId,
+            title: titleMode === 'same' 
+              ? formData.title 
+              : (individualTitles[userId] || formData.title),
+            start_time: new Date(formData.start).toISOString(),
+            end_time: new Date(formData.end).toISOString(),
+          }
+          if (formData.supervisor_id) {
+            payload.supervisor_id = formData.supervisor_id
+          }
+          return payload
+        })
 
         const { error } = await supabase.from('shifts').insert(payloads)
         if (error) throw error
@@ -366,14 +399,50 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 役割・内容{mode === 'multiple' && '（全員共通）'}
               </label>
-              <input 
-                type="text" 
-                className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-                placeholder="例: 受付、案内、販売など"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                required={mode === 'single' || !!editShift || titleMode === 'same'}
-              />
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <button
+                    type="button"
+                    onClick={() => setUseTemplate(!useTemplate)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                      useTemplate
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {useTemplate ? 'テンプレート' : '自由入力'}
+                  </button>
+                </div>
+                {useTemplate ? (
+                  <select
+                    className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                    value={formData.title}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setFormData({...formData, title: value})
+                      if (value === 'その他') {
+                        setUseTemplate(false)
+                        setFormData({...formData, title: ''})
+                      }
+                    }}
+                    required={mode === 'single' || !!editShift || titleMode === 'same'}
+                  >
+                    <option value="">選択してください</option>
+                    {jobTemplates.map(template => (
+                      <option key={template} value={template}>{template}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input 
+                    type="text" 
+                    className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                    placeholder="例: 受付、案内、販売など"
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    required={mode === 'single' || !!editShift || titleMode === 'same'}
+                  />
+                )}
+              </div>
             </div>
           ) : (
             <div>
@@ -407,6 +476,25 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
               </div>
             </div>
           )}
+
+          {/* 統括者選択 */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <UserCog size={16} className="text-blue-600" />
+              統括者（任意）
+            </label>
+            <select 
+              className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
+              value={formData.supervisor_id}
+              onChange={(e) => setFormData({...formData, supervisor_id: e.target.value})}
+            >
+              <option value="">統括者なし</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.display_name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">このシフトの統括責任者を選択できます</p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
