@@ -26,16 +26,21 @@ export default function Dashboard() {
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(profile)
 
-      // シフト取得
-      const { data: shifts } = await supabase.from('shifts').select('*, profiles(display_name)')
+      // シフト取得（自分のシフトのみ）
+      const { data: shifts } = await supabase
+        .from('shifts')
+        .select('*, profiles(display_name)')
+        .eq('user_id', user.id)
+        .order('start_time', { ascending: true })
+      
       if (shifts) {
         const formatted = shifts.map((s: any) => ({
           id: s.id,
-          title: `${s.profiles?.display_name}: ${s.title}`,
+          title: s.title, // 自分のシフトなので名前は不要
           start: new Date(s.start_time),
           end: new Date(s.end_time),
           resourceId: s.user_id,
-          displayName: s.profiles?.display_name || '不明',
+          displayName: s.profiles?.display_name || profile.display_name || '不明',
           shiftTitle: s.title,
         }))
         setEvents(formatted)
@@ -43,7 +48,7 @@ export default function Dashboard() {
         // 自分の次のシフトを探す
         const now = new Date()
         const myShifts = formatted
-          .filter((e: any) => e.resourceId === user.id && e.start > now)
+          .filter((e: any) => e.start > now)
           .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
         
         if (myShifts.length > 0) setNextShift(myShifts[0])
@@ -79,7 +84,7 @@ export default function Dashboard() {
                   <div className="font-bold text-slate-900 text-lg">
                     {format(nextShift.start, 'M/d(E) HH:mm', { locale: ja })} 〜
                   </div>
-                  <div className="text-sm text-slate-600 mt-1">{nextShift.title.split(': ')[1]}</div>
+                  <div className="text-sm text-slate-600 mt-1">{nextShift.shiftTitle || nextShift.title}</div>
                 </div>
               </div>
             ) : (
