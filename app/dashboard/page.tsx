@@ -31,12 +31,10 @@ export default function Dashboard() {
       .order('start_time', { ascending: true })
 
     if (shiftsError) {
-      console.error('[Dashboard] Error fetching shifts:', shiftsError)
       return
     }
 
     if (shifts) {
-      console.log('[Dashboard] Raw shifts fetched (count):', shifts.length)
       setRawShifts(shifts)
       const formatted = shifts.map((s: any) => ({
         id: s.id,

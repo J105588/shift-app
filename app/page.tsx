@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Lock, ArrowRight, CalendarDays } from 'lucide-react'
+import { setupPushNotificationsForUser } from '@/components/PushNotificationManager'
 
 // 動的レンダリングを強制（認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -24,7 +25,38 @@ export default function LoginPage() {
     } else {
       // ログイン成功後、ロールを確認して振り分け
       const { data: { user } } = await supabase.auth.getUser()
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
+      if (!user) {
+        alert('ユーザー情報の取得に失敗しました')
+        setLoading(false)
+        return
+      }
+
+      // ローカルストレージにログイン情報を保存しておく（ログイン状態の保持用）
+      try {
+        localStorage.setItem(
+          'shift-app-auth',
+          JSON.stringify({
+            userId: user.id,
+            email,
+            lastLoginAt: new Date().toISOString(),
+          })
+        )
+      } catch {
+        // localStorage が使えない場合は無視（Supabase 側のセッションに任せる）
+      }
+
+      // ログインボタン押下に紐づけて通知権限を取得し、トークンと user_id を登録
+      try {
+        await setupPushNotificationsForUser(user.id)
+      } catch {
+        // 通知設定に失敗してもログイン自体は続行
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
       
       if (profile?.role === 'admin') router.push('/admin')
       else router.push('/dashboard')

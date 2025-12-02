@@ -25,8 +25,6 @@ const messaging = firebase.messaging();
 
 // バックグラウンドメッセージのハンドリング
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
   const notificationTitle = payload.notification?.title || '通知';
   const notificationOptions = {
     body: payload.notification?.body || '',
@@ -45,8 +43,6 @@ messaging.onBackgroundMessage((payload) => {
 
 // 通知クリック時の処理
 self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification click received.');
-  
   event.notification.close();
   
   // 通知の data に URL が含まれている場合はそのページを開く

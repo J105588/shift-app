@@ -12,7 +12,6 @@ const firebaseConfig = {
 export const initFirebaseApp = () => {
   if (typeof window === 'undefined') return null
   if (!firebaseConfig.apiKey) {
-    console.warn('Firebase config is missing. Skipping push notification setup.')
     return null
   }
   if (!getApps().length) {
@@ -42,13 +41,6 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
     // iOS Safariでホーム画面から起動した場合の検出
     (isIOS && window.matchMedia('(display-mode: fullscreen)').matches)
 
-  console.log('Service Worker registration check:', {
-    isIOS,
-    isStandalone,
-    displayMode: window.matchMedia('(display-mode: standalone)').matches,
-    standalone: (window.navigator as any).standalone,
-  })
-
   try {
     // 既に登録されている Service Worker を取得
     // まず、FCM専用スコープで検索
@@ -57,7 +49,6 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
     // 見つからない場合は、ルートスコープで検索（iOSの場合）
     if (!registration && isIOS) {
       const registrations = await navigator.serviceWorker.getRegistrations()
-      console.log('Found Service Worker registrations:', registrations.length)
       const found = registrations.find(reg => 
         reg.active?.scriptURL.includes('firebase-messaging-sw.js') ||
         reg.installing?.scriptURL.includes('firebase-messaging-sw.js') ||
@@ -65,7 +56,6 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
       )
       if (found) {
         registration = found
-        console.log('Found existing Service Worker registration')
       }
     }
 
@@ -73,7 +63,7 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
       // 登録されていない場合は、firebase-messaging-sw.js を登録
       // iOSでは、PWAとしてインストールされていない場合でも試行（iOS 16.4以降では動作する場合がある）
       if (isIOS && !isStandalone) {
-        console.warn('iOS: PWAとしてインストールされていない可能性がありますが、Service Workerの登録を試行します。')
+        // iOS では PWA としてインストールされていない場合でも、可能であれば登録を試みる
       }
 
       try {
@@ -84,13 +74,12 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
       } catch (registerError) {
         // iOSでスコープ指定が問題になる場合があるため、ルートスコープで再試行
         if (isIOS) {
-          console.warn('Failed to register with custom scope, trying root scope:', registerError)
+          // iOS ではスコープ指定が原因で失敗する場合があるため、ルートスコープで再試行
           try {
             registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
               scope: '/'
             })
           } catch (rootScopeError) {
-            console.error('Failed to register service worker with root scope:', rootScopeError)
             return null
           }
         } else {
@@ -132,13 +121,11 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
 
     // アクティブな Service Worker が存在することを確認
     if (!registration.active) {
-      console.warn('Service Worker is not active')
       return null
     }
 
     return registration
   } catch (error) {
-    console.error('Failed to register service worker:', error)
     return null
   }
 }
@@ -155,21 +142,18 @@ export const getFirebaseMessaging = async (): Promise<{
     // Service Worker の登録を待つ（Firebase が自動的に検出できるように）
     const registration = await waitForServiceWorker()
     if (!registration) {
-      console.warn('Service Worker registration not available')
       return null
     }
 
     // Firebase は自動的に Service Worker を検出する
     // Service Worker がアクティブであることを確認
     if (!registration.active) {
-      console.warn('Service Worker is not active yet')
       return null
     }
 
     const messaging = getMessaging()
     return { messaging, registration }
   } catch (e) {
-    console.warn('Failed to get Firebase Messaging:', e)
     return null
   }
 }
@@ -189,7 +173,6 @@ export const getFcmToken = async (): Promise<string | null> => {
     })
     return token || null
   } catch (e) {
-    console.error('Failed to get FCM token:', e)
     return null
   }
 }
@@ -199,8 +182,6 @@ export const subscribeInAppMessages = async () => {
   if (!messagingResult) return
 
   onMessage(messagingResult.messaging, (payload) => {
-    console.log('FCM message received in page:', payload)
-    
     // iOSを含むフォアグラウンド時の通知表示
     // iOS 16.4以降では、Service Worker経由の通知も動作しますが、
     // フォアグラウンド時は明示的に通知を表示する必要があります
