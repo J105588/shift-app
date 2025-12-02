@@ -144,11 +144,13 @@ function fetchDueNotifications(supabaseUrl, supabaseKey, nowIso, limit) {
 
 /**
  * Supabase からユーザーの FCM トークン一覧を取得
+ * 同じ user_id で複数のトークンがある場合、最新のものを残して古いものを削除する
  */
 function fetchUserTokens(supabaseUrl, supabaseKey, userId) {
   var url = supabaseUrl + '/rest/v1/push_subscriptions'
-    + '?select=token'
-    + '&user_id=eq.' + encodeURIComponent(userId);
+    + '?select=id,token,created_at'
+    + '&user_id=eq.' + encodeURIComponent(userId)
+    + '&order=created_at.desc'; // 新しい順に取得
 
   var options = {
     method: 'get',
@@ -164,7 +166,53 @@ function fetchUserTokens(supabaseUrl, supabaseKey, userId) {
   if (res.getResponseCode() >= 300) {
     throw new Error('fetchUserTokens error: ' + res.getContentText());
   }
-  return JSON.parse(res.getContentText());
+  
+  var tokens = JSON.parse(res.getContentText());
+  
+  // トークンが1つ以下の場合はそのまま返す
+  if (!tokens || tokens.length <= 1) {
+    return tokens || [];
+  }
+  
+  // 複数のトークンがある場合、最新の1つだけを残して古いものを削除
+  var latestToken = tokens[0]; // created_at.desc で取得しているので、最初が最新
+  var tokensToDelete = tokens.slice(1); // 2番目以降が古いトークン
+  
+  // 古いトークンを削除
+  tokensToDelete.forEach(function(oldToken) {
+    try {
+      deletePushSubscriptionById_(supabaseUrl, supabaseKey, oldToken.id);
+    } catch (e) {
+      // 削除エラーはログに記録するが、処理は続行
+      console.warn('古いトークン削除エラー (id=' + oldToken.id + '): ' + e.toString());
+    }
+  });
+  
+  // 最新のトークン1つだけを返す
+  return [latestToken];
+}
+
+/**
+ * Supabase の push_subscriptions から指定IDのレコードを削除
+ */
+function deletePushSubscriptionById_(supabaseUrl, supabaseKey, subscriptionId) {
+  var url = supabaseUrl + '/rest/v1/push_subscriptions'
+    + '?id=eq.' + encodeURIComponent(subscriptionId);
+
+  var options = {
+    method: 'delete',
+    headers: {
+      apikey: supabaseKey,
+      Authorization: 'Bearer ' + supabaseKey,
+      Prefer: 'return=minimal',
+    },
+    muteHttpExceptions: true,
+  };
+
+  var res = UrlFetchApp.fetch(url, options);
+  if (res.getResponseCode() >= 300) {
+    throw new Error('deletePushSubscriptionById error: ' + res.getContentText());
+  }
 }
 
 /**

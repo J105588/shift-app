@@ -48,23 +48,64 @@ export const setupPushNotificationsForUser = async (userId: string) => {
     return
   }
 
-  // FCM トークン取得
-  const token = await getFcmToken()
+  // FCM トークン取得（自動再試行付き）
+  let token: string | null = null
+  const maxRetries = 3
+  const retryDelays = [2000, 5000, 10000] // 2秒、5秒、10秒後に再試行
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    token = await getFcmToken()
+    if (token) {
+      break // 成功したらループを抜ける
+    }
+
+    // 最後の試行で失敗した場合のみ警告を表示
+    if (attempt === maxRetries) {
+      const message = `FCMトークンの取得に失敗しました（${maxRetries + 1}回試行しました）${
+        isIOS ? '\nPWAとしてホーム画面に追加してから通知を使用してください。' : ''
+      }`
+      showWarning(message, {
+        actionLabel: '再試行',
+        onAction: () => {
+          // ユーザー操作に紐づいたコールバックとして再度セットアップを試行
+          void setupPushNotificationsForUser(userId)
+        },
+      })
+      return
+    }
+
+    // 次の再試行まで待機
+    await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]))
+  }
+
   if (!token) {
-    const message = `FCMトークンの取得に失敗しました${
-      isIOS ? '\nPWAとしてホーム画面に追加してから通知を使用してください。' : ''
-    }`
-    showWarning(message, {
-      actionLabel: '再試行',
-      onAction: () => {
-        // ユーザー操作に紐づいたコールバックとして再度セットアップを試行
-        void setupPushNotificationsForUser(userId)
-      },
-    })
+    // 念のため最終チェック
     return
   }
 
   const supabase = createClient()
+
+  // 同じ user_id で既存のトークンがある場合、古いものを削除（最新の1つだけを残す）
+  try {
+    const { data: existingTokens } = await supabase
+      .from('push_subscriptions')
+      .select('id, token, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (existingTokens && existingTokens.length > 0) {
+      // 最新のトークン以外を削除
+      const tokensToDelete = existingTokens.slice(1)
+      for (const oldToken of tokensToDelete) {
+        await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('id', oldToken.id)
+      }
+    }
+  } catch {
+    // 古いトークンの削除に失敗しても、新しいトークンの保存は続行
+  }
 
   // Supabase にトークンを保存（同じトークンが既にあれば更新）
   const { error: upsertError } = await supabase.from('push_subscriptions').upsert(
