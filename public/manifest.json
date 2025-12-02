@@ -1,7 +1,8 @@
 {
-  "name": "文実シフト管理",
+  "name": "文化祭実行委員会シフト管理システム",
   "short_name": "文実シフト管理",
-  "description": "シフトを共有しよう",
+  "description": "文実用シフト管理システム",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
