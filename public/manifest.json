@@ -2,7 +2,6 @@
   "name": "文実シフト管理",
   "short_name": "文実シフト管理",
   "description": "シフトを共有しよう",
-  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
