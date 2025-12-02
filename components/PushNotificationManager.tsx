@@ -15,17 +15,25 @@ export default function PushNotificationManager() {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
       
-      // PWAとしてインストールされているか確認（iOSで重要）
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true
+      // PWAとしてインストールされているか確認（複数の方法で検出）
+      const isStandalone = 
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        // iOS Safariでホーム画面から起動した場合の検出
+        (isIOS && window.matchMedia('(display-mode: fullscreen)').matches) ||
+        // その他の検出方法
+        (isIOS && !(window.navigator as any).standalone && document.referrer === '')
 
-      // iOSでは、PWAとしてインストールされていない場合、通知は動作しない
-      if (isIOS && !isStandalone) {
-        console.warn('iOSでは、PWAとしてホーム画面に追加する必要があります。')
-        console.info('Safariの共有ボタン（□↑）→「ホーム画面に追加」からインストールしてください。')
-        return
-      }
-      
+      // デバッグ情報を出力
+      console.log('PWA Setup:', {
+        isIOS,
+        isStandalone,
+        displayMode: window.matchMedia('(display-mode: standalone)').matches,
+        standalone: (window.navigator as any).standalone,
+        hasNotification: 'Notification' in window,
+        hasServiceWorker: 'serviceWorker' in navigator,
+      })
+
       // iOS 16.4以降では Notification API がサポートされている
       if (!('Notification' in window)) {
         if (isIOS) {
@@ -35,26 +43,41 @@ export default function PushNotificationManager() {
       }
 
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        console.log('User not authenticated, skipping notification setup')
+        return
+      }
 
-      // 権限リクエスト
+      // iOSでは、PWAとしてインストールされていない場合でも通知APIを試行
+      // （iOS 16.4以降では、PWAでなくても動作する場合がある）
+      if (isIOS && !isStandalone) {
+        console.warn('iOS: PWAとしてインストールされていない可能性がありますが、通知APIを試行します。')
+        console.info('より確実に動作させるには、Safariの共有ボタン（□↑）→「ホーム画面に追加」からインストールしてください。')
+      }
+
+      // 権限リクエスト（Service Workerの登録前に試行）
       let permission = Notification.permission
       const wasPermissionDefault = permission === 'default'
       
       if (permission === 'default') {
         // iOSでは、ユーザーが明示的に許可する必要がある
+        console.log('Requesting notification permission...')
         try {
           permission = await Notification.requestPermission()
+          console.log('Notification permission result:', permission)
         } catch (error) {
           console.error('Failed to request notification permission:', error)
           return
         }
+      } else {
+        console.log('Notification permission already set:', permission)
       }
       
       if (permission !== 'granted') {
         console.warn('Notification permission not granted:', permission)
         if (isIOS) {
           console.info('iOSでは、Safariの設定から通知を許可してください。')
+          console.info('設定 > Safari > 通知 で確認できます。')
         }
         return
       }
@@ -87,17 +110,28 @@ export default function PushNotificationManager() {
         if (isIOS) {
           console.info('iOS 16.4以降が必要です。')
         }
-        return
+        // Service Workerがなくても、通知APIは動作する場合があるので続行
       }
 
+      // Service Workerの登録を試行（失敗しても続行）
+      console.log('Attempting to register Service Worker and get FCM token...')
       const token = await getFcmToken()
       if (!token) {
         console.warn('Failed to get FCM token')
         if (isIOS) {
           console.info('iOSでは、PWAとしてホーム画面に追加してから通知を使用してください。')
+          console.info('現在の状態:', {
+            isStandalone,
+            hasServiceWorker: 'serviceWorker' in navigator,
+            notificationPermission: permission,
+          })
         }
+        // FCMトークンが取得できなくても、基本的な通知は動作する可能性がある
+        // ただし、バックグラウンド通知にはFCMトークンが必要
         return
       }
+
+      console.log('FCM token obtained successfully')
 
       // Supabaseにトークンを保存（同じトークンが既にあれば更新）
       const { error: upsertError } = await supabase.from('push_subscriptions').upsert(

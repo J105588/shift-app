@@ -35,9 +35,19 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
-  // PWAとしてインストールされているか確認（iOSで重要）
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true
+  // PWAとしてインストールされているか確認（複数の方法で検出）
+  const isStandalone = 
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true ||
+    // iOS Safariでホーム画面から起動した場合の検出
+    (isIOS && window.matchMedia('(display-mode: fullscreen)').matches)
+
+  console.log('Service Worker registration check:', {
+    isIOS,
+    isStandalone,
+    displayMode: window.matchMedia('(display-mode: standalone)').matches,
+    standalone: (window.navigator as any).standalone,
+  })
 
   try {
     // 既に登録されている Service Worker を取得
@@ -47,20 +57,23 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
     // 見つからない場合は、ルートスコープで検索（iOSの場合）
     if (!registration && isIOS) {
       const registrations = await navigator.serviceWorker.getRegistrations()
+      console.log('Found Service Worker registrations:', registrations.length)
       const found = registrations.find(reg => 
-        reg.active?.scriptURL.includes('firebase-messaging-sw.js')
+        reg.active?.scriptURL.includes('firebase-messaging-sw.js') ||
+        reg.installing?.scriptURL.includes('firebase-messaging-sw.js') ||
+        reg.waiting?.scriptURL.includes('firebase-messaging-sw.js')
       )
       if (found) {
         registration = found
+        console.log('Found existing Service Worker registration')
       }
     }
 
     if (!registration) {
       // 登録されていない場合は、firebase-messaging-sw.js を登録
-      // iOSでは、PWAとしてインストールされている必要がある
+      // iOSでは、PWAとしてインストールされていない場合でも試行（iOS 16.4以降では動作する場合がある）
       if (isIOS && !isStandalone) {
-        console.warn('iOSでは、PWAとしてホーム画面に追加する必要があります。')
-        return null
+        console.warn('iOS: PWAとしてインストールされていない可能性がありますが、Service Workerの登録を試行します。')
       }
 
       try {
