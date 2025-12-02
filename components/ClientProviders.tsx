@@ -5,6 +5,7 @@ import PwaUpdateListener from '@/components/PwaUpdateListener'
 import PushNotificationManager from '@/components/PushNotificationManager'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt'
 import PwaDebugInfo from '@/components/PwaDebugInfo'
+import ToastProvider from '@/components/ToastProvider'
 
 type Props = {
   children: ReactNode
@@ -17,6 +18,7 @@ export default function ClientProviders({ children }: Props) {
       <PushNotificationManager />
       <PwaInstallPrompt />
       <PwaDebugInfo />
+      <ToastProvider />
       {children}
     </>
   )

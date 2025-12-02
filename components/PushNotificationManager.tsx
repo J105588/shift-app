@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { getFcmToken, subscribeInAppMessages } from '@/lib/firebaseClient'
+import { showSuccess, showError, showWarning, showInfo } from '@/lib/toast'
 
 export default function PushNotificationManager() {
   const supabase = createClient()
@@ -37,7 +38,9 @@ export default function PushNotificationManager() {
       // iOS 16.4以降では Notification API がサポートされている
       if (!('Notification' in window)) {
         if (isIOS) {
-          console.warn('iOS 16.4以降が必要です。Web Push APIはiOS 16.4以降でサポートされています。')
+          const message = 'iOS 16.4以降が必要です。Web Push APIはiOS 16.4以降でサポートされています。'
+          console.warn(message)
+          showWarning(message)
         }
         return
       }
@@ -51,8 +54,9 @@ export default function PushNotificationManager() {
       // iOSでは、PWAとしてインストールされていない場合でも通知APIを試行
       // （iOS 16.4以降では、PWAでなくても動作する場合がある）
       if (isIOS && !isStandalone) {
-        console.warn('iOS: PWAとしてインストールされていない可能性がありますが、通知APIを試行します。')
-        console.info('より確実に動作させるには、Safariの共有ボタン（□↑）→「ホーム画面に追加」からインストールしてください。')
+        const message = 'PWAとしてインストールされていない可能性がありますが、通知APIを試行します。\nより確実に動作させるには、Safariの共有ボタン（□↑）→「ホーム画面に追加」からインストールしてください。'
+        console.warn('iOS:', message)
+        showInfo(message)
       }
 
       // 権限リクエスト（Service Workerの登録前に試行）
@@ -66,7 +70,9 @@ export default function PushNotificationManager() {
           permission = await Notification.requestPermission()
           console.log('Notification permission result:', permission)
         } catch (error) {
-          console.error('Failed to request notification permission:', error)
+          const message = `通知許可の要求に失敗しました: ${error instanceof Error ? error.message : String(error)}`
+          console.error(message)
+          showError(message)
           return
         }
       } else {
@@ -74,11 +80,9 @@ export default function PushNotificationManager() {
       }
       
       if (permission !== 'granted') {
-        console.warn('Notification permission not granted:', permission)
-        if (isIOS) {
-          console.info('iOSでは、Safariの設定から通知を許可してください。')
-          console.info('設定 > Safari > 通知 で確認できます。')
-        }
+        const message = `通知許可が取得できませんでした: ${permission}${isIOS ? '\n設定 > Safari > 通知 で確認できます。' : ''}`
+        console.warn(message)
+        showWarning(message)
         return
       }
 
@@ -103,21 +107,24 @@ export default function PushNotificationManager() {
             }, 3000)
 
             console.log('✅ テスト通知を送信しました')
+            showSuccess('テスト通知を送信しました')
             sessionStorage.setItem('test-notification-sent', Date.now().toString())
           } else {
             console.log('✅ 通知許可が確認されました（テスト通知は既に送信済み）')
+            showInfo('通知許可が確認されました')
           }
         } catch (error) {
-          console.error('❌ テスト通知の送信に失敗しました:', error)
+          const message = `テスト通知の送信に失敗しました: ${error instanceof Error ? error.message : String(error)}`
+          console.error('❌', message)
+          showError(message)
         }
       }
 
       // Service Worker のサポート確認（iOS 16.4以降で必要）
       if (!('serviceWorker' in navigator)) {
-        console.warn('Service Worker is not supported')
-        if (isIOS) {
-          console.info('iOS 16.4以降が必要です。')
-        }
+        const message = 'Service Workerがサポートされていません' + (isIOS ? '\niOS 16.4以降が必要です。' : '')
+        console.warn(message)
+        showWarning(message)
         // Service Workerがなくても、通知APIは動作する場合があるので続行
       }
 
@@ -125,22 +132,14 @@ export default function PushNotificationManager() {
       console.log('🔄 Service Workerの登録とFCMトークンの取得を試行中...')
       const token = await getFcmToken()
       if (!token) {
-        console.warn('⚠️ FCMトークンの取得に失敗しました')
-        if (isIOS) {
-          console.info('💡 iOSでは、PWAとしてホーム画面に追加してから通知を使用してください。')
-          console.info('📊 現在の状態:', {
-            isStandalone,
-            hasServiceWorker: 'serviceWorker' in navigator,
-            notificationPermission: permission,
-          })
-        }
-        // FCMトークンが取得できなくても、基本的な通知は動作する可能性がある
-        // ただし、バックグラウンド通知にはFCMトークンが必要
-        console.info('ℹ️ 基本的な通知（フォアグラウンド）は動作する可能性がありますが、バックグラウンド通知にはFCMトークンが必要です。')
+        const message = `FCMトークンの取得に失敗しました${isIOS ? '\nPWAとしてホーム画面に追加してから通知を使用してください。' : ''}\n基本的な通知（フォアグラウンド）は動作する可能性がありますが、バックグラウンド通知にはFCMトークンが必要です。`
+        console.warn('⚠️', message)
+        showWarning(message)
         return
       }
 
       console.log('✅ FCMトークンを取得しました:', token.substring(0, 20) + '...')
+      showSuccess('FCMトークンを取得しました')
 
       // Supabaseにトークンを保存（同じトークンが既にあれば更新）
       const { error: upsertError } = await supabase.from('push_subscriptions').upsert(
@@ -154,17 +153,20 @@ export default function PushNotificationManager() {
       )
 
       if (upsertError) {
-        console.error('Failed to save FCM token to Supabase:', upsertError)
+        const message = `FCMトークンの保存に失敗しました: ${upsertError.message || String(upsertError)}`
+        console.error(message)
+        showError(message)
         return
       }
 
       console.log('✅ FCMトークンをSupabaseに保存しました')
+      showSuccess('FCMトークンをSupabaseに保存しました')
       
       // メッセージ購読を設定
       console.log('🔄 メッセージ購読を設定中...')
       await subscribeInAppMessages()
       console.log('✅ プッシュ通知の設定が完了しました！')
-      console.log('📱 これで、バックグラウンド通知も受信できるようになりました。')
+      showSuccess('プッシュ通知の設定が完了しました！\nバックグラウンド通知も受信できるようになりました。')
     }
 
     setup()
