@@ -474,6 +474,7 @@ Vercel Dashboard → Settings → Environment Variables で以下を設定：
 - [Supabase Documentation](https://supabase.com/docs)
 - [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging)
 - [PWA Documentation](https://web.dev/progressive-web-apps/)
+- [DOCS](https://github.com/J105588/shift-app/tree/main/docs)
 
 ### プロジェクト内ドキュメント
 - `docs/PWA_使用方法.md`: PWAの詳細な使用方法
