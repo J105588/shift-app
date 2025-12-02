@@ -54,7 +54,13 @@ export const setupPushNotificationsForUser = async (userId: string) => {
     const message = `FCMトークンの取得に失敗しました${
       isIOS ? '\nPWAとしてホーム画面に追加してから通知を使用してください。' : ''
     }`
-    showWarning(message)
+    showWarning(message, {
+      actionLabel: '再試行',
+      onAction: () => {
+        // ユーザー操作に紐づいたコールバックとして再度セットアップを試行
+        void setupPushNotificationsForUser(userId)
+      },
+    })
     return
   }
 

@@ -7,6 +7,8 @@ export type ToastMessage = {
   type: 'success' | 'error' | 'warning' | 'info'
   message: string
   timestamp: number
+  actionLabel?: string
+  onAction?: () => void
 }
 
 type Props = {
@@ -61,6 +63,20 @@ export default function NotificationToast({ messages, onDismiss }: Props) {
                 </span>
               </div>
               <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+              {msg.actionLabel && (
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      msg.onAction?.()
+                      onDismiss(msg.id)
+                    }}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold bg-white/90 text-slate-800 hover:bg-white transition-colors"
+                  >
+                    {msg.actionLabel}
+                  </button>
+                </div>
+              )}
             </div>
             <button
               onClick={() => onDismiss(msg.id)}

@@ -12,9 +12,13 @@ export default function ToastProvider() {
     // トーストコールバックを設定
     setToastCallback((message) => {
       setMessages((prev) => [...prev, message])
-      
-      // 自動的に5秒後に削除（エラーは10秒）
-      const timeout = message.type === 'error' ? 10000 : 5000
+
+      // 自動的に5秒後に削除（エラーは10秒、アクション付きは15秒）
+      const timeout = message.onAction
+        ? 15000
+        : message.type === 'error'
+        ? 10000
+        : 5000
       setTimeout(() => {
         setMessages((prev) => prev.filter((m) => m.id !== message.id))
       }, timeout)

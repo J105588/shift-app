@@ -8,7 +8,16 @@ export const setToastCallback = (callback: ToastCallback) => {
   toastCallback = callback
 }
 
-export const showToast = (type: ToastMessage['type'], message: string) => {
+type ToastOptions = {
+  actionLabel?: string
+  onAction?: () => void
+}
+
+export const showToast = (
+  type: ToastMessage['type'],
+  message: string,
+  options?: ToastOptions
+) => {
   if (!toastCallback) {
     // フォールバック: コンソールに出力
     console.log(`[${type.toUpperCase()}] ${message}`)
@@ -20,6 +29,8 @@ export const showToast = (type: ToastMessage['type'], message: string) => {
     type,
     message,
     timestamp: Date.now(),
+    actionLabel: options?.actionLabel,
+    onAction: options?.onAction,
   }
 
   toastCallback(toast)
@@ -27,6 +38,7 @@ export const showToast = (type: ToastMessage['type'], message: string) => {
 
 export const showSuccess = (message: string) => showToast('success', message)
 export const showError = (message: string) => showToast('error', message)
-export const showWarning = (message: string) => showToast('warning', message)
+export const showWarning = (message: string, options?: ToastOptions) =>
+  showToast('warning', message, options)
 export const showInfo = (message: string) => showToast('info', message)
 
