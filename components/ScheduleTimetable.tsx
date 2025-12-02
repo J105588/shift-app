@@ -346,20 +346,49 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
       <div className="w-full min-h-[400px]">
         {/* ヘッダーコントロール */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg p-4 border-b border-blue-200">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <button
-              onClick={() => setViewMode('week')}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm font-semibold bg-white text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
+              onClick={() => {
+                setViewMode('week')
+                setSelectedDate(null)
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm sm:text-base font-semibold bg-blue-600 text-white rounded-lg border border-blue-700 hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md touch-manipulation"
             >
-              <ChevronLeft size={16} />
-              週表示に戻る
+              <ChevronLeft size={18} />
+              <span>週表示に戻る</span>
             </button>
-            <button
-              onClick={handleToday}
-              className="px-3 py-1.5 text-xs sm:text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              今日
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const prevDay = new Date(selectedDate)
+                  prevDay.setDate(prevDay.getDate() - 1)
+                  setSelectedDate(prevDay)
+                  setCurrentWeek(prevDay)
+                }}
+                className="p-2 bg-white rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors touch-manipulation"
+                aria-label="前の日"
+              >
+                <ChevronLeft className="text-blue-600" size={20} />
+              </button>
+              <button
+                onClick={handleToday}
+                className="px-3 py-2 text-xs sm:text-sm font-semibold bg-white text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors touch-manipulation"
+              >
+                今日
+              </button>
+              <button
+                onClick={() => {
+                  const nextDay = new Date(selectedDate)
+                  nextDay.setDate(nextDay.getDate() + 1)
+                  setSelectedDate(nextDay)
+                  setCurrentWeek(nextDay)
+                }}
+                className="p-2 bg-white rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors touch-manipulation"
+                aria-label="次の日"
+              >
+                <ChevronRight className="text-blue-600" size={20} />
+              </button>
+            </div>
           </div>
 
           <div className="text-center">
