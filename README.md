@@ -482,7 +482,7 @@ Vercel Dashboard → Settings → Environment Variables で以下を設定：
 
 ## 📝 ライセンス
 
-このプロジェクトMIT LICENCEで公開されています。
+このプロジェクトMIT Licenceで公開されています。
 
 ---
 
