@@ -31,7 +31,6 @@ messaging.onBackgroundMessage((payload) => {
   // GAS 側で生成した messageId を data から取得（重複防止用）
   const tag = payload.data?.messageId || 
               payload.messageId || 
-              payload.fcmMessageId || 
               `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   
   // 既に同じ tag の通知が表示されている場合は閉じる（重複防止）

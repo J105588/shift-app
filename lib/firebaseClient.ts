@@ -204,7 +204,6 @@ export const subscribeInAppMessages = async () => {
         try {
           // 同じ messageId の通知が既に表示されている場合は重複を避ける
           const tag = payload.messageId || 
-                     payload.fcmMessageId || 
                      payload.data?.messageId || 
                      `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
           
