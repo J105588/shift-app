@@ -160,6 +160,13 @@ export const getFirebaseMessaging = async (): Promise<{
 
 export const getFcmToken = async (): Promise<string | null> => {
   if (typeof window === 'undefined') return null
+
+  // 一部ブラウザ（特に古い環境など）では ServiceWorker はあっても PushManager が未実装の場合がある
+  // その場合に Firebase SDK 内部で pushManager アクセス時のエラーが出るのを防ぐ
+  if (!('PushManager' in window)) {
+    return null
+  }
+
   const messagingResult = await getFirebaseMessaging()
   if (!messagingResult) return null
 

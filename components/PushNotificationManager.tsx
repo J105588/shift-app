@@ -81,6 +81,14 @@ export const setupPushNotificationsForUser = async (userId: string) => {
 
   showSuccess('通知設定が完了しました')
 
+  // ローカルストレージにも、この端末の最新トークンを保存しておく
+  // 明示的なログアウトや長期間の未使用時にクリーンアップするために利用
+  try {
+    localStorage.setItem('shift-app-push-token', token)
+  } catch {
+    // localStorage が使えない環境では特に何もしない
+  }
+
   // フォアグラウンド通知の購読（任意・静かな処理）
   await subscribeInAppMessages()
 }

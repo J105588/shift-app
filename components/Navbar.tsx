@@ -13,6 +13,25 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
     
     setIsLoggingOut(true)
     try {
+      // ログアウト前に、この端末の push_subscriptions レコードとローカルストレージ情報をクリア
+      try {
+        const storedToken = typeof window !== 'undefined'
+          ? localStorage.getItem('shift-app-push-token')
+          : null
+        if (storedToken) {
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('token', storedToken)
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('shift-app-auth')
+          localStorage.removeItem('shift-app-push-token')
+        }
+      } catch {
+        // クライアント側のクリーンアップに失敗しても、サインアウト自体は続行
+      }
+
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('Logout error:', error)

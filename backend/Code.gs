@@ -83,12 +83,19 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
       return;
     }
 
-    // 3. 各デバイス(トークン)に送信
+    // 3. 各デバイス(トークン)に送信（万一同じトークンが重複していても一度だけ送る）
+    var unique = {};
     tokens.forEach(function (t) {
+      if (t && t.token) {
+        unique[t.token] = true;
+      }
+    });
+
+    Object.keys(unique).forEach(function (token) {
       sendFcmNotificationV1WithToken(
         projectId,
         accessToken,
-        t.token,
+        token,
         notif.title,
         notif.body,
         supabaseUrl,

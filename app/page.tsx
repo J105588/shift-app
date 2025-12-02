@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Lock, ArrowRight, CalendarDays } from 'lucide-react'
@@ -14,6 +14,46 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // ローカルストレージに残っている古いログイン情報をクリーンアップ
+  // 最終ログインから5日以上経過している場合は、端末情報と Push トークンを削除
+  useEffect(() => {
+    const cleanupStaleAuth = async () => {
+      if (typeof window === 'undefined') return
+      const raw = localStorage.getItem('shift-app-auth')
+      if (!raw) return
+
+      try {
+        const parsed = JSON.parse(raw) as { lastLoginAt?: string }
+        if (!parsed.lastLoginAt) return
+
+        const last = new Date(parsed.lastLoginAt).getTime()
+        const now = Date.now()
+        const fiveDaysMs = 5 * 24 * 60 * 60 * 1000
+
+        if (now - last > fiveDaysMs) {
+          const token = localStorage.getItem('shift-app-push-token')
+          if (token) {
+            try {
+              await supabase.from('push_subscriptions').delete().eq('token', token)
+            } catch {
+              // サーバー側削除に失敗してもローカルは消しておく
+            }
+          }
+          localStorage.removeItem('shift-app-auth')
+          localStorage.removeItem('shift-app-push-token')
+        }
+      } catch {
+        // パースに失敗した場合も念のため削除
+        localStorage.removeItem('shift-app-auth')
+        localStorage.removeItem('shift-app-push-token')
+      }
+    }
+
+    // 非同期関数を即時実行
+    cleanupStaleAuth()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
