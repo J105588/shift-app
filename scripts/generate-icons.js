@@ -28,18 +28,74 @@ async function generateIcons() {
     }
   }
 
-  // iOS用のApple Touch Icon（180x180）を生成（既に上で生成済みだが、明示的にコピー）
+  // iOS用のApple Touch Icon（180x180）を生成
+  // 重要: 背景透過なし（白背景）で生成する必要がある
   try {
     const appleTouchIconPath = path.join(outputDir, 'apple-touch-icon.png');
-    if (!fs.existsSync(appleTouchIconPath)) {
+    // 白背景の上にSVGを描画
+    const svgBuffer = await sharp(svgPath)
+      .resize(180, 180)
+      .png()
+      .toBuffer();
+    
+    await sharp({
+      create: {
+        width: 180,
+        height: 180,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([
+        {
+          input: svgBuffer,
+          gravity: 'center'
+        }
+      ])
+      .png()
+      .toFile(appleTouchIconPath);
+    console.log('✓ apple-touch-icon.png を生成しました（iOS用、白背景）');
+  } catch (error) {
+    console.error('✗ apple-touch-icon.png の生成に失敗しました:', error);
+    // フォールバック: 通常の方法で生成
+    try {
       await sharp(svgPath)
         .resize(180, 180)
         .png()
-        .toFile(appleTouchIconPath);
-      console.log('✓ apple-touch-icon.png を生成しました（iOS用）');
+        .toFile(path.join(outputDir, 'apple-touch-icon.png'));
+      console.log('✓ apple-touch-icon.png を生成しました（フォールバック）');
+    } catch (fallbackError) {
+      console.error('✗ フォールバック生成も失敗しました:', fallbackError);
     }
+  }
+
+  // icon-180x180.pngも同様に白背景で生成
+  try {
+    const icon180Path = path.join(outputDir, 'icon-180x180.png');
+    const svgBuffer180 = await sharp(svgPath)
+      .resize(180, 180)
+      .png()
+      .toBuffer();
+    
+    await sharp({
+      create: {
+        width: 180,
+        height: 180,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([
+        {
+          input: svgBuffer180,
+          gravity: 'center'
+        }
+      ])
+      .png()
+      .toFile(icon180Path);
+    console.log('✓ icon-180x180.png を生成しました（白背景）');
   } catch (error) {
-    console.error('✗ apple-touch-icon.png の生成に失敗しました:', error);
+    console.error('✗ icon-180x180.png の生成に失敗しました:', error);
   }
 
   // favicon.pngを生成
