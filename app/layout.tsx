@@ -6,13 +6,13 @@ import ClientProviders from '@/components/ClientProviders'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '文化祭シフト管理',
-  description: 'みんなでシフトを共有しよう',
+  title: '文実シフト管理',
+  description: 'シフトを共有しよう',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'シフト管理',
+    statusBarStyle: 'black-translucent',
+    title: '文実シフト管理',
   },
   icons: {
     icon: [
@@ -21,6 +21,8 @@ export const metadata: Metadata = {
       { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/icon-180x180.png', sizes: '180x180', type: 'image/png' },
       { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
   },
@@ -49,7 +51,7 @@ export default function RootLayout({
         {/* iOS PWA 設定 */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="シフト管理" />
+        <meta name="apple-mobile-web-app-title" content="文実シフト管理" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icon-180x180.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png" />

@@ -35,14 +35,36 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
+  // PWAとしてインストールされているか確認（iOSで重要）
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true
+
   try {
-    // 既に登録されている Service Worker を取得（FCM 専用スコープ）
+    // 既に登録されている Service Worker を取得
+    // まず、FCM専用スコープで検索
     let registration = await navigator.serviceWorker.getRegistration('/firebase-cloud-messaging-push-scope')
+    
+    // 見つからない場合は、ルートスコープで検索（iOSの場合）
+    if (!registration && isIOS) {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      const found = registrations.find(reg => 
+        reg.active?.scriptURL.includes('firebase-messaging-sw.js')
+      )
+      if (found) {
+        registration = found
+      }
+    }
 
     if (!registration) {
-      // 登録されていない場合は、firebase-messaging-sw.js を専用スコープで登録
-      // iOSでは、Service Workerの登録が少し異なる場合があるため、エラーハンドリングを強化
+      // 登録されていない場合は、firebase-messaging-sw.js を登録
+      // iOSでは、PWAとしてインストールされている必要がある
+      if (isIOS && !isStandalone) {
+        console.warn('iOSでは、PWAとしてホーム画面に追加する必要があります。')
+        return null
+      }
+
       try {
+        // まず、FCM専用スコープで登録を試みる
         registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
           scope: '/firebase-cloud-messaging-push-scope'
         })
@@ -50,9 +72,14 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
         // iOSでスコープ指定が問題になる場合があるため、ルートスコープで再試行
         if (isIOS) {
           console.warn('Failed to register with custom scope, trying root scope:', registerError)
-          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-            scope: '/'
-          })
+          try {
+            registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+              scope: '/'
+            })
+          } catch (rootScopeError) {
+            console.error('Failed to register service worker with root scope:', rootScopeError)
+            return null
+          }
         } else {
           throw registerError
         }

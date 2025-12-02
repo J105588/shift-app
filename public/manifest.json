@@ -8,6 +8,8 @@
   "theme_color": "#2563eb",
   "orientation": "portrait-primary",
   "scope": "/",
+  "dir": "ltr",
+  "lang": "ja",
   "icons": [
     {
       "src": "/favicon.ico",

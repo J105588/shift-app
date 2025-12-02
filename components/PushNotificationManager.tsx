@@ -15,6 +15,17 @@ export default function PushNotificationManager() {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
       
+      // PWAとしてインストールされているか確認（iOSで重要）
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true
+
+      // iOSでは、PWAとしてインストールされていない場合、通知は動作しない
+      if (isIOS && !isStandalone) {
+        console.warn('iOSでは、PWAとしてホーム画面に追加する必要があります。')
+        console.info('Safariの共有ボタン（□↑）→「ホーム画面に追加」からインストールしてください。')
+        return
+      }
+      
       // iOS 16.4以降では Notification API がサポートされている
       if (!('Notification' in window)) {
         if (isIOS) {
