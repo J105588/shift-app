@@ -82,25 +82,33 @@ export default function PushNotificationManager() {
         return
       }
 
-      // 通知が許可された直後にテスト通知を送信（初回許可時のみ）
-      if (wasPermissionDefault && permission === 'granted') {
+      // 通知が許可された直後にテスト通知を送信
+      // 初回許可時、または既に許可されている場合でも確認のため送信
+      if (permission === 'granted') {
         try {
-          const testNotification = new Notification('文実シフト管理', {
-            body: 'これは文実によるテスト通信です',
-            icon: '/icon-192x192.png',
-            badge: '/icon-192x192.png',
-            tag: 'test-notification',
-            requireInteraction: false,
-          })
+          // 既に送信済みかどうかをチェック（同じセッション内で重複送信を防ぐ）
+          const lastTestNotification = sessionStorage.getItem('test-notification-sent')
+          if (!lastTestNotification || wasPermissionDefault) {
+            const testNotification = new Notification('文実シフト管理', {
+              body: 'これは文実によるテスト通信です',
+              icon: '/icon-192x192.png',
+              badge: '/icon-192x192.png',
+              tag: 'test-notification',
+              requireInteraction: false,
+            })
 
-          // テスト通知を3秒後に自動的に閉じる
-          setTimeout(() => {
-            testNotification.close()
-          }, 3000)
+            // テスト通知を3秒後に自動的に閉じる
+            setTimeout(() => {
+              testNotification.close()
+            }, 3000)
 
-          console.log('テスト通知を送信しました')
+            console.log('✅ テスト通知を送信しました')
+            sessionStorage.setItem('test-notification-sent', Date.now().toString())
+          } else {
+            console.log('✅ 通知許可が確認されました（テスト通知は既に送信済み）')
+          }
         } catch (error) {
-          console.error('テスト通知の送信に失敗しました:', error)
+          console.error('❌ テスト通知の送信に失敗しました:', error)
         }
       }
 
@@ -114,13 +122,13 @@ export default function PushNotificationManager() {
       }
 
       // Service Workerの登録を試行（失敗しても続行）
-      console.log('Attempting to register Service Worker and get FCM token...')
+      console.log('🔄 Service Workerの登録とFCMトークンの取得を試行中...')
       const token = await getFcmToken()
       if (!token) {
-        console.warn('Failed to get FCM token')
+        console.warn('⚠️ FCMトークンの取得に失敗しました')
         if (isIOS) {
-          console.info('iOSでは、PWAとしてホーム画面に追加してから通知を使用してください。')
-          console.info('現在の状態:', {
+          console.info('💡 iOSでは、PWAとしてホーム画面に追加してから通知を使用してください。')
+          console.info('📊 現在の状態:', {
             isStandalone,
             hasServiceWorker: 'serviceWorker' in navigator,
             notificationPermission: permission,
@@ -128,10 +136,11 @@ export default function PushNotificationManager() {
         }
         // FCMトークンが取得できなくても、基本的な通知は動作する可能性がある
         // ただし、バックグラウンド通知にはFCMトークンが必要
+        console.info('ℹ️ 基本的な通知（フォアグラウンド）は動作する可能性がありますが、バックグラウンド通知にはFCMトークンが必要です。')
         return
       }
 
-      console.log('FCM token obtained successfully')
+      console.log('✅ FCMトークンを取得しました:', token.substring(0, 20) + '...')
 
       // Supabaseにトークンを保存（同じトークンが既にあれば更新）
       const { error: upsertError } = await supabase.from('push_subscriptions').upsert(
@@ -149,8 +158,13 @@ export default function PushNotificationManager() {
         return
       }
 
-      console.log('FCM token saved successfully')
+      console.log('✅ FCMトークンをSupabaseに保存しました')
+      
+      // メッセージ購読を設定
+      console.log('🔄 メッセージ購読を設定中...')
       await subscribeInAppMessages()
+      console.log('✅ プッシュ通知の設定が完了しました！')
+      console.log('📱 これで、バックグラウンド通知も受信できるようになりました。')
     }
 
     setup()
