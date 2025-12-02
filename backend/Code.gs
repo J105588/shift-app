@@ -222,6 +222,10 @@ function base64UrlEncode_(obj) {
 function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body, supabaseUrl, supabaseKey) {
   var url = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/messages:send';
 
+  // 通知の重複を防ぐため、一意の messageId を生成
+  // この messageId はクライアント側で重複チェックに使用される
+  var messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+  
   var payload = {
     message: {
       token: token,
@@ -233,7 +237,15 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
       webpush: {
         fcm_options: {
            link: "/" // 必要に応じて通知クリック時のURLを指定
+        },
+        // 通知の重複を防ぐため、一意の tag を設定
+        headers: {
+          'Tag': messageId
         }
+      },
+      // data に messageId を含める（クライアント側の onMessage で使用）
+      data: {
+        messageId: messageId
       }
     },
   };

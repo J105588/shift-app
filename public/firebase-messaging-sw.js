@@ -24,8 +24,23 @@ firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
 // バックグラウンドメッセージのハンドリング
+// 注意: このハンドラーはアプリが完全に閉じている（バックグラウンド）時のみ発火する
+// フォアグラウンド時は onMessage が発火するため、重複通知を避ける
 messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || '通知';
+  // GAS 側で生成した messageId を data から取得（重複防止用）
+  const tag = payload.data?.messageId || 
+              payload.messageId || 
+              payload.fcmMessageId || 
+              `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  
+  // 既に同じ tag の通知が表示されている場合は閉じる（重複防止）
+  self.registration.getNotifications({ tag: tag }).then((notifications) => {
+    notifications.forEach((n) => n.close());
+  }).catch(() => {
+    // getNotifications が使えない環境では無視
+  });
+
   const notificationOptions = {
     body: payload.notification?.body || '',
     icon: '/icon-192x192.png',
@@ -35,7 +50,7 @@ messaging.onBackgroundMessage((payload) => {
     requireInteraction: false,
     silent: false,
     vibrate: [200, 100, 200], // iOSでは無視されるが、Android用
-    tag: payload.messageId || 'fcm-notification',
+    tag: tag, // 同じメッセージIDの通知は1つだけ表示されるようにする
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);

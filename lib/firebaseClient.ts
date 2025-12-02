@@ -188,23 +188,50 @@ export const subscribeInAppMessages = async () => {
   const messagingResult = await getFirebaseMessaging()
   if (!messagingResult) return
 
+  // フォアグラウンド時の通知表示を追跡（重複防止用）
+  const shownNotificationTags = new Set<string>()
+
   onMessage(messagingResult.messaging, (payload) => {
-    // iOSを含むフォアグラウンド時の通知表示
-    // iOS 16.4以降では、Service Worker経由の通知も動作しますが、
-    // フォアグラウンド時は明示的に通知を表示する必要があります
+    // フォアグラウンド時の通知表示
+    // 注意: フォアグラウンド時は onMessage のみが発火し、
+    // Service Worker の onBackgroundMessage は発火しないため、ここで表示する
+    // ただし、同じ messageId の通知が既に表示されている場合は重複を避ける
     if (payload.notification) {
       const { title, body, icon } = payload.notification
       
       // ブラウザの通知APIを使用（iOS 16.4以降でサポート）
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
+          // 同じ messageId の通知が既に表示されている場合は重複を避ける
+          const tag = payload.messageId || 
+                     payload.fcmMessageId || 
+                     payload.data?.messageId || 
+                     `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+          
+          // 既に同じ tag の通知を表示済みの場合はスキップ
+          if (shownNotificationTags.has(tag)) {
+            return
+          }
+          shownNotificationTags.add(tag)
+
+          // 古いタグをクリーンアップ（メモリリーク防止）
+          if (shownNotificationTags.size > 100) {
+            const oldestTag = Array.from(shownNotificationTags)[0]
+            shownNotificationTags.delete(oldestTag)
+          }
+
           const notification = new Notification(title || '通知', {
             body: body || '',
             icon: icon || '/icon-192x192.png',
             badge: '/icon-192x192.png',
-            tag: payload.messageId || 'fcm-notification',
+            tag: tag, // 同じ tag の通知は1つだけ表示される
             data: payload.data || {},
           })
+
+          // 通知が閉じられたらタグを削除
+          notification.onclose = () => {
+            shownNotificationTags.delete(tag)
+          }
 
           // 通知クリック時の処理
           notification.onclick = (event) => {
@@ -217,9 +244,10 @@ export const subscribeInAppMessages = async () => {
             }
             
             notification.close()
+            shownNotificationTags.delete(tag)
           }
         } catch (error) {
-          console.error('Failed to show notification:', error)
+          // 通知表示エラーは静かに無視
         }
       }
     }
