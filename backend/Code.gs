@@ -85,7 +85,15 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
 
     // 3. 各デバイス(トークン)に送信
     tokens.forEach(function (t) {
-      sendFcmNotificationV1WithToken(projectId, accessToken, t.token, notif.title, notif.body);
+      sendFcmNotificationV1WithToken(
+        projectId,
+        accessToken,
+        t.token,
+        notif.title,
+        notif.body,
+        supabaseUrl,
+        supabaseKey
+      );
     });
 
     // 4. 成功したら sent_at を更新
@@ -202,8 +210,9 @@ function base64UrlEncode_(obj) {
 
 /**
  * FCM HTTP v1 でプッシュ通知を送信 (アクセストークン再利用版)
+ * 404 / 410 (UNREGISTERED) などの応答が返ったトークンは Supabase 側から自動削除する
  */
-function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body) {
+function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body, supabaseUrl, supabaseKey) {
   var url = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/messages:send';
 
   var payload = {
@@ -233,13 +242,24 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
   };
 
   var res = UrlFetchApp.fetch(url, options);
-  
-  // 404や410エラー (UNREGISTERED) の場合は、トークンが無効なので削除する処理を入れても良いですが、
-  // ここではログ出力にとどめます。
-  if (res.getResponseCode() >= 300) {
-    console.warn('FCM送信失敗 (' + token + '): ' + res.getContentText());
-  } else {
-    // console.log('FCM送信成功'); // ログ量削減のためコメントアウト
+  var status = res.getResponseCode();
+  var bodyText = res.getContentText();
+
+  if (status >= 300) {
+    // 無効トークン系のエラーは Supabase から削除して、次回以降処理しないようにする
+    if (
+      status === 404 ||
+      status === 410 ||
+      bodyText.indexOf('UNREGISTERED') !== -1
+    ) {
+      try {
+        deletePushSubscriptionByToken_(supabaseUrl, supabaseKey, token);
+      } catch (e) {
+        console.warn('無効トークン削除時エラー (' + token + '): ' + e.toString());
+      }
+    } else {
+      console.warn('FCM送信失敗 (' + token + '): ' + bodyText);
+    }
   }
 }
 
@@ -269,5 +289,29 @@ function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
   var res = UrlFetchApp.fetch(url, options);
   if (res.getResponseCode() >= 300) {
     console.error('markNotificationSent error: ' + res.getContentText());
+  }
+}
+
+/**
+ * Supabase の push_subscriptions から指定トークンのレコードを削除
+ * 無効になった FCM トークンを自動的にクリーンアップするために使用
+ */
+function deletePushSubscriptionByToken_(supabaseUrl, supabaseKey, token) {
+  var url = supabaseUrl + '/rest/v1/push_subscriptions'
+    + '?token=eq.' + encodeURIComponent(token);
+
+  var options = {
+    method: 'delete',
+    headers: {
+      apikey: supabaseKey,
+      Authorization: 'Bearer ' + supabaseKey,
+      Prefer: 'return=minimal',
+    },
+    muteHttpExceptions: true,
+  };
+
+  var res = UrlFetchApp.fetch(url, options);
+  if (res.getResponseCode() >= 300) {
+    throw new Error('deletePushSubscriptionByToken error: ' + res.getContentText());
   }
 }
