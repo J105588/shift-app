@@ -1,40 +1,53 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { forceReloadPwa } from '@/lib/pwa'
 
 const UPDATE_STORAGE_KEY = 'pwa_update_version'
+const CHECK_INTERVAL_MS = 30 * 1000 // 20秒ごとに最新バージョンをポーリング
 
 export default function PwaUpdateListener() {
-  const supabase = useMemo(() => createClient(), [])
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateVersion, setUpdateVersion] = useState<string | null>(null)
 
   useEffect(() => {
-    const channel = supabase
-      .channel('public:app_updates')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'app_updates' },
-        async (payload) => {
-          const version = payload.new?.version as string | undefined
-          if (!version) return
+    const supabase = createClient()
 
-          const lastApplied = localStorage.getItem(UPDATE_STORAGE_KEY)
-          if (lastApplied === version) return
+    const checkLatestVersion = async () => {
+      if (typeof window === 'undefined') return
+      try {
+        const { data, error } = await supabase
+          .from('app_updates')
+          .select('version, created_at')
+          .order('created_at', { ascending: false })
+          .limit(1)
 
-          setUpdateVersion(version)
-          setIsUpdating(true)
-        }
-      )
+        if (error || !data || data.length === 0) return
 
-    channel.subscribe()
+        const latest = data[0]?.version as string | undefined
+        if (!latest) return
+
+        const lastApplied = localStorage.getItem(UPDATE_STORAGE_KEY)
+        if (lastApplied === latest) return
+
+        setUpdateVersion(latest)
+        setIsUpdating(true)
+      } catch {
+        // 通信エラー時は何もしない（次回チェックに任せる）
+      }
+    }
+
+    // 初回ロード時に即チェック
+    checkLatestVersion()
+
+    // 定期的にチェック
+    const timer = window.setInterval(checkLatestVersion, CHECK_INTERVAL_MS)
 
     return () => {
-      supabase.removeChannel(channel)
+      window.clearInterval(timer)
     }
-  }, [supabase])
+  }, [])
 
   if (!isUpdating) return null
 
