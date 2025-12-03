@@ -89,6 +89,56 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     }
   }, [editShift, initialDate, isOpen])
 
+  // シフトに関連する通知を作成するヘルパー関数
+  const createShiftNotifications = async (shiftId: string, userId: string, title: string, startTime: string, endTime: string) => {
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    
+    // シフト開始時刻が過去の場合は通知を作成しない
+    if (start.getTime() <= Date.now()) {
+      return
+    }
+
+    // 通知タイミング（1時間前、30分前、5分前）
+    const reminderMinutes = [60, 30, 5]
+    const reminders = reminderMinutes
+      .map((minutes) => {
+        const scheduled = new Date(start.getTime() - minutes * 60 * 1000)
+        // 過去の時刻の通知は作成しない
+        if (scheduled.getTime() <= Date.now()) {
+          return null
+        }
+        return {
+          shift_id: shiftId,
+          target_user_id: userId,
+          title: 'シフトのご案内',
+          body: `${start.toLocaleTimeString('ja-JP', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}〜${end.toLocaleTimeString('ja-JP', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}「${title}」のシフトが${minutes}分後に開始します。`,
+          scheduled_at: scheduled.toISOString(),
+        }
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+
+    if (reminders.length > 0) {
+      await supabase.from('notifications').insert(reminders)
+    }
+  }
+
+  // シフトに関連する通知を削除するヘルパー関数
+  const deleteShiftNotifications = async (shiftId: string) => {
+    // 未送信の通知のみ削除（既に送信済みの通知は保持）
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('shift_id', shiftId)
+      .is('sent_at', null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -173,7 +223,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           console.error('シフト更新エラー:', error)
           throw error
         }
-        if (error) throw error
+
+        // シフト更新時: 既存の未送信通知を削除して新しい通知を作成
+        await deleteShiftNotifications(editShift.id)
+        await createShiftNotifications(
+          editShift.id,
+          formData.user_id,
+          formData.title,
+          payload.start_time,
+          payload.end_time
+        )
       } else if (mode === 'single') {
         // 単一ユーザーモード
         if (!formData.user_id) {
@@ -199,26 +258,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           console.error('シフト挿入エラー:', error)
           throw error
         }
-        // シフト開始前のリマインダー通知ジョブを作成（1時間前、30分前、5分前）
+        // シフト作成時: 通知を作成
         if (inserted && inserted[0]) {
           const s = inserted[0] as any
-          const start = new Date(s.start_time)
-          const reminders = [60, 30, 5].map((minutes) => {
-            const scheduled = new Date(start.getTime() - minutes * 60 * 1000)
-            return {
-              target_user_id: s.user_id,
-              title: 'シフトのご案内',
-              body: `${start.toLocaleTimeString('ja-JP', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}〜${new Date(s.end_time).toLocaleTimeString('ja-JP', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}「${s.title}」のシフトが${minutes}分後に開始します。`,
-              scheduled_at: scheduled.toISOString(),
-            }
-          })
-          await supabase.from('notifications').insert(reminders)
+          await createShiftNotifications(
+            s.id,
+            s.user_id,
+            s.title,
+            s.start_time,
+            s.end_time
+          )
         }
       } else {
         // 複数ユーザーモード: 一括作成
@@ -266,29 +315,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           console.error('シフト一括挿入エラー:', error)
           throw error
         }
-        // 作成された各シフトに対してリマインダー通知ジョブを作成
+        // 作成された各シフトに対して通知を作成
         if (inserted && inserted.length > 0) {
-          const reminderRows: any[] = []
-          inserted.forEach((s: any) => {
-            const start = new Date(s.start_time)
-            ;[60, 30, 5].forEach((minutes) => {
-              const scheduled = new Date(start.getTime() - minutes * 60 * 1000)
-              reminderRows.push({
-                target_user_id: s.user_id,
-                title: 'シフトのご案内',
-                body: `${start.toLocaleTimeString('ja-JP', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}〜${new Date(s.end_time).toLocaleTimeString('ja-JP', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}「${s.title}」のシフトが${minutes}分後に開始します。`,
-                scheduled_at: scheduled.toISOString(),
-              })
-            })
-          })
-          if (reminderRows.length > 0) {
-            await supabase.from('notifications').insert(reminderRows)
+          for (const s of inserted) {
+            await createShiftNotifications(
+              s.id,
+              s.user_id,
+              s.title,
+              s.start_time,
+              s.end_time
+            )
           }
         }
       }
@@ -338,10 +374,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
 
   const handleDelete = async () => {
     if (!editShift || !confirm('本当に削除しますか？')) return
+    
+    // シフト削除時: 関連する未送信通知を削除（shift_idのCASCADE削除で自動削除されるが、明示的に削除）
+    await deleteShiftNotifications(editShift.id)
+    
     const { error } = await supabase.from('shifts').delete().eq('id', editShift.id)
     if (!error) {
       onSaved()
       onClose()
+    } else {
+      alert('シフトの削除に失敗しました: ' + error.message)
     }
   }
 
