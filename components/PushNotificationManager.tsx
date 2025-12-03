@@ -108,22 +108,68 @@ export const setupPushNotificationsForUser = async (userId: string) => {
   }
 
   // Supabase にトークンを保存（同じトークンが既にあれば更新）
-  const { error: upsertError } = await supabase.from('push_subscriptions').upsert(
-    {
-      user_id: userId,
-      token,
-    },
-    {
-      onConflict: 'token',
-    }
-  )
+  // RLSポリシーの問題を回避するため、まず既存のトークンを確認
+  const { data: existingToken } = await supabase
+    .from('push_subscriptions')
+    .select('id, user_id')
+    .eq('token', token)
+    .single()
 
-  if (upsertError) {
-    const message = `FCMトークンの保存に失敗しました: ${
-      upsertError.message || String(upsertError)
-    }`
-    showError(message)
-    return
+  if (existingToken) {
+    // 既存のトークンがある場合
+    if (existingToken.user_id === userId) {
+      // 同じユーザーのトークンなので、更新不要（既に正しい）
+      // ただし、念のため更新時刻を更新するためにUPDATEを実行
+      const { error: updateError } = await supabase
+        .from('push_subscriptions')
+        .update({ user_id: userId })
+        .eq('id', existingToken.id)
+      
+      if (updateError) {
+        const message = `FCMトークンの更新に失敗しました: ${
+          updateError.message || String(updateError)
+        }`
+        showError(message)
+        return
+      }
+    } else {
+      // 別のユーザーのトークンなので、削除してから新規作成
+      await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('id', existingToken.id)
+      
+      const { error: insertError } = await supabase
+        .from('push_subscriptions')
+        .insert({
+          user_id: userId,
+          token,
+        })
+      
+      if (insertError) {
+        const message = `FCMトークンの保存に失敗しました: ${
+          insertError.message || String(insertError)
+        }`
+        showError(message)
+        return
+      }
+    }
+  } else {
+    // 既存のトークンがない場合、新規作成
+    const { error: insertError } = await supabase
+      .from('push_subscriptions')
+      .insert({
+        user_id: userId,
+        token,
+      })
+    
+    if (insertError) {
+      const message = `FCMトークンの保存に失敗しました: ${
+        insertError.message || String(insertError)
+      }`
+      showError(message)
+      return
+    }
   }
 
   showSuccess('通知設定が完了しました')

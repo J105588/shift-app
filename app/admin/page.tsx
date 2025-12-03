@@ -18,6 +18,7 @@ import { Users, Calendar as CalIcon, Table2 } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
 import { RefreshCw } from 'lucide-react'
 import { forceReloadPwa } from '@/lib/pwa'
+import FcmTokenManager from '@/components/FcmTokenManager'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -184,6 +185,7 @@ export default function AdminPage() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       <Navbar user={user} profile={profile} />
+      <FcmTokenManager userId={user?.id || ''} />
       
       {/* タブナビゲーション - モバイル対応 */}
       <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-3 shadow-sm sticky top-0 z-10">

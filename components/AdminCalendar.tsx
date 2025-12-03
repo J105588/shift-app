@@ -124,7 +124,11 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
             </h3>
             <div className="flex gap-2">
               <button
-                onClick={() => setViewMode('day')}
+                onClick={() => {
+                  const targetDate = selectedDate ?? new Date()
+                  setSelectedDate(targetDate)
+                  setViewMode('day')
+                }}
                 className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold bg-white text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors touch-manipulation"
               >
                 日表示

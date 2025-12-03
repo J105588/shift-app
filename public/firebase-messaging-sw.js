@@ -50,9 +50,77 @@ messaging.onBackgroundMessage((payload) => {
     silent: false,
     vibrate: [200, 100, 200], // iOSでは無視されるが、Android用
     tag: tag, // 同じメッセージIDの通知は1つだけ表示されるようにする
+    // バックグラウンドでも確実に通知を表示するための設定
+    renotify: true,
+    // 通知の優先度を高く設定（Android用）
+    priority: 'high',
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Service Workerのインストール時に、確実にアクティブ化する
+self.addEventListener('install', (event) => {
+  // すぐにアクティブ化して、古いService Workerを置き換える
+  self.skipWaiting();
+});
+
+// Service Workerのアクティベート時に、すべてのクライアントを制御下に置く
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    clients.claim().then(() => {
+      // すべてのクライアントを制御下に置く
+      return self.clients.matchAll();
+    })
+  );
+});
+
+// Pushイベントのハンドリング（FCM以外のPush通知にも対応）
+// これにより、PWAが完全に閉じていても通知が届く
+self.addEventListener('push', (event) => {
+  // FCMのメッセージは onBackgroundMessage で処理されるため、
+  // ここではFCM以外のPush通知を処理する
+  // ただし、FCMのメッセージもここを通る可能性があるため、チェックする
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      // FCMのメッセージの場合は、onBackgroundMessageで処理されるためスキップ
+      if (payload.from === 'firebase' || payload.firebase) {
+        return;
+      }
+      
+      // FCM以外のPush通知を処理
+      const title = payload.title || '通知';
+      const options = {
+        body: payload.body || '',
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png',
+        data: payload.data || {},
+        tag: payload.tag || `push-${Date.now()}`,
+        renotify: true,
+        priority: 'high',
+      };
+      
+      event.waitUntil(
+        self.registration.showNotification(title, options)
+      );
+    } catch (e) {
+      // JSONパースエラーは無視
+    }
+  }
+});
+
+// Service Workerがメッセージを受信したときの処理
+// クライアント側からService Workerにメッセージを送信できるようにする
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  // クライアントにメッセージを返す
+  if (event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ success: true });
+  }
 });
 
 // 通知クリック時の処理

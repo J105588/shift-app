@@ -119,6 +119,14 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
       })
     }
 
+    // Service Workerが確実にアクティブになるように、必要に応じて更新を促す
+    if (registration.update) {
+      // 定期的にService Workerの更新をチェック（バックグラウンドでも動作するように）
+      registration.update().catch(() => {
+        // 更新エラーは無視（既存のService Workerが動作していれば問題ない）
+      })
+    }
+
     // アクティブな Service Worker が存在することを確認
     if (!registration.active) {
       return null

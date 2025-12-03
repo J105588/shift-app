@@ -131,7 +131,12 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
             </h3>
             <div className="flex gap-2">
               <button
-                onClick={() => setViewMode('day')}
+                onClick={() => {
+                  const targetDate = selectedDate ?? new Date()
+                  setSelectedDate(targetDate)
+                  setViewMode('day')
+                  onDateChange?.(targetDate)
+                }}
                 className="px-3 py-1.5 text-xs sm:text-sm font-semibold bg-white text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
               >
                 日表示

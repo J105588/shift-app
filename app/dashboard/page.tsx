@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import ScheduleTimetable from '@/components/ScheduleTimetable'
 import ShiftDetailModal from '@/components/ShiftDetailModal'
 import { Clock } from 'lucide-react'
+import FcmTokenManager from '@/components/FcmTokenManager'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -142,6 +143,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar user={user} profile={profile} />
+      <FcmTokenManager userId={user?.id || ''} />
       
       <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
         {/* ウェルカムカード */}

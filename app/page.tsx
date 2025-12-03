@@ -15,6 +15,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // すでにログイン済みの場合は、ログイン画面をスキップしてダッシュボード / 管理画面へ転送
+  useEffect(() => {
+    const redirectIfLoggedIn = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.role === 'admin') router.replace('/admin')
+      else router.replace('/dashboard')
+    }
+
+    redirectIfLoggedIn()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ローカルストレージに残っている古いログイン情報をクリーンアップ
   // 最終ログインから5日以上経過している場合は、端末情報と Push トークンを削除
   useEffect(() => {
