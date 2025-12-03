@@ -76,7 +76,7 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
             <CalendarIcon className="text-blue-600" size={20} />
-            スプレッドシート表示
+            表形式シフト表示
           </h3>
           <button
             onClick={handleToday}
