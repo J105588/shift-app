@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { Lock, ArrowRight, CalendarDays } from 'lucide-react'
+import { Lock, ArrowRight, CalendarDays, AlertTriangle } from 'lucide-react'
 import { setupPushNotificationsForUser } from '@/components/PushNotificationManager'
 
 // 動的レンダリングを強制（認証が必要なため）
@@ -14,24 +14,59 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false)
 
-  // すでにログイン済みの場合は、ログイン画面をスキップしてダッシュボード / 管理画面へ転送
+  // メンテナンスモードのチェック
   useEffect(() => {
-    const redirectIfLoggedIn = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    const checkMaintenanceMode = async () => {
+      try {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'maintenance_mode')
+          .single()
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+        const isMaintenance = data?.value === 'true'
+        setIsMaintenanceMode(isMaintenance)
 
-      if (profile?.role === 'admin') router.replace('/admin')
-      else router.replace('/dashboard')
+        if (isMaintenance) {
+          // メンテナンスモードが有効な場合、管理者のみアクセス可能
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', user.id)
+              .single()
+
+            if (profile?.role === 'admin') {
+              router.replace('/admin')
+            } else {
+              // 一般ユーザーはログアウトしてメンテナンス画面を表示
+              await supabase.auth.signOut()
+            }
+          }
+        } else {
+          // メンテナンスモードが無効な場合、通常のリダイレクト
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) return
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+          if (profile?.role === 'admin') router.replace('/admin')
+          else router.replace('/dashboard')
+        }
+      } catch (error) {
+        // エラーが発生した場合は通常フローに戻る
+        console.error('メンテナンスモードチェックエラー:', error)
+      }
     }
 
-    redirectIfLoggedIn()
+    checkMaintenanceMode()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -112,11 +147,28 @@ export default function LoginPage() {
         // 通知設定に失敗してもログイン自体は続行
       }
 
+      // メンテナンスモードをチェック
+      const { data: maintenanceSetting } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single()
+
+      const isMaintenanceMode = maintenanceSetting?.value === 'true'
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single()
+      
+      // メンテナンスモードが有効で、一般ユーザーの場合はログインを拒否
+      if (isMaintenanceMode && profile?.role !== 'admin') {
+        alert('現在システムメンテナンス中です。しばらくしてから再度お試しください。')
+        await supabase.auth.signOut()
+        setLoading(false)
+        return
+      }
       
       if (profile?.role === 'admin') router.push('/admin')
       else router.push('/dashboard')
@@ -136,6 +188,19 @@ export default function LoginPage() {
           </div>
           
           <form onSubmit={handleLogin} className="p-8 space-y-6 bg-white">
+            {isMaintenanceMode && (
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertTriangle className="text-orange-600 flex-shrink-0 mt-0.5" size={20} />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-orange-900 mb-1">
+                    システムメンテナンス中
+                  </p>
+                  <p className="text-xs text-orange-700">
+                    現在システムメンテナンス中のため、一般ユーザーはアクセスできません。管理者のみログイン可能です。
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <span>メールアドレス</span>

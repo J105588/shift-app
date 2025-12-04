@@ -68,9 +68,27 @@ export default function Dashboard() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return window.location.href = '/'
-      setUser(user)
       
+      // メンテナンスモードをチェック
+      const { data: maintenanceSetting } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single()
+
+      const isMaintenanceMode = maintenanceSetting?.value === 'true'
+
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      
+      // メンテナンスモードが有効で、一般ユーザーの場合はアクセスを拒否
+      if (isMaintenanceMode && profile?.role !== 'admin') {
+        alert('現在システムメンテナンス中です。しばらくしてから再度お試しください。')
+        await supabase.auth.signOut()
+        window.location.href = '/'
+        return
+      }
+
+      setUser(user)
       setProfile(profile)
 
       await loadShiftsForUser(user)

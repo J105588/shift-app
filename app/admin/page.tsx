@@ -7,6 +7,7 @@ import UserManagement from '@/components/UserManagement'
 import AdminCalendar from '@/components/AdminCalendar'
 import SpreadsheetView from '@/components/SpreadsheetView'
 import AdminNotifications from '@/components/AdminNotifications'
+import AdminSettings from '@/components/AdminSettings'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
 import { parse } from 'date-fns/parse'
@@ -14,10 +15,9 @@ import { startOfWeek } from 'date-fns/startOfWeek'
 import { getDay } from 'date-fns/getDay'
 import { ja } from 'date-fns/locale/ja'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
-import { Users, Calendar as CalIcon, Table2 } from 'lucide-react'
+import { Users, Calendar as CalIcon, Table2, Settings } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
 import { RefreshCw } from 'lucide-react'
-import { forceReloadPwa } from '@/lib/pwa'
 import FcmTokenManager from '@/components/FcmTokenManager'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
@@ -32,9 +32,8 @@ export default function AdminPage() {
   const [events, setEvents] = useState<any[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [users, setUsers] = useState<Profile[]>([])
-  const [activeTab, setActiveTab] = useState<'calendar' | 'users' | 'notifications'>('calendar')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'users' | 'notifications' | 'settings'>('calendar')
   const [calendarView, setCalendarView] = useState<'calendar' | 'spreadsheet'>('calendar')
-  const [isPwaUpdating, setIsPwaUpdating] = useState(false)
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -160,26 +159,6 @@ export default function AdminPage() {
     setIsModalOpen(true)
   }
 
-  const handlePwaUpdate = async () => {
-    setIsPwaUpdating(true)
-    try {
-      const version = `${Date.now()}`
-      const { error } = await supabase.from('app_updates').insert({
-        version,
-        triggered_by: user?.id || null,
-      })
-      if (error) throw error
-
-      alert('すべての端末に最新バージョンの適用を通知しました。')
-      await forceReloadPwa()
-    } catch (error: any) {
-      console.error('PWA update error:', error)
-      alert(`PWAの更新に失敗しました: ${error?.message || '詳細不明'}`)
-    } finally {
-      setIsPwaUpdating(false)
-    }
-  }
-
   if (!profile) return null
 
   return (
@@ -226,39 +205,22 @@ export default function AdminPage() {
             <span className="hidden sm:inline">通知</span>
             <span className="sm:hidden">通知</span>
           </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
+              activeTab === 'settings' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+            }`}
+          >
+            <Settings size={18} /> 
+            <span className="hidden sm:inline">設定</span>
+            <span className="sm:hidden">設定</span>
+          </button>
         </div>
       </div>
 
       <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto pb-20 space-y-4">
-        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 sm:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <RefreshCw size={18} className="text-blue-600" />
-              PWAアップデート
-            </h3>
-            <p className="text-sm text-slate-600 mt-1">
-              既存のキャッシュを削除し、最新のアプリに強制更新します。インストール済み端末で不具合が出た際に実行してください。
-            </p>
-          </div>
-          <button
-            onClick={handlePwaUpdate}
-            disabled={isPwaUpdating}
-            className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPwaUpdating ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                実行中...
-              </>
-            ) : (
-              <>
-                <RefreshCw size={16} />
-                キャッシュをリセット
-              </>
-            )}
-          </button>
-        </div>
-
         {activeTab === 'calendar' ? (
           <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-3 sm:p-4 md:p-6 overflow-hidden">
             <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-200">
@@ -347,9 +309,13 @@ export default function AdminPage() {
           <div className="h-full overflow-y-auto">
             <UserManagement />
           </div>
-        ) : (
+        ) : activeTab === 'notifications' ? (
           <div className="h-full overflow-y-auto">
             <AdminNotifications />
+          </div>
+        ) : (
+          <div className="h-full overflow-y-auto">
+            <AdminSettings userId={user?.id || null} />
           </div>
         )}
       </main>
