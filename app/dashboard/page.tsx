@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
 import { createClient } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import ScheduleTimetable from '@/components/ScheduleTimetable'
 import ShiftDetailModal from '@/components/ShiftDetailModal'
@@ -14,6 +15,7 @@ export const dynamic = 'force-dynamic'
 
 export default function Dashboard() {
   const supabase = createClient()
+  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
@@ -80,11 +82,9 @@ export default function Dashboard() {
 
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       
-      // メンテナンスモードが有効で、一般ユーザーの場合はアクセスを拒否
+      // メンテナンスモードが有効で、一般ユーザーの場合はメンテナンスページへリダイレクト（ログアウトしない）
       if (isMaintenanceMode && profile?.role !== 'admin') {
-        alert('現在システムメンテナンス中です。しばらくしてから再度お試しください。')
-        await supabase.auth.signOut()
-        window.location.href = '/'
+        router.replace('/maintenance')
         return
       }
 

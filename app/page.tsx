@@ -42,8 +42,8 @@ export default function LoginPage() {
             if (profile?.role === 'admin') {
               router.replace('/admin')
             } else {
-              // 一般ユーザーはログアウトしてメンテナンス画面を表示
-              await supabase.auth.signOut()
+              // 一般ユーザーはメンテナンスページへリダイレクト（ログアウトしない）
+              router.replace('/maintenance')
             }
           }
         } else {
@@ -162,10 +162,9 @@ export default function LoginPage() {
         .eq('id', user.id)
         .single()
       
-      // メンテナンスモードが有効で、一般ユーザーの場合はログインを拒否
+      // メンテナンスモードが有効で、一般ユーザーの場合はメンテナンスページへリダイレクト（ログアウトしない）
       if (isMaintenanceMode && profile?.role !== 'admin') {
-        alert('現在システムメンテナンス中です。しばらくしてから再度お試しください。')
-        await supabase.auth.signOut()
+        router.push('/maintenance')
         setLoading(false)
         return
       }
