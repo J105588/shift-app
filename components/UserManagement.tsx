@@ -72,8 +72,8 @@ export default function UserManagement() {
             <UserPlus className="text-blue-600" size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-lg sm:text-xl text-slate-900">新規スタッフ登録</h3>
-            <p className="text-xs sm:text-sm text-slate-600">新しいスタッフのアカウントを作成します</p>
+            <h3 className="font-bold text-lg sm:text-xl text-slate-900">新規ユーザー登録</h3>
+            <p className="text-xs sm:text-sm text-slate-600">新しいユーザーのアカウントを作成します</p>
           </div>
         </div>
         <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -95,7 +95,7 @@ export default function UserManagement() {
               value={role} 
               onChange={e => setRole(e.target.value)}
             >
-              <option value="staff">一般スタッフ</option>
+              <option value="staff">一般ユーザー</option>
               <option value="admin">管理者</option>
             </select>
           </div>
@@ -140,8 +140,8 @@ export default function UserManagement() {
       {/* ユーザーリスト */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50">
-          <h3 className="font-bold text-base sm:text-lg text-slate-900">登録スタッフ一覧</h3>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">{users.length}人のスタッフが登録されています</p>
+          <h3 className="font-bold text-base sm:text-lg text-slate-900">登録ユーザー一覧</h3>
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">{users.length}人のユーザーが登録されています</p>
         </div>
         
         {/* デスクトップ: テーブル表示 */}
@@ -167,7 +167,7 @@ export default function UserManagement() {
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="p-8 text-center text-slate-500">
-                    スタッフが登録されていません
+                    ユーザーが登録されていません
                   </td>
                 </tr>
               ) : (
@@ -180,7 +180,7 @@ export default function UserManagement() {
                           ? 'bg-blue-100 text-blue-700 border border-blue-200' 
                           : 'bg-slate-100 text-slate-700 border border-slate-200'
                       }`}>
-                        {user.role === 'admin' ? '👑 管理者' : '👤 スタッフ'}
+                        {user.role === 'admin' ? '管理者' : '一般ユーザー'}
                       </span>
                     </td>
                     <td className="p-4 text-slate-600 text-sm">
@@ -205,7 +205,7 @@ export default function UserManagement() {
             </div>
           ) : users.length === 0 ? (
             <div className="p-8 text-center text-slate-500">
-              スタッフが登録されていません
+              ユーザーが登録されていません
             </div>
           ) : (
             users.map(user => (
@@ -225,7 +225,7 @@ export default function UserManagement() {
                       ? 'bg-blue-100 text-blue-700 border border-blue-200' 
                       : 'bg-slate-100 text-slate-700 border border-slate-200'
                   }`}>
-                    {user.role === 'admin' ? '👑 管理者' : '👤 スタッフ'}
+                    {user.role === 'admin' ? '管理者' : '一般ユーザー'}
                   </span>
                 </div>
               </div>

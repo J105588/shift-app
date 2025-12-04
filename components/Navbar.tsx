@@ -2,11 +2,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import { LogOut, Shield, CalendarDays, User } from 'lucide-react'
+import { LogOut, Shield, CalendarDays, User, X } from 'lucide-react'
 
 export default function Navbar({ user, profile }: { user: any, profile: any }) {
   const supabase = createClient()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
 
   const handleLogout = async () => {
     if (isLoggingOut) return // 二重送信防止
@@ -81,33 +82,86 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
               >
                 ホーム
               </Link>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+              <button 
+                onClick={() => setIsUserModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors duration-200 cursor-pointer touch-manipulation"
+              >
                 <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
                   <User size={14} className="text-blue-600" />
                 </div>
                 <span className="hidden md:block text-sm font-semibold text-slate-900">{profile?.display_name || 'ユーザー'}</span>
-              </div>
-              <button 
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="flex items-center gap-2 text-sm text-slate-600 hover:text-red-600 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-              >
-                {isLoggingOut ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></span>
-                    <span className="hidden sm:inline">ログアウト中...</span>
-                  </>
-                ) : (
-                  <>
-                    <LogOut size={16} />
-                    <span className="hidden sm:inline">ログアウト</span>
-                  </>
-                )}
               </button>
             </div>
           )}
         </div>
       </div>
+      
+      {/* ユーザー情報モーダル */}
+      {isUserModalOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsUserModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-900">ユーザー情報</h2>
+              <button
+                onClick={() => setIsUserModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors duration-200"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User size={24} className="text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-600 mb-1">ユーザー名</p>
+                  <p className="text-lg font-semibold text-slate-900 truncate">
+                    {profile?.display_name || 'ユーザー'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Shield size={24} className="text-purple-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-600 mb-1">権限</p>
+                  <p className="text-lg font-semibold text-slate-900">
+                    {profile?.role === 'admin' ? '管理者' : '一般'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="w-full flex items-center justify-center gap-2 text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-3 rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+            >
+              {isLoggingOut ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>ログアウト中...</span>
+                </>
+              ) : (
+                <>
+                  <LogOut size={16} />
+                  <span>ログアウト</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

@@ -25,7 +25,7 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
 
-  // 各日のシフトを整理（スタッフごと、日ごと）
+  // 各日のシフトを整理（ユーザーごと、日ごと）
   const shiftsByDayAndUser = useMemo(() => {
     const map = new Map<string, Map<string, ShiftWithProfile[]>>()
     
@@ -116,7 +116,7 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
           <thead className="bg-slate-50 sticky top-0 z-10">
             <tr>
               <th className="border border-slate-200 p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold text-slate-700 min-w-[120px] sm:min-w-[150px]">
-                スタッフ
+                ユーザー
               </th>
               {weekDays.map((day) => {
                 const dayKey = format(day, 'yyyy-MM-dd')

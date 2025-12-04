@@ -80,7 +80,7 @@ export default function AdminNotifications() {
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-900">プッシュ通知</h2>
           <p className="text-xs sm:text-sm text-slate-600">
-            タイトルと内容を指定して、選択したスタッフのログイン中端末に通知を送ります。
+            タイトルと内容を指定して、選択したユーザーのログイン中の端末に通知を送ります。
           </p>
         </div>
       </div>
@@ -114,7 +114,7 @@ export default function AdminNotifications() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-semibold text-slate-700">
-              宛先スタッフ
+              宛先ユーザー
             </label>
             <button
               type="button"

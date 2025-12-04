@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('Missing Supabase environment variables')
     return NextResponse.json(
-      { error: 'サーバー設定エラー: Supabase環境変数が設定されていません' },
+      { error: 'サーバー設定エラー: サーバーの環境変数が設定されていません' },
       { status: 500 }
     )
   }

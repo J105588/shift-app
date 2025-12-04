@@ -185,7 +185,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
             })
 
             const proceed = window.confirm(
-              `以下のスタッフは、この時間帯にすでにシフトが入っています。\n\n${lines.join(
+              `以下のユーザーは、この時間帯にすでにシフトが入っています。\n\n${lines.join(
                 '\n'
               )}\n\nそれでも新しいシフトを作成しますか？`
             )

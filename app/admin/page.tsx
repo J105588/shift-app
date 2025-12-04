@@ -211,8 +211,8 @@ export default function AdminPage() {
             }`}
           >
             <Users size={18} /> 
-            <span className="hidden sm:inline">スタッフ管理</span>
-            <span className="sm:hidden">スタッフ</span>
+            <span className="hidden sm:inline">ユーザー管理</span>
+            <span className="sm:hidden">ユーザー</span>
           </button>
           <button 
             onClick={() => setActiveTab('notifications')}
@@ -271,7 +271,7 @@ export default function AdminPage() {
                   <p className="text-xs sm:text-sm text-slate-600 mt-1">
                     {calendarView === 'calendar' 
                       ? '日付をクリックして追加、シフトをクリックして編集'
-                      : '全スタッフのシフトを一覧表示'}
+                      : '全ユーザーのシフトを一覧表示'}
                   </p>
                 </div>
                 {/* ビュー切り替えボタン */}
