@@ -76,12 +76,6 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
                   <span className="hidden sm:inline">管理者</span>
                 </Link>
               )}
-              <Link 
-                href={profile?.role === 'admin' ? '/admin' : '/dashboard'} 
-                className="hidden sm:flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors duration-200 font-medium"
-              >
-                ホーム
-              </Link>
               <button 
                 onClick={() => setIsUserModalOpen(true)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors duration-200 cursor-pointer touch-manipulation"
@@ -99,18 +93,18 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
       {/* ユーザー情報モーダル */}
       {isUserModalOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
           onClick={() => setIsUserModalOpen(false)}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 transform animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-slate-900">ユーザー情報</h2>
               <button
                 onClick={() => setIsUserModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors duration-200"
+                className="text-slate-400 hover:text-slate-600 transition-colors duration-200 p-1 rounded-lg hover:bg-slate-100"
               >
                 <X size={24} />
               </button>
@@ -130,8 +124,16 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
               </div>
               
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Shield size={24} className="text-purple-600" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  profile?.role === 'admin' 
+                    ? 'bg-purple-100' 
+                    : 'bg-slate-100'
+                }`}>
+                  {profile?.role === 'admin' ? (
+                    <Shield size={24} className="text-purple-600" />
+                  ) : (
+                    <User size={24} className="text-slate-600" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-600 mb-1">権限</p>

@@ -205,16 +205,36 @@
   }
 }
 
+@keyframes fadeInBackdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .animate-in {
   animation: fadeIn 0.2s ease-out;
 }
 
 .fade-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeInBackdrop 0.3s ease-out;
 }
 
 .zoom-in-95 {
-  animation: fadeIn 0.2s ease-out;
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* タイムテーブル用のスタイル */
