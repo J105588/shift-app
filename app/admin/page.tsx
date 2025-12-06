@@ -158,6 +158,8 @@ export default function AdminPage() {
 
   // shiftsテーブルの変更をリアルタイムで監視し、画面とDBを同期
   useEffect(() => {
+    if (!user) return
+
     const channel = supabase
       .channel('public:shifts_admin')
       .on(
@@ -167,6 +169,13 @@ export default function AdminPage() {
           fetchShifts()
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => {
+          fetchShifts() // ユーザー情報の変更も反映
+        }
+      )
 
     channel.subscribe()
 
@@ -174,7 +183,21 @@ export default function AdminPage() {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [user])
+
+  // 定期的に最新データを取得（30秒ごと、Realtimeの補完として）
+  useEffect(() => {
+    if (!user || !profile || profile?.role !== 'admin') return
+
+    const interval = setInterval(() => {
+      fetchShifts()
+    }, 30000) // 30秒ごと
+
+    return () => {
+      clearInterval(interval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile])
 
   const handleSelectSlot = ({ start }: { start: Date }) => {
     setSelectedShift(null)

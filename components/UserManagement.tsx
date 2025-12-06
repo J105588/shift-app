@@ -47,6 +47,17 @@ export default function UserManagement() {
     fetchUsers()
   }, [])
 
+  // 定期的に最新データを取得（30秒ごと）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUsers()
+    }, 30000) // 30秒ごと
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)

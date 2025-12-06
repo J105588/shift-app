@@ -172,6 +172,20 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
+  // 定期的に最新データを取得（30秒ごと、Realtimeの補完として）
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(() => {
+      loadShiftsForUser(user)
+    }, 30000) // 30秒ごと
+
+    return () => {
+      clearInterval(interval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   const handleEventClick = async (event: any) => {
     if (!user || rawShifts.length === 0) return
 

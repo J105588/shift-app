@@ -84,6 +84,7 @@ export default function ShiftDetailModal({
       }
 
       setIsEditing(false)
+      // 即座に最新データを取得
       if (onDescriptionUpdated) {
         onDescriptionUpdated()
       }
