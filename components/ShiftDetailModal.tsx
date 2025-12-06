@@ -249,8 +249,13 @@ export default function ShiftDetailModal({
                   統括
                 </span>
               </div>
-              <div className="text-sm font-semibold text-blue-900">
-                {supervisorName}
+              <div className="flex items-center justify-between text-sm font-semibold text-blue-900">
+                <span>{supervisorName}</span>
+                {isSupervisor && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white font-semibold">
+                    あなた
+                  </span>
+                )}
               </div>
             </div>
           )}
