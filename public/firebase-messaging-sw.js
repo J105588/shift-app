@@ -39,29 +39,49 @@ messaging.onBackgroundMessage((payload) => {
               `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   
   // 既に同じ tag の通知が表示されている場合は閉じる（重複防止）
-  self.registration.getNotifications({ tag: tag }).then((notifications) => {
-    notifications.forEach((n) => n.close());
-  }).catch(() => {
-    // getNotifications が使えない環境では無視
+  return self.registration.getNotifications({ tag: tag }).then((notifications) => {
+    // 既に同じ tag の通知が存在する場合は、新しい通知を表示しない
+    if (notifications && notifications.length > 0) {
+      console.log('重複通知をスキップ (tag: ' + tag + ', title: ' + notificationTitle + ')');
+      // 既存の通知を閉じて、新しい通知を表示しない
+      notifications.forEach((n) => n.close());
+      return Promise.resolve();
+    }
+    
+    const notificationOptions = {
+      body: payload.notification?.body || '',
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      data: payload.data || {},
+      // iOS向けの設定
+      requireInteraction: false,
+      silent: false,
+      vibrate: [200, 100, 200], // iOSでは無視されるが、Android用
+      tag: tag, // 同じメッセージIDの通知は1つだけ表示されるようにする（ブラウザが自動的に置き換える）
+      // バックグラウンドでも確実に通知を表示するための設定
+      renotify: false, // 重複通知を防ぐため false に変更
+      // 通知の優先度を高く設定（Android用）
+      priority: 'high',
+    };
+
+    return self.registration.showNotification(notificationTitle, notificationOptions);
+  }).catch((error) => {
+    // getNotifications が使えない環境では、通常通り通知を表示
+    console.warn('getNotifications error: ' + error.toString());
+    const notificationOptions = {
+      body: payload.notification?.body || '',
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      data: payload.data || {},
+      requireInteraction: false,
+      silent: false,
+      vibrate: [200, 100, 200],
+      tag: tag,
+      renotify: false, // 重複通知を防ぐ
+      priority: 'high',
+    };
+    return self.registration.showNotification(notificationTitle, notificationOptions);
   });
-
-  const notificationOptions = {
-    body: payload.notification?.body || '',
-    icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
-    data: payload.data || {},
-    // iOS向けの設定
-    requireInteraction: false,
-    silent: false,
-    vibrate: [200, 100, 200], // iOSでは無視されるが、Android用
-    tag: tag, // 同じメッセージIDの通知は1つだけ表示されるようにする
-    // バックグラウンドでも確実に通知を表示するための設定
-    renotify: false, // 重複通知を防ぐため false に変更
-    // 通知の優先度を高く設定（Android用）
-    priority: 'high',
-  };
-
-  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // Service Workerのインストール時に、確実にアクティブ化する

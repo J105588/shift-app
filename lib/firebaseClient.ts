@@ -211,15 +211,44 @@ export const subscribeInAppMessages = async () => {
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
           // 同じ messageId の通知が既に表示されている場合は重複を避ける
-          const tag = payload.messageId || 
-                     payload.data?.messageId || 
+          // GAS側で通知IDベースで生成されたmessageIdを優先的に使用
+          // これにより、同じ通知IDの通知は同じtagになり、重複を防げる
+          const tag = payload.data?.messageId || 
+                     payload.messageId || 
                      `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
           
           // 既に同じ tag の通知を表示済みの場合はスキップ
           if (shownNotificationTags.has(tag)) {
+            console.log('重複通知をスキップ (tag: ' + tag + ', title: ' + title + ')');
             return
           }
+          
+          // 通知を表示する前に、Setに追加して重複を防ぐ（同期的に実行）
           shownNotificationTags.add(tag)
+          
+          // ブラウザの通知APIで既に同じtagの通知が表示されているか確認（非同期だが、表示前にチェック）
+          // ただし、getNotifications APIは一部のブラウザでサポートされていないため、try-catchで囲む
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+              // 非同期でチェックするが、通知表示は同期的に実行される
+              navigator.serviceWorker.ready.then((registration) => {
+                registration.getNotifications({ tag: tag }).then((notifications) => {
+                  if (notifications && notifications.length > 0) {
+                    console.log('既存の通知を閉じる (tag: ' + tag + ')');
+                    notifications.forEach((n) => n.close());
+                    // 既存の通知が見つかった場合は、Setからも削除（次回表示可能にする）
+                    shownNotificationTags.delete(tag);
+                  }
+                }).catch(() => {
+                  // getNotifications が使えない環境では無視
+                });
+              }).catch(() => {
+                // Service Worker が使えない環境では無視
+              });
+            }
+          } catch (e) {
+            // エラーは無視
+          }
 
           // 古いタグをクリーンアップ（メモリリーク防止）
           if (shownNotificationTags.size > 100) {
@@ -236,8 +265,10 @@ export const subscribeInAppMessages = async () => {
             body: body || '',
             icon: icon || '/icon-192x192.png',
             badge: '/icon-192x192.png',
-            tag: tag, // 同じ tag の通知は1つだけ表示される
+            tag: tag, // 同じ tag の通知は1つだけ表示される（ブラウザが自動的に置き換える）
             data: payload.data || {},
+            // @ts-ignore - renotifyはブラウザAPIではサポートされているが、TypeScriptの型定義に含まれていない場合がある
+            renotify: false, // 重複通知を防ぐ
           })
 
           // 通知が閉じられたらタグを削除

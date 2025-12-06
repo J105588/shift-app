@@ -93,6 +93,7 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
     }
 
     // 3. 各デバイス(トークン)に送信（万一同じトークンが重複していても一度だけ送る）
+    // 通知IDを含めた一意の messageId を生成するため、通知IDを渡す
     var unique = {};
     tokens.forEach(function (t) {
       if (t && t.token) {
@@ -100,6 +101,7 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
       }
     });
 
+    // 通知IDを含めた一意の messageId を生成するため、通知IDを渡す
     Object.keys(unique).forEach(function (token) {
       sendFcmNotificationV1WithToken(
         projectId,
@@ -107,6 +109,7 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
         token,
         notif.title,
         notif.body,
+        notif.id, // 通知IDを渡す（重複防止のため）
         supabaseUrl,
         supabaseKey
       );
@@ -276,12 +279,26 @@ function base64UrlEncode_(obj) {
  * FCM HTTP v1 でプッシュ通知を送信 (アクセストークン再利用版)
  * 404 / 410 (UNREGISTERED) などの応答が返ったトークンは Supabase 側から自動削除する
  */
-function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body, supabaseUrl, supabaseKey) {
+function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body, notificationId, supabaseUrl, supabaseKey) {
   var url = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/messages:send';
 
-  // 通知の重複を防ぐため、一意の messageId を生成
-  // この messageId はクライアント側で重複チェックに使用される
-  var messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+  // 通知の重複を防ぐため、通知IDベースで一意の messageId を生成
+  // 同じ通知IDの通知は同じ messageId になるため、クライアント側で重複チェックが可能
+  // 通知IDが渡されていない場合は、タイトルと本文のハッシュを使用（後方互換性のため）
+  var messageId;
+  if (notificationId) {
+    // 通知IDを使用（最も確実な方法）- UUIDのハイフンを削除して使用
+    messageId = 'msg-' + notificationId.replace(/-/g, '').substring(0, 16);
+  } else {
+    // 通知IDがない場合は、タイトルと本文のハッシュを使用
+    var contentHash = Utilities.computeDigest(
+      Utilities.DigestAlgorithm.MD5,
+      title + '|' + body,
+      Utilities.Charset.UTF_8
+    );
+    var hashString = Utilities.base64EncodeWebSafe(contentHash).replace(/=+$/, '');
+    messageId = 'msg-' + hashString.substring(0, 16) + '-' + Math.floor(Date.now() / 1000);
+  }
   
   var payload = {
     message: {
@@ -344,9 +361,43 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
  * 戻り値: 更新が成功した場合 true、既に更新済みまたは失敗した場合 false
  */
 function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
+  // まず、通知が既に送信済みかどうかを確認
+  var checkUrl = supabaseUrl + '/rest/v1/notifications'
+    + '?id=eq.' + encodeURIComponent(notifId)
+    + '&select=id,sent_at';
+  
+  var checkOptions = {
+    method: 'get',
+    headers: {
+      apikey: supabaseKey,
+      Authorization: 'Bearer ' + supabaseKey,
+      'Content-Type': 'application/json',
+    },
+    muteHttpExceptions: true,
+  };
+  
+  var checkRes = UrlFetchApp.fetch(checkUrl, checkOptions);
+  if (checkRes.getResponseCode() >= 300) {
+    console.error('markNotificationSent check error: ' + checkRes.getContentText());
+    return false;
+  }
+  
+  var checkData = JSON.parse(checkRes.getContentText());
+  if (!checkData || checkData.length === 0) {
+    console.log('通知が見つかりません (notification_id: ' + notifId + ')');
+    return false;
+  }
+  
+  // 既に送信済みの場合は false を返す
+  if (checkData[0].sent_at) {
+    console.log('既に送信済み (notification_id: ' + notifId + ')');
+    return false;
+  }
+  
+  // sent_at が null のもののみ更新（重複防止）
   var url = supabaseUrl + '/rest/v1/notifications'
     + '?id=eq.' + encodeURIComponent(notifId)
-    + '&sent_at=is.null'; // sent_at が null のもののみ更新（重複防止）
+    + '&sent_at=is.null';
 
   var body = {
     sent_at: new Date().toISOString(),
@@ -377,9 +428,14 @@ function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
   if (responseText) {
     try {
       var updated = JSON.parse(responseText);
-      return updated && updated.length > 0;
+      var success = updated && updated.length > 0;
+      if (!success) {
+        console.log('更新失敗: 既に他のプロセスで更新済み (notification_id: ' + notifId + ')');
+      }
+      return success;
     } catch (e) {
       // JSONパースエラーは無視（更新は成功した可能性がある）
+      console.warn('markNotificationSent JSON parse error: ' + e.toString());
       return true;
     }
   }
