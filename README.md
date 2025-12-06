@@ -216,6 +216,7 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 -- database/migration_fix_push_subscriptions.sql
 -- database/migration_fix_push_subscriptions_rls.sql
 -- database/migration_admin_update_profiles.sql（管理者がユーザーを編集できるようにする）
+-- database/migration_supervisor_edit_description.sql（統括者がシフトのメモを編集できるようにする）
 ```
 
 ### データベース構造
@@ -244,6 +245,7 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 **RLSポリシー:**
 - 全員が閲覧可能
 - 管理者のみ追加・編集・削除可能
+- 統括者は自分のシフトの`description`のみ更新可能
 
 #### `push_subscriptions` テーブル
 - `id` (UUID, PK): サブスクリプションID

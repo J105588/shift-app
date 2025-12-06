@@ -1,5 +1,7 @@
 'use client'
-import { Clock, Users, UserCog, X, CalendarDays } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Clock, Users, UserCog, X, CalendarDays, Edit2, Save } from 'lucide-react'
+import { createClient } from '@/lib/supabase'
 
 type ShiftDetail = {
   id: string
@@ -7,6 +9,7 @@ type ShiftDetail = {
   start: Date
   end: Date
   description?: string | null
+  supervisor_id?: string | null
 }
 
 type Coworker = {
@@ -21,9 +24,41 @@ type Props = {
   shift: ShiftDetail | null
   coworkers: Coworker[]
   supervisorName?: string | null
+  currentUserId?: string | null
+  onDescriptionUpdated?: () => void
 }
 
-export default function ShiftDetailModal({ isOpen, onClose, shift, coworkers, supervisorName }: Props) {
+export default function ShiftDetailModal({ 
+  isOpen, 
+  onClose, 
+  shift, 
+  coworkers, 
+  supervisorName,
+  currentUserId,
+  onDescriptionUpdated
+}: Props) {
+  const supabase = createClient()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedDescription, setEditedDescription] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSupervisor, setIsSupervisor] = useState(false)
+
+  // 統括者かどうかをチェック
+  useEffect(() => {
+    if (shift && currentUserId) {
+      setIsSupervisor(shift.supervisor_id === currentUserId)
+    } else {
+      setIsSupervisor(false)
+    }
+  }, [shift, currentUserId])
+
+  // 編集モード開始時に現在のdescriptionをセット
+  useEffect(() => {
+    if (isEditing && shift) {
+      setEditedDescription(shift.description || '')
+    }
+  }, [isEditing, shift])
+
   if (!isOpen || !shift) return null
 
   const formatTime = (date: Date) =>
@@ -31,6 +66,39 @@ export default function ShiftDetailModal({ isOpen, onClose, shift, coworkers, su
 
   const formatDate = (date: Date) =>
     date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })
+
+  const handleSaveDescription = async () => {
+    if (!shift || !isSupervisor) return
+
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from('shifts')
+        .update({ description: editedDescription.trim() || null })
+        .eq('id', shift.id)
+
+      if (error) {
+        console.error('メモ更新エラー:', error)
+        alert('メモの更新に失敗しました: ' + error.message)
+        return
+      }
+
+      setIsEditing(false)
+      if (onDescriptionUpdated) {
+        onDescriptionUpdated()
+      }
+    } catch (error: any) {
+      console.error('メモ更新エラー:', error)
+      alert('メモの更新に失敗しました')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditedDescription(shift.description || '')
+  }
 
   return (
     <div
@@ -81,16 +149,64 @@ export default function ShiftDetailModal({ isOpen, onClose, shift, coworkers, su
           </div>
 
           {/* 仕事内容メモ */}
-          {shift.description && (
-            <div className="bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200">
-              <div className="text-xs font-semibold text-slate-600 mb-1">
+          <div className="bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs font-semibold text-slate-600">
                 仕事内容のメモ
               </div>
-              <p className="text-sm text-slate-800 whitespace-pre-wrap">
-                {shift.description}
-              </p>
+              {isSupervisor && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                >
+                  <Edit2 size={14} />
+                  編集
+                </button>
+              )}
             </div>
-          )}
+            {isEditing && isSupervisor ? (
+              <div className="space-y-2">
+                <textarea
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  placeholder="仕事内容のメモを入力してください"
+                  className="w-full p-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm resize-none"
+                  rows={4}
+                  disabled={isSaving}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveDescription}
+                    disabled={isSaving}
+                    className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isSaving ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        保存中...
+                      </>
+                    ) : (
+                      <>
+                        <Save size={14} />
+                        保存
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="flex-1 px-3 py-2 bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-800 whitespace-pre-wrap">
+                {shift.description || 'メモはありません'}
+              </p>
+            )}
+          </div>
 
           {/* 統括 */}
           {supervisorName && (

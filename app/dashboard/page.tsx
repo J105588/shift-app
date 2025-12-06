@@ -49,22 +49,27 @@ export default function Dashboard() {
         shiftTitle: s.title,
         description: s.description,
         supervisor_id: s.supervisor_id,
+        user_id: s.user_id, // 元のuser_idも保持
       }))
       
-      // 自分のシフトだけを画面に表示
-      const myEvents = formatted.filter((e: any) => e.resourceId === currentUser.id)
+      // 自分のシフトと統括者として設定されているシフトを画面に表示
+      const myEvents = formatted.filter((e: any) => 
+        e.resourceId === currentUser.id || e.supervisor_id === currentUser.id
+      )
       setEvents(myEvents)
 
       // 現在時刻
       const now = new Date()
       
       // 進行中のシフトを探す（開始時刻 <= 現在時刻 <= 終了時刻）
-      const currentShifts = myEvents.filter((e: any) => {
+      // 自分のシフト（user_idが自分のID）のみを対象
+      const myOwnShifts = formatted.filter((e: any) => e.resourceId === currentUser.id)
+      const currentShifts = myOwnShifts.filter((e: any) => {
         return e.start <= now && e.end >= now
       })
       
       // 自分の次のシフトを探す（現在時刻より後のシフト）
-      const myShifts = myEvents
+      const myShifts = myOwnShifts
         .filter((e: any) => e.start > now)
         .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
       
@@ -268,11 +273,19 @@ export default function Dashboard() {
                 start: selectedEvent.start,
                 end: selectedEvent.end,
                 description: selectedEvent.description,
+                supervisor_id: selectedEvent.supervisor_id,
               }
             : null
         }
         coworkers={coworkers}
         supervisorName={supervisorName}
+        currentUserId={user?.id}
+        onDescriptionUpdated={() => {
+          // シフト情報を再取得
+          if (user) {
+            loadShiftsForUser(user)
+          }
+        }}
       />
     </div>
   )
