@@ -1,6 +1,6 @@
 # 文化祭シフト管理システム
 
-文化祭スタッフのシフト管理を行うためのPWA（Progressive Web App）アプリケーションです。リアルタイム同期、プッシュ通知、オフライン対応、メンテナンスモードなどの機能を備えています。
+文化祭スタッフのシフト管理を行うためのPWA（Progressive Web App）アプリケーションです。リアルタイム同期、プッシュ通知、オフライン対応、メンテナンスモード、団体付与シフト機能などを備えています。
 
 ## 📋 目次
 
@@ -33,29 +33,64 @@
 
 ### シフト管理
 
-- **カレンダー表示**: 週・月・日ビューでのシフト表示（デスクトップ）
+#### 個別付与シフト
+
+- **シフト作成・編集**: 管理者による個別スタッフへのシフト追加・編集・削除
+- **一括登録**: 複数スタッフへの同時シフト登録（同じ業務内容または個別設定）
+- **統括者設定**: 各シフトに統括者を設定可能（個別付与シフト用）
+- **シフト詳細**: 仕事内容の詳細メモ機能
+- **重複チェック**: 同じ時間帯のシフト重複を自動検出（個別付与シフトと団体付与シフトの両方をチェック）
+
+#### 団体付与シフト（新機能）
+
+- **団体シフト作成**: 複数のスタッフを一度に同じシフトに割り当て
+- **統括者設定**: 団体シフト内で統括者を1名指定（必須）
+- **参加者管理**: チェックボックスで複数スタッフを選択
+- **自動通知**: 各参加者に対してシフト開始の1時間前、30分前、5分前に自動通知
+- **シフト詳細表示**: 団体シフトの参加者全員と統括者を表示
+- **統括者の権限**: 統括者は自分の団体シフトの詳細メモを編集可能
+- **重複チェック**: 団体付与シフトと個別付与シフトの重複を自動検出
+
+#### カレンダー表示
+
+- **週・月・日ビュー**: デスクトップ向けのカレンダー表示（react-big-calendar）
 - **モバイル対応カレンダー**: タッチ操作に最適化されたカスタムカレンダー
 - **表形式表示**: 全スタッフのシフトを一覧表示（SpreadsheetView）
-- **シフト作成・編集**: 管理者によるシフトの追加・編集・削除
-- **一括登録**: 複数スタッフへの同時シフト登録
-- **統括者設定**: 各シフトに統括者を設定可能
-- **シフト詳細**: 仕事内容の詳細メモ機能
-- **重複チェック**: 同じ時間帯のシフト重複を自動検出
 - **シフト詳細モーダル**: 同じ時間帯の同僚情報を表示
 
 ### ダッシュボード
 
-- **個人シフト表示**: 自分のシフトのみを表示
+- **個人シフト表示**: 自分のシフトのみを表示（個別付与と団体付与の両方）
 - **次のシフト表示**: 次回のシフトを強調表示
-- **シフト詳細モーダル**: 同じ時間帯の同僚情報を表示
-- **リアルタイム更新**: Supabase Realtimeによる自動同期
+- **シフト詳細モーダル**: 
+  - 個別付与シフト: 同じ時間帯の同僚情報を表示
+  - 団体付与シフト: 参加者全員と統括者を表示
+- **リアルタイム更新**: Supabase Realtimeによる自動同期（shifts、shift_groups、shift_assignmentsの変更を監視）
 - **メンテナンスモード自動検知**: 5秒ごとにメンテナンスモードをチェックし、有効な場合は自動的にメンテナンスページへリダイレクト
 
 ### プッシュ通知
 
-- **Firebase Cloud Messaging**: Web Push通知の送信
-- **管理者からの通知**: 選択したスタッフへの一斉通知
+#### 管理者からの通知
+
+- **ユーザー選択**: 個別にスタッフを選択して通知を送信
+- **グループ選択（新機能）**: 団体シフト単位で通知を送信
+  - 未終了の団体シフトが自動的にグループとして表示
+  - グループ名形式: `MMDD-HHMM-HHMM-仕事名`（例: `0921-1100-1230-受付`）
+  - 選択したグループの全参加者に一括通知
+  - シフト終了後は自動的にグループ一覧から除外
 - **スケジュール通知**: 指定した日時に通知を送信可能
+- **リアルタイム更新**: グループ一覧がリアルタイムで更新
+
+#### 自動通知
+
+- **シフト開始前通知**: シフト開始の1時間前、30分前、5分前に自動通知
+  - 個別付与シフト: 各スタッフに個別に通知
+  - 団体付与シフト: 各参加者に個別に通知
+- **通知削除**: シフト削除時に関連する未送信通知を自動削除
+
+#### 通知機能全般
+
+- **Firebase Cloud Messaging**: Web Push通知の送信
 - **自動再試行**: FCMトークン取得失敗時の自動再試行（最大3回）
 - **トークン管理**: ログイン時に自動登録、ログアウト時に自動削除
 - **重複通知防止**: 同じ通知が複数回表示されない仕組み
@@ -217,6 +252,8 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 -- database/migration_fix_push_subscriptions_rls.sql
 -- database/migration_admin_update_profiles.sql（管理者がユーザーを編集できるようにする）
 -- database/migration_supervisor_edit_description.sql（統括者がシフトのメモを編集できるようにする）
+-- database/migration_shift_groups.sql（団体付与シフト機能）
+-- database/migration_add_shift_group_notification_link.sql（団体付与シフトの通知リンク）
 ```
 
 ### データベース構造
@@ -232,7 +269,7 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 - ユーザーは自分のプロフィールのみ作成・編集可能
 - 管理者は全ユーザーのプロフィールを編集可能
 
-#### `shifts` テーブル
+#### `shifts` テーブル（個別付与シフト）
 - `id` (UUID, PK): シフトID
 - `user_id` (UUID, FK): スタッフID（profiles.id参照）
 - `title` (TEXT): 仕事内容
@@ -246,6 +283,33 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 - 全員が閲覧可能
 - 管理者のみ追加・編集・削除可能
 - 統括者は自分のシフトの`description`のみ更新可能
+
+#### `shift_groups` テーブル（団体付与シフト）
+- `id` (UUID, PK): シフトグループID
+- `title` (TEXT): 業務内容
+- `start_time` (TIMESTAMP): 開始時刻
+- `end_time` (TIMESTAMP): 終了時刻
+- `description` (TEXT, nullable): 詳細メモ
+- `location` (TEXT, nullable): 場所（将来の拡張用）
+- `created_at` (TIMESTAMP): 作成日時
+- `updated_at` (TIMESTAMP): 更新日時
+
+**RLSポリシー:**
+- 全員が閲覧可能
+- 管理者のみ追加・編集・削除可能
+- 統括者は自分のシフトグループの`description`のみ更新可能
+
+#### `shift_assignments` テーブル（団体付与シフトの参加者）
+- `id` (UUID, PK): 割り当てID
+- `shift_group_id` (UUID, FK): シフトグループID（shift_groups.id参照、CASCADE削除）
+- `user_id` (UUID, FK): 参加者ID（profiles.id参照、CASCADE削除）
+- `is_supervisor` (BOOLEAN): 統括者フラグ
+- `created_at` (TIMESTAMP): 作成日時
+- UNIQUE制約: `(shift_group_id, user_id)` - 同じシフトグループに同じユーザーを重複登録できない
+
+**RLSポリシー:**
+- 全員が閲覧可能
+- 管理者のみ追加・編集・削除可能
 
 #### `push_subscriptions` テーブル
 - `id` (UUID, PK): サブスクリプションID
@@ -264,6 +328,7 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 - `scheduled_at` (TIMESTAMP, nullable): 送信予定時刻（nullの場合は即時送信）
 - `sent_at` (TIMESTAMP, nullable): 送信完了時刻
 - `shift_id` (UUID, FK, nullable): 関連シフトID（shifts.id参照、CASCADE削除）
+- `shift_group_id` (UUID, FK, nullable): 関連シフトグループID（shift_groups.id参照、CASCADE削除）
 - `created_by` (UUID, FK, nullable): 作成者ID（profiles.id参照）
 - `created_at` (TIMESTAMP): 作成日時
 
@@ -302,6 +367,8 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 
 - **profiles**: 全員閲覧可能、自分のプロフィールのみ編集可能（管理者は全ユーザー編集可能）
 - **shifts**: 全員閲覧可能、管理者のみ編集可能
+- **shift_groups**: 全員閲覧可能、管理者のみ編集可能（統括者はdescriptionのみ更新可能）
+- **shift_assignments**: 全員閲覧可能、管理者のみ編集可能
 - **push_subscriptions**: 自分のトークンのみ管理可能
 - **notifications**: 管理者のみ作成可能、自分宛の通知のみ閲覧可能
 - **app_updates**: 全員閲覧可能、管理者のみ追加可能
@@ -474,13 +541,13 @@ Apps Scriptエディタで：
 
 - **`components/UserManagement.tsx`**: ユーザー管理（作成・編集・一覧表示）
 - **`components/AdminCalendar.tsx`**: 管理者用カレンダー表示
-- **`components/AdminNotifications.tsx`**: 通知作成・管理
+- **`components/AdminNotifications.tsx`**: 通知作成・管理（ユーザー選択・グループ選択）
 - **`components/AdminSettings.tsx`**: システム設定（メンテナンスモード、PWA更新）
 
 ### シフト管理コンポーネント
 
-- **`components/ShiftModal.tsx`**: シフト作成・編集モーダル
-- **`components/ShiftDetailModal.tsx`**: シフト詳細表示モーダル
+- **`components/ShiftModal.tsx`**: シフト作成・編集モーダル（個別付与・団体付与対応）
+- **`components/ShiftDetailModal.tsx`**: シフト詳細表示モーダル（個別付与・団体付与対応）
 - **`components/ScheduleTimetable.tsx`**: タイムテーブル表示
 - **`components/SpreadsheetView.tsx`**: 表形式シフト表示
 
@@ -630,6 +697,8 @@ Vercel Dashboard → Settings → Environment Variables で以下を設定：
 5. ✅ GASトリガーが正しく設定されているか
 6. ✅ メンテナンスモードが動作するか
 7. ✅ ユーザー管理機能が動作するか
+8. ✅ 団体付与シフト機能が動作するか
+9. ✅ グループ選択による通知配信が動作するか
 
 ## 🏛 アーキテクチャ
 
@@ -646,21 +715,50 @@ Vercel Dashboard → Settings → Environment Variables で以下を設定：
 
 ### シフト管理フロー
 
+#### 個別付与シフト
+
 1. 管理者がカレンダー上で日付をクリック
-2. `ShiftModal`が開き、シフト情報を入力
-3. Supabaseにシフトを保存
-4. Supabase Realtimeが変更を検知
-5. 全クライアントが自動的に更新
+2. `ShiftModal`が開き、「個別付与」モードを選択
+3. シフト情報を入力（担当者、業務内容、時間、統括者など）
+4. Supabaseの`shifts`テーブルに保存
+5. 自動通知を作成（1時間前、30分前、5分前）
+6. Supabase Realtimeが変更を検知
+7. 全クライアントが自動的に更新
+
+#### 団体付与シフト
+
+1. 管理者がカレンダー上で日付をクリック
+2. `ShiftModal`が開き、「団体付与」モードを選択（デフォルト）
+3. 参加者を複数選択
+4. 統括者を選択（必須）
+5. 業務内容、時間、詳細メモを入力
+6. `shift_groups`テーブルにシフトグループを作成
+7. `shift_assignments`テーブルに各参加者を登録（統括者フラグ付き）
+8. 各参加者に対して自動通知を作成（1時間前、30分前、5分前）
+9. Supabase Realtimeが変更を検知（shift_groups、shift_assignments）
+10. 全クライアントが自動的に更新
 
 ### 通知送信フロー
 
+#### 管理者からの通知
+
 1. 管理者が通知を作成（`AdminNotifications`コンポーネント）
+   - **ユーザー選択モード**: 個別にスタッフを選択
+   - **グループ選択モード**: 未終了の団体シフトをグループとして選択
 2. `notifications`テーブルにレコードが追加
 3. GASの`processNotifications`が1分ごとに実行
 4. `scheduled_at <= now()`かつ`sent_at IS NULL`の通知を取得
 5. 対象ユーザーのFCMトークンを取得（重複トークンは自動削除）
 6. Firebase Cloud Messaging経由で通知を送信
 7. 送信済みマーク（`sent_at`更新）
+
+#### 自動通知（シフト開始前）
+
+1. シフト作成時（個別付与・団体付与の両方）に`createShiftNotifications`が呼び出される
+2. 各参加者に対して3つの通知を作成（1時間前、30分前、5分前）
+3. `notifications`テーブルに`shift_id`または`shift_group_id`を関連付け
+4. GASが1分ごとに実行され、送信時刻が来たら通知を送信
+5. シフト削除時に関連する未送信通知を自動削除
 
 ### PWA更新フロー
 
@@ -747,7 +845,7 @@ Vercel Dashboard → Settings → Environment Variables で以下を設定：
 ### データベースエラー
 
 - ✅ SupabaseのRLSポリシーが正しく設定されているか
-- ✅ マイグレーションがすべて実行されているか
+- ✅ マイグレーションがすべて実行されているか（特に`migration_shift_groups.sql`）
 - ✅ Supabase Dashboardのログでエラーを確認
 - ✅ `SUPABASE_SERVICE_ROLE_KEY`が正しく設定されているか（API Routes用）
 
@@ -771,6 +869,21 @@ Vercel Dashboard → Settings → Environment Variables で以下を設定：
 - ✅ `app_settings`テーブルに`maintenance_mode`レコードが存在するか
 - ✅ ブラウザのコンソールでエラーを確認
 - ✅ ページをリロードして確認
+
+### 団体付与シフトが表示されない
+
+- ✅ `migration_shift_groups.sql`が実行されているか
+- ✅ `shift_groups`と`shift_assignments`テーブルが作成されているか
+- ✅ RLSポリシーが正しく設定されているか
+- ✅ ブラウザのコンソールでエラーを確認
+- ✅ Supabase Realtimeが有効になっているか
+
+### グループ選択による通知が送信されない
+
+- ✅ `migration_add_shift_group_notification_link.sql`が実行されているか
+- ✅ `notifications`テーブルに`shift_group_id`カラムが存在するか
+- ✅ 選択したグループに参加者が存在するか
+- ✅ GASのログでエラーを確認
 
 ## 📚 参考資料
 

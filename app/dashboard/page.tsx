@@ -232,7 +232,7 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile])
 
-  // shiftsテーブルの変更をリアルタイムで監視し、画面とDBを同期
+  // shifts、shift_groups、shift_assignmentsテーブルの変更をリアルタイムで監視し、画面とDBを同期
   useEffect(() => {
     if (!user) return
 
@@ -243,6 +243,20 @@ export default function Dashboard() {
         { event: '*', schema: 'public', table: 'shifts' },
         () => {
           loadShiftsForUser(user)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shift_groups' },
+        () => {
+          loadShiftsForUser(user) // 団体付与シフトの変更を反映
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shift_assignments' },
+        () => {
+          loadShiftsForUser(user) // 団体付与シフトの参加者の変更を反映
         }
       )
 

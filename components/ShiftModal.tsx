@@ -184,20 +184,22 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           const startIso = new Date(formData.start).toISOString()
           const endIso = new Date(formData.end).toISOString()
 
-          // start_time < 新しい終了 && end_time > 新しい開始 → 重なっている
-          const { data: overlaps, error: overlapError } = await supabase
+          const overlapLines: string[] = []
+
+          // 1. 個別付与シフト（shiftsテーブル）との重複チェック
+          const { data: shiftsOverlaps, error: shiftsOverlapError } = await supabase
             .from('shifts')
             .select('*, profiles!shifts_user_id_fkey(display_name)')
             .in('user_id', targetUserIds)
             .lt('start_time', endIso)
             .gt('end_time', startIso)
 
-          if (overlapError) {
-            console.warn('重複シフトチェック中のエラー:', overlapError)
+          if (shiftsOverlapError) {
+            console.warn('重複シフトチェック中のエラー（shifts）:', shiftsOverlapError)
           }
 
-          if (overlaps && overlaps.length > 0) {
-            const lines = overlaps.map((s: any) => {
+          if (shiftsOverlaps && shiftsOverlaps.length > 0) {
+            shiftsOverlaps.forEach((s: any) => {
               const start = new Date(s.start_time)
               const end = new Date(s.end_time)
               const timeStr = `${start.toLocaleTimeString('ja-JP', {
@@ -208,11 +210,51 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
                 minute: '2-digit',
               })}`
               const name = s.profiles?.display_name || '不明'
-              return `・${name}：${timeStr}「${s.title}」`
+              overlapLines.push(`・${name}：${timeStr}「${s.title}」（個別付与）`)
             })
+          }
 
+          // 2. 団体付与シフト（shift_assignments）との重複チェック
+          const { data: assignmentsOverlaps, error: assignmentsOverlapError } = await supabase
+            .from('shift_assignments')
+            .select(`
+              *,
+              shift_groups!shift_assignments_shift_group_id_fkey(*),
+              profiles!shift_assignments_user_id_fkey(display_name)
+            `)
+            .in('user_id', targetUserIds)
+
+          if (assignmentsOverlapError) {
+            console.warn('重複シフトチェック中のエラー（shift_assignments）:', assignmentsOverlapError)
+          }
+
+          if (assignmentsOverlaps && assignmentsOverlaps.length > 0) {
+            assignmentsOverlaps.forEach((a: any) => {
+              const group = a.shift_groups
+              if (!group) return
+              
+              const groupStart = new Date(group.start_time)
+              const groupEnd = new Date(group.end_time)
+              
+              // 時間が重なっているかチェック
+              if (groupStart.getTime() < new Date(endIso).getTime() && 
+                  groupEnd.getTime() > new Date(startIso).getTime()) {
+                const timeStr = `${groupStart.toLocaleTimeString('ja-JP', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}〜${groupEnd.toLocaleTimeString('ja-JP', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}`
+                const name = a.profiles?.display_name || '不明'
+                overlapLines.push(`・${name}：${timeStr}「${group.title}」（団体付与）`)
+              }
+            })
+          }
+
+          if (overlapLines.length > 0) {
             const proceed = window.confirm(
-              `以下のユーザーは、この時間帯にすでにシフトが入っています。\n\n${lines.join(
+              `以下のユーザーは、この時間帯にすでにシフトが入っています。\n\n${overlapLines.join(
                 '\n'
               )}\n\nそれでも新しいシフトを作成しますか？`
             )
@@ -848,7 +890,6 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
             </div>
           )}
 
-          {/* 統括者選択 */}
           {/* 仕事内容メモ */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -862,23 +903,26 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-              <UserCog size={16} className="text-blue-600" />
-              統括者（任意）
-            </label>
-            <select 
-              className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
-              value={formData.supervisor_id}
-              onChange={(e) => setFormData({...formData, supervisor_id: e.target.value})}
-            >
-              <option value="">統括者なし</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.display_name}</option>
-              ))}
-            </select>
-            <p className="text-xs text-slate-500 mt-1">このシフトの統括責任者を選択できます</p>
-          </div>
+          {/* 統括者選択（個別付与モードのみ） */}
+          {mode !== 'group' && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <UserCog size={16} className="text-blue-600" />
+                統括者（任意）
+              </label>
+              <select 
+                className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
+                value={formData.supervisor_id}
+                onChange={(e) => setFormData({...formData, supervisor_id: e.target.value})}
+              >
+                <option value="">統括者なし</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.display_name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">このシフトの統括責任者を選択できます</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
