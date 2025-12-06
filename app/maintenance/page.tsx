@@ -82,42 +82,42 @@ export default function MaintenancePage() {
   }, [])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-8 sm:py-12">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-          <div className="bg-orange-600 p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-xl mb-4 shadow-md">
-              <AlertTriangle className="text-orange-600" size={32} />
+          <div className="bg-orange-600 p-6 sm:p-8 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-white rounded-xl mb-3 sm:mb-4 shadow-md">
+              <AlertTriangle className="text-orange-600 w-7 h-7 sm:w-8 sm:h-8" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">システムメンテナンス中</h1>
-            <p className="text-orange-100 text-sm">現在、システムメンテナンスを実施しています</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">システムメンテナンス中</h1>
+            <p className="text-orange-100 text-xs sm:text-sm">現在、システムメンテナンスを実施しています</p>
           </div>
           
-          <div className="p-8 space-y-6 bg-white">
+          <div className="p-6 sm:p-8 space-y-5 sm:space-y-6 bg-white">
             <div className="space-y-4">
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                    <CalendarDays className="text-orange-600" size={24} />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <CalendarDays className="text-orange-600 w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold text-slate-900 mb-2">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-2">
                     メンテナンス中のため、一時的にご利用いただけません
                   </h2>
-                  <p className="text-sm text-slate-600 mb-4">
+                  <p className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4">
                     システムのメンテナンス作業を実施中です。作業完了までしばらくお待ちください。
                   </p>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm font-semibold text-red-900 mb-1">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                    <p className="text-xs sm:text-sm font-semibold text-red-900 mb-1">
                       ⚠ 期間中は操作・閲覧できません
                     </p>
                     <p className="text-xs text-red-700">
                       メンテナンス期間中は、シフトの確認や編集など、すべての操作ができません。
                     </p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-blue-900 mb-1">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                    <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">
                       ✓ 自動復帰
                     </p>
                     <p className="text-xs text-blue-700">

@@ -402,6 +402,9 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
           <div className="text-center">
             <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-1">
               {formatDateFull(selectedDate)}
+              {isToday(selectedDate) && (
+                <span className="ml-2 text-blue-600 font-normal">(今日)</span>
+              )}
             </h3>
             <div className="text-sm text-slate-600">
               {selectedDateEvents.length}件のシフト

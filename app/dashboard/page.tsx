@@ -55,14 +55,27 @@ export default function Dashboard() {
       const myEvents = formatted.filter((e: any) => e.resourceId === currentUser.id)
       setEvents(myEvents)
 
-      // 自分の次のシフトを探す
+      // 現在時刻
       const now = new Date()
+      
+      // 進行中のシフトを探す（開始時刻 <= 現在時刻 <= 終了時刻）
+      const currentShifts = myEvents.filter((e: any) => {
+        return e.start <= now && e.end >= now
+      })
+      
+      // 自分の次のシフトを探す（現在時刻より後のシフト）
       const myShifts = myEvents
         .filter((e: any) => e.start > now)
         .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
       
-      if (myShifts.length > 0) setNextShift(myShifts[0])
-      else setNextShift(null)
+      // 進行中のシフトがあればそれを優先、なければ次のシフト
+      if (currentShifts.length > 0) {
+        setNextShift({ ...currentShifts[0], isCurrent: true })
+      } else if (myShifts.length > 0) {
+        setNextShift({ ...myShifts[0], isCurrent: false })
+      } else {
+        setNextShift(null)
+      }
     }
   }
 
@@ -210,20 +223,24 @@ export default function Dashboard() {
             </div>
             
             {nextShift ? (
-              <div className="bg-blue-50 border-2 border-blue-200 px-6 py-4 rounded-lg flex items-center gap-4 w-full lg:w-auto">
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <Clock size={28} className="text-blue-600" />
+              <div className={`${nextShift.isCurrent ? 'bg-red-50 border-2 border-red-200' : 'bg-blue-50 border-2 border-blue-200'} px-4 sm:px-6 py-4 rounded-lg flex items-center gap-3 sm:gap-4 w-full lg:w-auto`}>
+                <div className={`${nextShift.isCurrent ? 'bg-red-100' : 'bg-blue-100'} p-2 sm:p-3 rounded-lg flex-shrink-0`}>
+                  <Clock size={24} className={`${nextShift.isCurrent ? 'text-red-600' : 'text-blue-600'} sm:w-7 sm:h-7`} />
                 </div>
-                <div>
-                  <div className="text-xs text-blue-600 font-semibold uppercase tracking-wider mb-1">次のシフト</div>
-                  <div className="font-bold text-slate-900 text-lg">
-                    {format(nextShift.start, 'M/d(E) HH:mm', { locale: ja })} 〜
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs ${nextShift.isCurrent ? 'text-red-600' : 'text-blue-600'} font-semibold uppercase tracking-wider mb-1`}>
+                    {nextShift.isCurrent ? '進行中のシフト' : '次のシフト'}
                   </div>
-                  <div className="text-sm text-slate-600 mt-1">{nextShift.shiftTitle || nextShift.title}</div>
+                  <div className={`font-bold text-slate-900 text-base sm:text-lg truncate`}>
+                    {format(nextShift.start, 'M/d(E) HH:mm', { locale: ja })} 〜 {format(nextShift.end, 'HH:mm', { locale: ja })}
+                  </div>
+                  <div className={`text-sm ${nextShift.isCurrent ? 'text-red-700' : 'text-slate-600'} mt-1 truncate`}>
+                    {nextShift.shiftTitle || nextShift.title}
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-50 px-6 py-4 rounded-lg border-2 border-slate-200 text-slate-600 text-sm font-medium">
+              <div className="bg-slate-50 px-4 sm:px-6 py-4 rounded-lg border-2 border-slate-200 text-slate-600 text-sm font-medium w-full lg:w-auto">
                 予定されているシフトはありません
               </div>
             )}

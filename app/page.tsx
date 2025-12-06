@@ -242,11 +242,11 @@ export default function LoginPage() {
               <p className="text-blue-100 text-sm">配布されたアカウントでログイン</p>
             </div>
             
-            <div className="p-12 text-center bg-white">
-              <div className="flex flex-col items-center justify-center gap-4">
-                <span className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
-                <p className="text-lg font-semibold text-slate-700">検証中...</p>
-                <p className="text-sm text-slate-500">ログイン状態を確認しています</p>
+            <div className="p-8 sm:p-12 text-center bg-white">
+              <div className="flex flex-col items-center justify-center gap-3 sm:gap-4">
+                <span className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                <p className="text-base sm:text-lg font-semibold text-slate-700">検証中...</p>
+                <p className="text-xs sm:text-sm text-slate-500">ログイン状態を確認しています</p>
               </div>
             </div>
           </div>
@@ -264,15 +264,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-          <div className="bg-blue-600 p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-xl mb-4 shadow-md">
-              <CalendarDays className="text-blue-600" size={32} />
+            <div className="bg-blue-600 p-6 sm:p-8 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-white rounded-xl mb-3 sm:mb-4 shadow-md">
+              <CalendarDays className="text-blue-600 w-7 h-7 sm:w-8 sm:h-8" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">文化祭シフト管理</h1>
-            <p className="text-blue-100 text-sm">配布されたアカウントでログイン</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">文化祭シフト管理</h1>
+            <p className="text-blue-100 text-xs sm:text-sm">配布されたアカウントでログイン</p>
           </div>
           
-          <form onSubmit={handleLogin} className="p-8 space-y-6 bg-white">
+          <form onSubmit={handleLogin} className="p-6 sm:p-8 space-y-5 sm:space-y-6 bg-white">
             {isMaintenanceMode && (
               <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertTriangle className="text-orange-600 flex-shrink-0 mt-0.5" size={20} />
@@ -314,7 +314,7 @@ export default function LoginPage() {
 
             <button 
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+              className="w-full bg-blue-600 text-white py-3 sm:py-3.5 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg touch-manipulation min-h-[44px]"
             >
               {loading ? (
                 <span className="flex items-center gap-2">
