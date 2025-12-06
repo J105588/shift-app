@@ -98,7 +98,9 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
   }, [editShift, initialDate, isOpen])
 
   // シフトに関連する通知を作成するヘルパー関数
-  const createShiftNotifications = async (shiftId: string, userId: string, title: string, startTime: string, endTime: string) => {
+  // shiftIdはshift_groupsのIDまたはshiftsのIDのいずれか
+  // isGroupShift: trueの場合はshift_group_idを使用、falseの場合はshift_idを使用
+  const createShiftNotifications = async (shiftId: string, userId: string, title: string, startTime: string, endTime: string, isGroupShift: boolean = false) => {
     const start = new Date(startTime)
     const end = new Date(endTime)
     
@@ -116,8 +118,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         if (scheduled.getTime() <= Date.now()) {
           return null
         }
-        return {
-          shift_id: shiftId,
+        const notification: any = {
           target_user_id: userId,
           title: 'シフトのご案内',
           body: `${start.toLocaleTimeString('ja-JP', {
@@ -129,6 +130,15 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           })}「${title}」のシフトが${minutes}分後に開始します。`,
           scheduled_at: scheduled.toISOString(),
         }
+        
+        // shift_groupsの場合はshift_group_id、shiftsの場合はshift_idを使用
+        if (isGroupShift) {
+          notification.shift_group_id = shiftId
+        } else {
+          notification.shift_id = shiftId
+        }
+        
+        return notification
       })
       .filter((r): r is NonNullable<typeof r> => r !== null)
 
@@ -138,13 +148,22 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
   }
 
   // シフトに関連する通知を削除するヘルパー関数
-  const deleteShiftNotifications = async (shiftId: string) => {
+  // isGroupShift: trueの場合はshift_group_idを使用、falseの場合はshift_idを使用
+  const deleteShiftNotifications = async (shiftId: string, isGroupShift: boolean = false) => {
     // 未送信の通知のみ削除（既に送信済みの通知は保持）
-    await supabase
-      .from('notifications')
-      .delete()
-      .eq('shift_id', shiftId)
-      .is('sent_at', null)
+    if (isGroupShift) {
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('shift_group_id', shiftId)
+        .is('sent_at', null)
+    } else {
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('shift_id', shiftId)
+        .is('sent_at', null)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -302,7 +321,8 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
             userId,
             formData.title,
             shiftGroup.start_time,
-            shiftGroup.end_time
+            shiftGroup.end_time,
+            true // shift_groupsを使用
           )
         }
       } else if (mode === 'individual' && individualMode === 'single') {
@@ -703,7 +723,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           )}
 
           {/* 業務内容設定 */}
-          {mode === 'multiple' && !editShift && (
+          {mode === 'individual' && individualMode === 'multiple' && !editShift && (
             <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-4">
               <label className="block text-sm font-semibold text-slate-700 mb-3">業務内容の設定方法</label>
               <div className="flex gap-3">
@@ -745,10 +765,10 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           )}
 
           {/* 業務内容入力 */}
-          {titleMode === 'same' || mode === 'single' || editShift ? (
+          {titleMode === 'same' || (mode === 'individual' && individualMode === 'single') || editShift || mode === 'group' ? (
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                役割・内容{mode === 'multiple' && '（全員共通）'}
+                役割・内容{((mode === 'individual' && individualMode === 'multiple') || mode === 'group') && '（全員共通）'}
               </label>
               <div className="space-y-2">
                 <div className="flex gap-2 items-center">
@@ -776,7 +796,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
                         setFormData({...formData, title: ''})
                       }
                     }}
-                    required={mode === 'single' || !!editShift || titleMode === 'same'}
+                    required={(mode === 'individual' && individualMode === 'single') || !!editShift || titleMode === 'same' || mode === 'group'}
                   >
                     <option value="">選択してください</option>
                     {jobTemplates.map(template => (
@@ -790,7 +810,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
                     placeholder="例: 受付、案内、販売など"
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    required={mode === 'single' || !!editShift || titleMode === 'same'}
+                    required={(mode === 'individual' && individualMode === 'single') || !!editShift || titleMode === 'same' || mode === 'group'}
                   />
                 )}
               </div>
@@ -892,14 +912,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
               {isSubmitting ? (
                 <>
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  {mode === 'multiple' ? '作成中...' : '保存中...'}
+                  {((mode === 'individual' && individualMode === 'multiple') || mode === 'group') ? '作成中...' : '保存中...'}
                 </>
               ) : (
                 <>
-                  {mode === 'multiple' && selectedUserIds.length > 0 && (
+                  {((mode === 'individual' && individualMode === 'multiple') || mode === 'group') && selectedUserIds.length > 0 && (
                     <Copy size={16} />
                   )}
-                  {mode === 'multiple' && selectedUserIds.length > 0
+                  {mode === 'group' && selectedUserIds.length > 0
+                    ? `団体シフトを作成（${selectedUserIds.length}名）`
+                    : (mode === 'individual' && individualMode === 'multiple') && selectedUserIds.length > 0
                     ? `${selectedUserIds.length}件のシフトを作成`
                     : editShift
                     ? '保存'

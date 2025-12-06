@@ -10,6 +10,8 @@ type ShiftDetail = {
   end: Date
   description?: string | null
   supervisor_id?: string | null
+  isGroupShift?: boolean
+  shiftGroupId?: string
 }
 
 type Coworker = {
@@ -46,11 +48,25 @@ export default function ShiftDetailModal({
   // 統括者かどうかをチェック
   useEffect(() => {
     if (shift && currentUserId) {
-      setIsSupervisor(shift.supervisor_id === currentUserId)
+      if (shift.isGroupShift && shift.shiftGroupId) {
+        // 団体付与シフトの場合、shift_assignmentsから統括者を確認
+        supabase
+          .from('shift_assignments')
+          .select('is_supervisor')
+          .eq('shift_group_id', shift.shiftGroupId)
+          .eq('user_id', currentUserId)
+          .single()
+          .then(({ data }) => {
+            setIsSupervisor(data?.is_supervisor || false)
+          })
+      } else {
+        // 個別付与シフトの場合
+        setIsSupervisor(shift.supervisor_id === currentUserId)
+      }
     } else {
       setIsSupervisor(false)
     }
-  }, [shift, currentUserId])
+  }, [shift, currentUserId, supabase])
 
   // 編集モード開始時に現在のdescriptionをセット
   useEffect(() => {
@@ -72,15 +88,30 @@ export default function ShiftDetailModal({
 
     setIsSaving(true)
     try {
-      const { error } = await supabase
-        .from('shifts')
-        .update({ description: editedDescription.trim() || null })
-        .eq('id', shift.id)
+      if (shift.isGroupShift && shift.shiftGroupId) {
+        // 団体付与シフトの場合、shift_groupsを更新
+        const { error } = await supabase
+          .from('shift_groups')
+          .update({ description: editedDescription.trim() || null })
+          .eq('id', shift.shiftGroupId)
 
-      if (error) {
-        console.error('メモ更新エラー:', error)
-        alert('メモの更新に失敗しました: ' + error.message)
-        return
+        if (error) {
+          console.error('メモ更新エラー:', error)
+          alert('メモの更新に失敗しました: ' + error.message)
+          return
+        }
+      } else {
+        // 個別付与シフトの場合、shiftsを更新
+        const { error } = await supabase
+          .from('shifts')
+          .update({ description: editedDescription.trim() || null })
+          .eq('id', shift.id)
+
+        if (error) {
+          console.error('メモ更新エラー:', error)
+          alert('メモの更新に失敗しました: ' + error.message)
+          return
+        }
       }
 
       setIsEditing(false)

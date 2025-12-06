@@ -41,37 +41,16 @@ export default function AdminPage() {
 
   const fetchShifts = async () => {
     try {
-      // シフトデータを取得（統括者情報も含む）
-      // まずは基本的なクエリで試す（supervisor_idが存在しない場合のエラーを避けるため）
-      const { data: shiftsData, error: shiftsError } = await supabase
+      const allEvents: any[] = []
+      const allShifts: any[] = []
+
+      // 1. 既存のshiftsテーブルから個別付与シフトを取得（後方互換性）
+      const { data: shiftsData } = await supabase
         .from('shifts')
         .select('*, profiles!shifts_user_id_fkey(display_name)')
       
-      if (shiftsError) {
-        console.error('シフト取得エラー:', shiftsError)
-        // supervisor_idカラムが存在しない場合は、基本的なクエリのみ使用
-        const { data: basicData, error: basicError } = await supabase
-          .from('shifts')
-          .select('*, profiles(display_name)')
-        
-        if (basicError) {
-          console.error('基本シフト取得エラー:', basicError)
-          return
-        }
-        
-        if (basicData) {
-          const formatted = basicData.map((s: any) => ({
-            id: s.id,
-            title: `${s.profiles?.display_name}: ${s.title}`,
-            start: new Date(s.start_time),
-            end: new Date(s.end_time),
-            resource: s 
-          }))
-          setEvents(formatted)
-          setShifts(basicData as Shift[])
-        }
-      } else if (shiftsData) {
-        // supervisor情報も取得を試みる
+      if (shiftsData) {
+        // supervisor情報も取得
         const shiftsWithSupervisor = await Promise.all(
           shiftsData.map(async (shift: any) => {
             if (shift.supervisor_id) {
@@ -87,16 +66,69 @@ export default function AdminPage() {
         )
         
         // カレンダー用のイベントデータ
-        const formatted = shiftsWithSupervisor.map((s: any) => ({
-          id: s.id,
-          title: `${s.profiles?.display_name}: ${s.title}`,
-          start: new Date(s.start_time),
-          end: new Date(s.end_time),
-          resource: s 
-        }))
-        setEvents(formatted)
-        setShifts(shiftsWithSupervisor as Shift[])
+        shiftsWithSupervisor.forEach((s: any) => {
+          allEvents.push({
+            id: s.id,
+            title: `${s.profiles?.display_name}: ${s.title}`,
+            start: new Date(s.start_time),
+            end: new Date(s.end_time),
+            resource: s,
+            isGroupShift: false
+          })
+        })
+        allShifts.push(...shiftsWithSupervisor)
       }
+
+      // 2. shift_groupsから団体付与シフトを取得
+      const { data: shiftGroupsData } = await supabase
+        .from('shift_groups')
+        .select('*')
+        .order('start_time', { ascending: true })
+      
+      if (shiftGroupsData) {
+        // 各shift_groupの参加者を取得
+        for (const group of shiftGroupsData) {
+          const { data: assignments } = await supabase
+            .from('shift_assignments')
+            .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
+            .eq('shift_group_id', group.id)
+          
+          if (assignments && assignments.length > 0) {
+            // 統括者を取得
+            const supervisor = assignments.find((a: any) => a.is_supervisor)
+            const supervisorName = supervisor?.profiles?.display_name || null
+            const memberCount = assignments.length
+            
+            // カレンダー用のイベントデータ（団体として表示）
+            allEvents.push({
+              id: group.id,
+              title: `${group.title}（${supervisorName || '統括者未設定'} 他${memberCount - 1}名）`,
+              start: new Date(group.start_time),
+              end: new Date(group.end_time),
+              resource: {
+                ...group,
+                isGroupShift: true,
+                assignments: assignments,
+                supervisor: supervisor?.profiles,
+                memberCount: memberCount
+              },
+              isGroupShift: true
+            })
+            
+            // シフトデータとして保存
+            allShifts.push({
+              ...group,
+              isGroupShift: true,
+              assignments: assignments,
+              supervisor: supervisor?.profiles,
+              memberCount: memberCount
+            })
+          }
+        }
+      }
+
+      setEvents(allEvents)
+      setShifts(allShifts as Shift[])
 
       // ユーザー一覧を取得
       const { data: usersData } = await supabase.from('profiles').select('*').order('display_name')

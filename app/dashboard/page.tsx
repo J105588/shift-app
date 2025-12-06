@@ -27,78 +27,142 @@ export default function Dashboard() {
   const [supervisorName, setSupervisorName] = useState<string | null>(null)
 
   const loadShiftsForUser = async (currentUser: any) => {
-    // シフト取得（全シフトを取得してからクライアント側で本人の分だけに絞り込む）
-    const { data: shifts, error: shiftsError } = await supabase
+    const allRawShifts: any[] = []
+    const allFormatted: any[] = []
+
+    // 1. 既存のshiftsテーブルから個別付与シフトを取得（後方互換性）
+    const { data: shifts } = await supabase
       .from('shifts')
       .select('*, profiles!shifts_user_id_fkey(display_name)')
       .order('start_time', { ascending: true })
 
-    if (shiftsError) {
-      return
+    if (shifts) {
+      allRawShifts.push(...shifts)
+      shifts.forEach((s: any) => {
+        allFormatted.push({
+          id: s.id,
+          title: `${s.profiles?.display_name || '不明'}: ${s.title}`,
+          start: new Date(s.start_time),
+          end: new Date(s.end_time),
+          resourceId: s.user_id,
+          displayName: s.profiles?.display_name || '不明',
+          shiftTitle: s.title,
+          description: s.description,
+          supervisor_id: s.supervisor_id,
+          user_id: s.user_id,
+          isGroupShift: false
+        })
+      })
     }
 
-    if (shifts) {
-      setRawShifts(shifts)
-      const formatted = shifts.map((s: any) => ({
-        id: s.id,
-        title: `${s.profiles?.display_name || '不明'}: ${s.title}`,
-        start: new Date(s.start_time),
-        end: new Date(s.end_time),
-        resourceId: s.user_id,
-        displayName: s.profiles?.display_name || '不明',
-        shiftTitle: s.title,
-        description: s.description,
-        supervisor_id: s.supervisor_id,
-        user_id: s.user_id, // 元のuser_idも保持
-      }))
-      
-      // 自分のシフトを取得
-      const myOwnEvents = formatted.filter((e: any) => e.resourceId === currentUser.id)
-      
-      // 統括者として設定されているシフトを取得
-      const supervisorEvents = formatted.filter((e: any) => e.supervisor_id === currentUser.id)
-      
-      // 統括者として設定されているシフトの重複を除去（同じ時間・タイトル・内容のシフトは1つだけ）
-      const uniqueSupervisorEvents: any[] = []
-      const seenKeys = new Set<string>()
-      
-      supervisorEvents.forEach((event: any) => {
-        // 重複チェックのキー：開始時刻、終了時刻、タイトル、説明
-        const key = `${event.start.getTime()}-${event.end.getTime()}-${event.shiftTitle}-${event.description || ''}`
+    // 2. shift_groupsから自分が参加している団体付与シフトを取得
+    const { data: myAssignments } = await supabase
+      .from('shift_assignments')
+      .select('*, shift_groups!shift_assignments_shift_group_id_fkey(*)')
+      .eq('user_id', currentUser.id)
+    
+    if (myAssignments) {
+      for (const assignment of myAssignments) {
+        const group = assignment.shift_groups
+        if (!group) continue
         
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key)
-          uniqueSupervisorEvents.push(event)
+        // 同じshift_groupの全参加者を取得
+        const { data: allAssignments } = await supabase
+          .from('shift_assignments')
+          .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
+          .eq('shift_group_id', group.id)
+        
+        if (allAssignments) {
+          // 統括者を取得
+          const supervisor = allAssignments.find((a: any) => a.is_supervisor)
+          const isSupervisor = assignment.is_supervisor
+          const memberCount = allAssignments.length
+          
+          // rawShiftsに追加（詳細表示用）
+          allRawShifts.push({
+            ...group,
+            isGroupShift: true,
+            assignments: allAssignments,
+            supervisor_id: supervisor?.user_id || null,
+            user_id: currentUser.id // 自分が参加している
+          })
+          
+          // カレンダー用のイベントデータ
+          allFormatted.push({
+            id: group.id,
+            title: `${group.title}${isSupervisor ? '（統括）' : ''}`,
+            start: new Date(group.start_time),
+            end: new Date(group.end_time),
+            resourceId: currentUser.id,
+            displayName: currentUser.display_name || '不明',
+            shiftTitle: group.title,
+            description: group.description,
+            supervisor_id: supervisor?.user_id || null,
+            user_id: currentUser.id,
+            isGroupShift: true,
+            isSupervisor: isSupervisor,
+            memberCount: memberCount,
+            assignments: allAssignments
+          })
         }
-      })
-      
-      // 自分のシフトと統括者として設定されているシフト（重複除去後）を結合
-      const myEvents = [...myOwnEvents, ...uniqueSupervisorEvents]
-      setEvents(myEvents)
-
-      // 現在時刻
-      const now = new Date()
-      
-      // 進行中のシフトを探す（開始時刻 <= 現在時刻 <= 終了時刻）
-      // 自分のシフト（user_idが自分のID）のみを対象
-      const myOwnShifts = formatted.filter((e: any) => e.resourceId === currentUser.id)
-      const currentShifts = myOwnShifts.filter((e: any) => {
-        return e.start <= now && e.end >= now
-      })
-      
-      // 自分の次のシフトを探す（現在時刻より後のシフト）
-      const myShifts = myOwnShifts
-        .filter((e: any) => e.start > now)
-        .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
-      
-      // 進行中のシフトがあればそれを優先、なければ次のシフト
-      if (currentShifts.length > 0) {
-        setNextShift({ ...currentShifts[0], isCurrent: true })
-      } else if (myShifts.length > 0) {
-        setNextShift({ ...myShifts[0], isCurrent: false })
-      } else {
-        setNextShift(null)
       }
+    }
+
+    setRawShifts(allRawShifts)
+    
+    // 自分のシフトを取得（個別付与）
+    const myOwnEvents = allFormatted.filter((e: any) => 
+      !e.isGroupShift && e.resourceId === currentUser.id
+    )
+    
+    // 統括者として設定されているシフトを取得（個別付与）
+    const supervisorEvents = allFormatted.filter((e: any) => 
+      !e.isGroupShift && e.supervisor_id === currentUser.id
+    )
+    
+    // 統括者として設定されているシフトの重複を除去
+    const uniqueSupervisorEvents: any[] = []
+    const seenKeys = new Set<string>()
+    
+    supervisorEvents.forEach((event: any) => {
+      const key = `${event.start.getTime()}-${event.end.getTime()}-${event.shiftTitle}-${event.description || ''}`
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key)
+        uniqueSupervisorEvents.push(event)
+      }
+    })
+    
+    // 団体付与シフト（自分が参加しているもの）
+    const groupEvents = allFormatted.filter((e: any) => e.isGroupShift)
+    
+    // すべてを結合
+    const myEvents = [...myOwnEvents, ...uniqueSupervisorEvents, ...groupEvents]
+    setEvents(myEvents)
+
+    // 現在時刻
+    const now = new Date()
+    
+    // 進行中のシフトを探す（開始時刻 <= 現在時刻 <= 終了時刻）
+    // 自分のシフト（個別付与）のみを対象
+    const myOwnShifts = myEvents.filter((e: any) => 
+      !e.isGroupShift && e.resourceId === currentUser.id
+    )
+    const currentShifts = myOwnShifts.filter((e: any) => {
+      return e.start <= now && e.end >= now
+    })
+    
+    // 自分の次のシフトを探す（現在時刻より後のシフト、個別付与と団体付与の両方）
+    const myShifts = myEvents
+      .filter((e: any) => e.start > now)
+      .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
+    
+    // 進行中のシフトがあればそれを優先、なければ次のシフト
+    if (currentShifts.length > 0) {
+      setNextShift({ ...currentShifts[0], isCurrent: true })
+    } else if (myShifts.length > 0) {
+      setNextShift({ ...myShifts[0], isCurrent: false })
+    } else {
+      setNextShift(null)
     }
   }
 
@@ -209,33 +273,73 @@ export default function Dashboard() {
 
     setSelectedEvent(event)
 
-    // 同じ仕事内容・時間帯のシフトを検索
-    const sameJobShifts = rawShifts.filter((s: any) => {
-      const sameTitle = s.title === (event.shiftTitle || event.title)
-      const sameStart = new Date(s.start_time).getTime() === event.start.getTime()
-      const sameEnd = new Date(s.end_time).getTime() === event.end.getTime()
-      return sameTitle && sameStart && sameEnd
-    })
+    // 団体付与シフトの場合
+    if (event.isGroupShift) {
+      const shiftGroup = rawShifts.find((s: any) => s.id === event.id && s.isGroupShift)
+      if (shiftGroup && shiftGroup.assignments) {
+        // 参加メンバー全員を取得
+        const coworkersList = shiftGroup.assignments.map((a: any) => ({
+          id: a.user_id,
+          displayName: a.profiles?.display_name || '不明',
+          isCurrentUser: a.user_id === user.id,
+          isSupervisor: a.is_supervisor
+        }))
 
-    const coworkersList = sameJobShifts.map((s: any) => ({
-      id: s.user_id,
-      displayName: s.profiles?.display_name || '不明',
-      isCurrentUser: s.user_id === user.id,
-    }))
+        setCoworkers(coworkersList)
 
-    setCoworkers(coworkersList)
-
-    // 統括者名の取得（あれば）
-    const supervisorId = sameJobShifts[0]?.supervisor_id
-    if (supervisorId) {
-      const { data: supervisorProfile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', supervisorId)
-        .single()
-      setSupervisorName(supervisorProfile?.display_name || null)
+        // 統括者名の取得
+        const supervisor = shiftGroup.assignments.find((a: any) => a.is_supervisor)
+        setSupervisorName(supervisor?.profiles?.display_name || null)
+      } else {
+        // shift_group_idから直接取得
+        const { data: assignments } = await supabase
+          .from('shift_assignments')
+          .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
+          .eq('shift_group_id', event.id)
+        
+        if (assignments) {
+          const coworkersList = assignments.map((a: any) => ({
+            id: a.user_id,
+            displayName: a.profiles?.display_name || '不明',
+            isCurrentUser: a.user_id === user.id,
+            isSupervisor: a.is_supervisor
+          }))
+          setCoworkers(coworkersList)
+          
+          const supervisor = assignments.find((a: any) => a.is_supervisor)
+          setSupervisorName(supervisor?.profiles?.display_name || null)
+        }
+      }
     } else {
-      setSupervisorName(null)
+      // 個別付与シフトの場合（既存のロジック）
+      const sameJobShifts = rawShifts.filter((s: any) => {
+        if (s.isGroupShift) return false
+        const sameTitle = s.title === (event.shiftTitle || event.title)
+        const sameStart = new Date(s.start_time).getTime() === event.start.getTime()
+        const sameEnd = new Date(s.end_time).getTime() === event.end.getTime()
+        return sameTitle && sameStart && sameEnd
+      })
+
+      const coworkersList = sameJobShifts.map((s: any) => ({
+        id: s.user_id,
+        displayName: s.profiles?.display_name || '不明',
+        isCurrentUser: s.user_id === user.id,
+      }))
+
+      setCoworkers(coworkersList)
+
+      // 統括者名の取得（あれば）
+      const supervisorId = sameJobShifts[0]?.supervisor_id
+      if (supervisorId) {
+        const { data: supervisorProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', supervisorId)
+          .single()
+        setSupervisorName(supervisorProfile?.display_name || null)
+      } else {
+        setSupervisorName(null)
+      }
     }
 
     setIsDetailOpen(true)
@@ -306,6 +410,8 @@ export default function Dashboard() {
                 end: selectedEvent.end,
                 description: selectedEvent.description,
                 supervisor_id: selectedEvent.supervisor_id,
+                isGroupShift: selectedEvent.isGroupShift || false,
+                shiftGroupId: selectedEvent.isGroupShift ? selectedEvent.id : undefined,
               }
             : null
         }
