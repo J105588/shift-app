@@ -140,9 +140,6 @@ export default function AdminSettings({ userId }: Props) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs sm:text-sm text-slate-600">
-                    メンテナンスモード:
-                  </span>
                   {isSavingMaintenance && (
                     <span className="text-xs text-slate-500 flex items-center gap-1">
                       <span className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></span>
