@@ -117,28 +117,39 @@ export default function AdminSettings({ userId }: Props) {
                 読み込み中...
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleToggleMaintenance}
-                  disabled={isSavingMaintenance}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                    maintenanceMode 
-                      ? 'bg-orange-600' 
-                      : 'bg-slate-300'
-                  } ${isSavingMaintenance ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      maintenanceMode ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                <span className="text-sm font-semibold text-slate-900">
-                  {maintenanceMode ? 'メンテナンスモード: 有効' : 'メンテナンスモード: 無効'}
-                </span>
-                {isSavingMaintenance && (
-                  <span className="text-xs text-slate-500">保存中...</span>
-                )}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                  <button
+                    onClick={handleToggleMaintenance}
+                    disabled={isSavingMaintenance}
+                    className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${
+                      maintenanceMode 
+                        ? 'bg-orange-600' 
+                        : 'bg-slate-300'
+                    } ${isSavingMaintenance ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    aria-label={maintenanceMode ? 'メンテナンスモードを無効にする' : 'メンテナンスモードを有効にする'}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                        maintenanceMode ? 'translate-x-6 sm:translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm font-semibold text-slate-900 whitespace-nowrap">
+                    {maintenanceMode ? '有効' : '無効'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs sm:text-sm text-slate-600">
+                    メンテナンスモード:
+                  </span>
+                  {isSavingMaintenance && (
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <span className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></span>
+                      保存中...
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>
