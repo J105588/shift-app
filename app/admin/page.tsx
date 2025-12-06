@@ -231,6 +231,38 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
+  // セッション有効性を定期的にチェック（強制ログアウトを即座に適用）
+  useEffect(() => {
+    if (!user) return
+
+    const checkSession = async () => {
+      try {
+        const { data: { user: currentUser }, error } = await supabase.auth.getUser()
+        
+        // セッションが無効になった場合（強制ログアウトされた場合）
+        if (error || !currentUser || currentUser.id !== user.id) {
+          console.log('セッションが無効になりました。ログアウトします。')
+          await supabase.auth.signOut()
+          window.location.href = '/'
+          return
+        }
+      } catch (error) {
+        console.error('セッションチェックエラー:', error)
+      }
+    }
+
+    // 初回チェック
+    checkSession()
+
+    // 5秒ごとにチェック（強制ログアウトを即座に検知）
+    const interval = setInterval(checkSession, 5000)
+
+    return () => {
+      clearInterval(interval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   // 定期的に最新データを取得（30秒ごと、Realtimeの補完として）
   useEffect(() => {
     if (!user || !profile || profile?.role !== 'admin') return

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile } from '@/lib/types'
-import { UserPlus, Edit2, X, LogOut } from 'lucide-react'
+import { UserPlus, Edit2, X, LogOut, Copy, Check } from 'lucide-react'
 
 export default function UserManagement() {
   const supabase = createClient()
@@ -29,6 +29,13 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  
+  // パスワード表示モーダル用
+  // パスワード表示モーダル用
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [displayedPassword, setDisplayedPassword] = useState('')
+  const [passwordTargetUser, setPasswordTargetUser] = useState<Profile | null>(null)
+  const [passwordCopied, setPasswordCopied] = useState(false)
 
   const fetchUsers = async () => {
     try {
@@ -172,6 +179,24 @@ export default function UserManagement() {
     setAdminPassword('')
   }
 
+  const handleClosePasswordModal = () => {
+    setShowPasswordModal(false)
+    setDisplayedPassword('')
+    setPasswordTargetUser(null)
+    setPasswordCopied(false)
+  }
+
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(displayedPassword)
+      setPasswordCopied(true)
+      setTimeout(() => setPasswordCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy password:', err)
+      alert('パスワードのコピーに失敗しました')
+    }
+  }
+
   const handleConfirmForceLogout = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!logoutTargetUser) return
@@ -213,7 +238,10 @@ export default function UserManagement() {
       }
       
       if (res.ok && data.success) {
-        alert(data.message || 'ユーザーを強制的にログアウトしました')
+        // パスワードを表示するモーダルを開く
+        setPasswordTargetUser(logoutTargetUser)
+        setDisplayedPassword(newPassword)
+        setShowPasswordModal(true)
         handleCloseLogoutModal()
         fetchUsers() // ユーザー一覧を更新
       } else {
@@ -623,6 +651,81 @@ export default function UserManagement() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* パスワード表示モーダル */}
+      {showPasswordModal && passwordTargetUser && (
+        <div 
+          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
+          onClick={handleClosePasswordModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Check className="text-green-600" size={20} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">パスワード設定完了</h3>
+                </div>
+                <button
+                  onClick={handleClosePasswordModal}
+                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-slate-700 mb-4">
+                  <span className="font-semibold">{passwordTargetUser.display_name || passwordTargetUser.email}</span> のパスワードが変更されました。
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-xs text-blue-700 font-semibold mb-2">新しいパスワード</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 bg-white border-2 border-blue-200 rounded-lg p-3 text-base font-mono text-slate-900 break-all">
+                      {displayedPassword}
+                    </code>
+                    <button
+                      onClick={handleCopyPassword}
+                      className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 flex items-center justify-center min-w-[48px]"
+                      title="パスワードをコピー"
+                    >
+                      {passwordCopied ? (
+                        <Check size={20} />
+                      ) : (
+                        <Copy size={20} />
+                      )}
+                    </button>
+                  </div>
+                  {passwordCopied && (
+                    <p className="text-xs text-green-600 mt-2 font-semibold">コピーしました！</p>
+                  )}
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-xs text-yellow-700 font-semibold mb-1">重要</p>
+                  <ul className="text-xs text-yellow-600 space-y-1 list-disc list-inside">
+                    <li>このパスワードは今だけ表示されます</li>
+                    <li>対象ユーザーに安全に共有してください</li>
+                    <li>対象ユーザーはこのパスワードで次回ログインできます</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleClosePasswordModal}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 transition-all duration-200"
+                >
+                  閉じる
+                </button>
+              </div>
             </div>
           </div>
         </div>

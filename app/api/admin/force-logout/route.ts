@@ -109,7 +109,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'ユーザーを強制的にログアウトしました。パスワードも変更されました。'
+      message: 'ユーザーを強制的にログアウトしました。パスワードも変更されました。',
+      newPassword: newPassword // 新しいパスワードを返す（表示用）
     }, { status: 200 })
 
   } catch (error: any) {
