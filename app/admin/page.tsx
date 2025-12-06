@@ -123,6 +123,39 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // 定期的にメンテナンスモードをチェック（管理者はメンテナンス中でもアクセス可能だが、チェックは必要）
+  useEffect(() => {
+    if (!user || !profile || profile?.role !== 'admin') return
+
+    const checkMaintenanceMode = async () => {
+      try {
+        const { data: maintenanceSetting } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'maintenance_mode')
+          .single()
+
+        // 管理者はメンテナンス中でもアクセス可能なので、リダイレクトはしない
+        // ただし、メンテナンスモードの状態を把握するためにチェックは継続
+        const isMaintenanceMode = maintenanceSetting?.value === 'true'
+        // 必要に応じて、メンテナンスモードの状態を表示するなどの処理を追加可能
+      } catch (error) {
+        console.error('メンテナンスモードチェックエラー:', error)
+      }
+    }
+
+    // 初回チェック
+    checkMaintenanceMode()
+
+    // 5秒ごとにチェック
+    const interval = setInterval(checkMaintenanceMode, 5000)
+
+    return () => {
+      clearInterval(interval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile])
+
   // shiftsテーブルの変更をリアルタイムで監視し、画面とDBを同期
   useEffect(() => {
     const channel = supabase

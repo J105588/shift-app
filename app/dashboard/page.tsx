@@ -97,6 +97,41 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // 定期的にメンテナンスモードをチェック
+  useEffect(() => {
+    if (!user || !profile) return
+
+    const checkMaintenanceMode = async () => {
+      try {
+        const { data: maintenanceSetting } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'maintenance_mode')
+          .single()
+
+        const isMaintenanceMode = maintenanceSetting?.value === 'true'
+
+        // メンテナンスモードが有効で、一般ユーザーの場合はメンテナンスページへリダイレクト（ログアウトしない）
+        if (isMaintenanceMode && profile?.role !== 'admin') {
+          router.replace('/maintenance')
+        }
+      } catch (error) {
+        console.error('メンテナンスモードチェックエラー:', error)
+      }
+    }
+
+    // 初回チェック
+    checkMaintenanceMode()
+
+    // 5秒ごとにチェック
+    const interval = setInterval(checkMaintenanceMode, 5000)
+
+    return () => {
+      clearInterval(interval)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile])
+
   // shiftsテーブルの変更をリアルタイムで監視し、画面とDBを同期
   useEffect(() => {
     if (!user) return

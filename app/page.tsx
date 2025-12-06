@@ -15,9 +15,96 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(true)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
-  // メンテナンスモードのチェック
+  // ローカルストレージのログイン記録をチェック
   useEffect(() => {
+    const checkStoredAuth = async () => {
+      if (typeof window === 'undefined') {
+        setShowLoginModal(true)
+        setIsVerifying(false)
+        return
+      }
+
+      // 検証中状態を維持
+      setIsVerifying(true)
+      setShowLoginModal(false)
+
+      const storedAuth = localStorage.getItem('shift-app-auth')
+      
+      if (!storedAuth) {
+        // ログイン記録が見つからない場合はログインモーダルを表示
+        setShowLoginModal(true)
+        setIsVerifying(false)
+        return
+      }
+
+      // ログイン記録が見つかった場合は認証を検証して通常の画面に遷移
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        if (!user) {
+          // 認証が無効な場合はローカルストレージをクリアしてログインモーダルを表示
+          localStorage.removeItem('shift-app-auth')
+          localStorage.removeItem('shift-app-push-token')
+          setShowLoginModal(true)
+          setIsVerifying(false)
+          return
+        }
+
+        // メンテナンスモードをチェック
+        const { data: maintenanceSetting } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'maintenance_mode')
+          .single()
+
+        const isMaintenance = maintenanceSetting?.value === 'true'
+        setIsMaintenanceMode(isMaintenance)
+
+        // プロフィールを取得
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+
+        // 通常の画面に遷移
+        if (isMaintenance) {
+          // メンテナンスモードが有効な場合
+          if (profile?.role === 'admin') {
+            router.replace('/admin')
+          } else {
+            // 一般ユーザーはメンテナンスページへリダイレクト（ログアウトしない）
+            router.replace('/maintenance')
+          }
+        } else {
+          // メンテナンスモードが無効な場合、通常のリダイレクト
+          if (profile?.role === 'admin') {
+            router.replace('/admin')
+          } else {
+            router.replace('/dashboard')
+          }
+        }
+      } catch (error) {
+        // エラーが発生した場合はローカルストレージをクリアしてログインモーダルを表示
+        console.error('認証検証エラー:', error)
+        localStorage.removeItem('shift-app-auth')
+        localStorage.removeItem('shift-app-push-token')
+        setShowLoginModal(true)
+        setIsVerifying(false)
+      }
+    }
+
+    checkStoredAuth()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // メンテナンスモードのチェック（ログインモーダル表示時のみ）
+  useEffect(() => {
+    if (!showLoginModal) return
+
     const checkMaintenanceMode = async () => {
       try {
         const { data } = await supabase
@@ -28,47 +115,14 @@ export default function LoginPage() {
 
         const isMaintenance = data?.value === 'true'
         setIsMaintenanceMode(isMaintenance)
-
-        if (isMaintenance) {
-          // メンテナンスモードが有効な場合、管理者のみアクセス可能
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', user.id)
-              .single()
-
-            if (profile?.role === 'admin') {
-              router.replace('/admin')
-            } else {
-              // 一般ユーザーはメンテナンスページへリダイレクト（ログアウトしない）
-              router.replace('/maintenance')
-            }
-          }
-        } else {
-          // メンテナンスモードが無効な場合、通常のリダイレクト
-          const { data: { user } } = await supabase.auth.getUser()
-          if (!user) return
-
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-
-          if (profile?.role === 'admin') router.replace('/admin')
-          else router.replace('/dashboard')
-        }
       } catch (error) {
-        // エラーが発生した場合は通常フローに戻る
         console.error('メンテナンスモードチェックエラー:', error)
       }
     }
 
     checkMaintenanceMode()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [showLoginModal])
 
   // ローカルストレージに残っている古いログイン情報をクリーンアップ
   // 最終ログインから5日以上経過している場合は、端末情報と Push トークンを削除
@@ -172,6 +226,38 @@ export default function LoginPage() {
       if (profile?.role === 'admin') router.push('/admin')
       else router.push('/dashboard')
     }
+  }
+
+  // 検証中の表示
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
+            <div className="bg-blue-600 p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-xl mb-4 shadow-md">
+                <CalendarDays className="text-blue-600" size={32} />
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-2">文化祭シフト管理</h1>
+              <p className="text-blue-100 text-sm">配布されたアカウントでログイン</p>
+            </div>
+            
+            <div className="p-12 text-center bg-white">
+              <div className="flex flex-col items-center justify-center gap-4">
+                <span className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                <p className="text-lg font-semibold text-slate-700">検証中...</p>
+                <p className="text-sm text-slate-500">ログイン状態を確認しています</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ログインモーダルの表示（ログイン記録が見つからなかった場合のみ）
+  if (!showLoginModal) {
+    return null
   }
 
   return (
