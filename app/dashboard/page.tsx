@@ -52,10 +52,28 @@ export default function Dashboard() {
         user_id: s.user_id, // 元のuser_idも保持
       }))
       
-      // 自分のシフトと統括者として設定されているシフトを画面に表示
-      const myEvents = formatted.filter((e: any) => 
-        e.resourceId === currentUser.id || e.supervisor_id === currentUser.id
-      )
+      // 自分のシフトを取得
+      const myOwnEvents = formatted.filter((e: any) => e.resourceId === currentUser.id)
+      
+      // 統括者として設定されているシフトを取得
+      const supervisorEvents = formatted.filter((e: any) => e.supervisor_id === currentUser.id)
+      
+      // 統括者として設定されているシフトの重複を除去（同じ時間・タイトル・内容のシフトは1つだけ）
+      const uniqueSupervisorEvents: any[] = []
+      const seenKeys = new Set<string>()
+      
+      supervisorEvents.forEach((event: any) => {
+        // 重複チェックのキー：開始時刻、終了時刻、タイトル、説明
+        const key = `${event.start.getTime()}-${event.end.getTime()}-${event.shiftTitle}-${event.description || ''}`
+        
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key)
+          uniqueSupervisorEvents.push(event)
+        }
+      })
+      
+      // 自分のシフトと統括者として設定されているシフト（重複除去後）を結合
+      const myEvents = [...myOwnEvents, ...uniqueSupervisorEvents]
       setEvents(myEvents)
 
       // 現在時刻
