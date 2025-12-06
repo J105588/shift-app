@@ -2,6 +2,7 @@ export type Profile = {
     id: string
     display_name: string | null
     role: 'admin' | 'staff'
+    email?: string | null
   }
   
   export type Shift = {
