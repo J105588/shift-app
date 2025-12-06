@@ -195,6 +195,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # サーバー側設定（API Routes用、本番環境ではVercelの環境変数として設定）
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# 管理者機能用の認証パスワード（強制ログアウト機能で使用）
+ADMIN_FORCE_LOGOUT_PASSWORD=your_secure_password_here
 ```
 
 ### Firebase設定

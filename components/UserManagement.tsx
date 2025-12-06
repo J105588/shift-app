@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile } from '@/lib/types'
-import { UserPlus, Edit2, X } from 'lucide-react'
+import { UserPlus, Edit2, X, LogOut } from 'lucide-react'
 
 export default function UserManagement() {
   const supabase = createClient()
@@ -22,6 +22,13 @@ export default function UserManagement() {
   const [editDisplayName, setEditDisplayName] = useState('')
   const [editRole, setEditRole] = useState<'admin' | 'staff'>('staff')
   const [isEditing, setIsEditing] = useState(false)
+
+  // 強制ログアウトモーダル用
+  const [logoutTargetUser, setLogoutTargetUser] = useState<Profile | null>(null)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [adminPassword, setAdminPassword] = useState('')
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const fetchUsers = async () => {
     try {
@@ -149,6 +156,74 @@ export default function UserManagement() {
       alert('エラー: ' + (err.message || 'ユーザー更新中にエラーが発生しました'))
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleForceLogout = (user: Profile) => {
+    setLogoutTargetUser(user)
+    setShowLogoutModal(true)
+    setAdminPassword('')
+  }
+
+  const handleCloseLogoutModal = () => {
+    setLogoutTargetUser(null)
+    setShowLogoutModal(false)
+    setNewPassword('')
+    setAdminPassword('')
+  }
+
+  const handleConfirmForceLogout = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!logoutTargetUser) return
+
+    if (!newPassword || newPassword.trim() === '') {
+      alert('新しいパスワードを入力してください')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      alert('パスワードは6文字以上である必要があります')
+      return
+    }
+
+    if (!adminPassword) {
+      alert('認証パスワードを入力してください')
+      return
+    }
+
+    setIsLoggingOut(true)
+
+    try {
+      const res = await fetch('/api/admin/force-logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUserId: logoutTargetUser.id,
+          newPassword: newPassword,
+          adminPassword: adminPassword
+        }),
+      })
+
+      let data
+      try {
+        data = await res.json()
+      } catch (parseError) {
+        const text = await res.text()
+        throw new Error(`サーバーエラー (${res.status}): ${text || 'レスポンスの解析に失敗しました'}`)
+      }
+      
+      if (res.ok && data.success) {
+        alert(data.message || 'ユーザーを強制的にログアウトしました')
+        handleCloseLogoutModal()
+        fetchUsers() // ユーザー一覧を更新
+      } else {
+        throw new Error(data.error || `強制ログアウトに失敗しました (${res.status})`)
+      }
+    } catch (err: any) {
+      console.error('Force logout error:', err)
+      alert('エラー: ' + (err.message || '強制ログアウト中にエラーが発生しました'))
+    } finally {
+      setIsLoggingOut(false)
     }
   }
 
@@ -280,13 +355,22 @@ export default function UserManagement() {
                       {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '-'}
                     </td>
                     <td className="p-4">
-                      <button
-                        onClick={() => handleEditUser(user)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
-                      >
-                        <Edit2 size={16} />
-                        編集
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditUser(user)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
+                        >
+                          <Edit2 size={16} />
+                          編集
+                        </button>
+                        <button
+                          onClick={() => handleForceLogout(user)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                        >
+                          <LogOut size={16} />
+                          強制ログアウト
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -332,13 +416,22 @@ export default function UserManagement() {
                     }`}>
                       {user.role === 'admin' ? '管理者' : '一般ユーザー'}
                     </span>
-                    <button
-                      onClick={() => handleEditUser(user)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
-                    >
-                      <Edit2 size={14} />
-                      編集
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => handleEditUser(user)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
+                      >
+                        <Edit2 size={14} />
+                        編集
+                      </button>
+                      <button
+                        onClick={() => handleForceLogout(user)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                      >
+                        <LogOut size={14} />
+                        強制ログアウト
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -425,6 +518,107 @@ export default function UserManagement() {
                       </span>
                     ) : (
                       '更新する'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 強制ログアウト確認モーダル */}
+      {showLogoutModal && logoutTargetUser && (
+        <div 
+          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
+          onClick={handleCloseLogoutModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <LogOut className="text-red-600" size={20} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">強制ログアウト</h3>
+                </div>
+                <button
+                  onClick={handleCloseLogoutModal}
+                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-slate-700 mb-4">
+                  <span className="font-semibold">{logoutTargetUser.display_name || logoutTargetUser.email}</span> を強制的にログアウトさせますか？
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-red-700 font-semibold mb-1">注意事項</p>
+                  <ul className="text-xs text-red-600 space-y-1 list-disc list-inside">
+                    <li>対象ユーザーはすべてのデバイスからログアウトされます</li>
+                    <li>対象ユーザーのパスワードが指定したパスワードに変更されます</li>
+                    <li>この操作を実行するには、認証パスワードが必要です</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <form onSubmit={handleConfirmForceLogout} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    新しいパスワード <span className="text-red-600">*</span>
+                  </label>
+                  <input 
+                    type="password" 
+                    placeholder="対象ユーザーの新しいパスワードを入力（6文字以上）" 
+                    required
+                    minLength={6}
+                    className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
+                    value={newPassword} 
+                    onChange={e => setNewPassword(e.target.value)}
+                    autoFocus
+                  />
+                  <p className="text-xs text-slate-500 mt-1">対象ユーザーはこのパスワードで次回ログインします</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    認証パスワード <span className="text-red-600">*</span>
+                  </label>
+                  <input 
+                    type="password" 
+                    placeholder="認証パスワードを入力" 
+                    required
+                    className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
+                    value={adminPassword} 
+                    onChange={e => setAdminPassword(e.target.value)}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">この操作を実行するための認証パスワード</p>
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCloseLogoutModal}
+                    className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold hover:bg-slate-200 active:bg-slate-300 transition-all duration-200"
+                  >
+                    キャンセル
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isLoggingOut}
+                    className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    {isLoggingOut ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        実行中...
+                      </span>
+                    ) : (
+                      '強制ログアウト'
                     )}
                   </button>
                 </div>
