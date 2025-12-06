@@ -27,7 +27,12 @@ const messaging = firebase.messaging();
 // 注意: このハンドラーはアプリが完全に閉じている（バックグラウンド）時のみ発火する
 // フォアグラウンド時は onMessage が発火するため、重複通知を避ける
 messaging.onBackgroundMessage((payload) => {
-  const notificationTitle = payload.notification?.title || '通知';
+  // タイトルが空の場合は通知を表示しない
+  const notificationTitle = payload.notification?.title;
+  if (!notificationTitle || !notificationTitle.trim()) {
+    return Promise.resolve();
+  }
+  
   // GAS 側で生成した messageId を data から取得（重複防止用）
   const tag = payload.data?.messageId || 
               payload.messageId || 
@@ -51,7 +56,7 @@ messaging.onBackgroundMessage((payload) => {
     vibrate: [200, 100, 200], // iOSでは無視されるが、Android用
     tag: tag, // 同じメッセージIDの通知は1つだけ表示されるようにする
     // バックグラウンドでも確実に通知を表示するための設定
-    renotify: true,
+    renotify: false, // 重複通知を防ぐため false に変更
     // 通知の優先度を高く設定（Android用）
     priority: 'high',
   };
@@ -76,37 +81,49 @@ self.addEventListener('activate', (event) => {
 });
 
 // Pushイベントのハンドリング（FCM以外のPush通知にも対応）
-// これにより、PWAが完全に閉じていても通知が届く
+// 注意: FCMのメッセージは onBackgroundMessage で処理されるため、
+// push イベントでは FCM メッセージを確実にスキップする必要がある
 self.addEventListener('push', (event) => {
-  // FCMのメッセージは onBackgroundMessage で処理されるため、
-  // ここではFCM以外のPush通知を処理する
-  // ただし、FCMのメッセージもここを通る可能性があるため、チェックする
-  if (event.data) {
-    try {
-      const payload = event.data.json();
-      // FCMのメッセージの場合は、onBackgroundMessageで処理されるためスキップ
-      if (payload.from === 'firebase' || payload.firebase) {
-        return;
-      }
-      
-      // FCM以外のPush通知を処理
-      const title = payload.title || '通知';
-      const options = {
-        body: payload.body || '',
-        icon: '/icon-192x192.png',
-        badge: '/icon-192x192.png',
-        data: payload.data || {},
-        tag: payload.tag || `push-${Date.now()}`,
-        renotify: true,
-        priority: 'high',
-      };
-      
-      event.waitUntil(
-        self.registration.showNotification(title, options)
-      );
-    } catch (e) {
-      // JSONパースエラーは無視
+  if (!event.data) {
+    return;
+  }
+  
+  try {
+    const payload = event.data.json();
+    
+    // FCMのメッセージを確実にスキップ
+    // FCMメッセージには以下の特徴がある：
+    // 1. notification オブジェクトが存在する
+    // 2. data オブジェクトに messageId が含まれる
+    // 3. from が 'firebase' または firebase プロパティが存在する
+    if (
+      payload.notification ||
+      payload.data?.messageId ||
+      payload.from === 'firebase' ||
+      payload.firebase ||
+      payload.fcmMessageId
+    ) {
+      // FCMメッセージは onBackgroundMessage で処理されるため、ここでは何もしない
+      return;
     }
+    
+    // FCM以外のPush通知のみ処理
+    const title = payload.title || '通知';
+    const options = {
+      body: payload.body || '',
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      data: payload.data || {},
+      tag: payload.tag || `push-${Date.now()}`,
+      renotify: true,
+      priority: 'high',
+    };
+    
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  } catch (e) {
+    // JSONパースエラーは無視（FCMメッセージの可能性があるため）
   }
 });
 

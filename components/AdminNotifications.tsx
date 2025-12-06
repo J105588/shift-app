@@ -37,8 +37,18 @@ export default function AdminNotifications() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title || !body) {
-      alert('タイトルと内容を入力してください')
+    
+    // 二重送信防止
+    if (isSending) {
+      return
+    }
+    
+    if (!title || !title.trim()) {
+      alert('タイトルを入力してください')
+      return
+    }
+    if (!body || !body.trim()) {
+      alert('内容を入力してください')
       return
     }
     if (selectedUserIds.length === 0) {
@@ -52,8 +62,8 @@ export default function AdminNotifications() {
       const nowIso = new Date().toISOString()
       const payloads = selectedUserIds.map((userId) => ({
         target_user_id: userId,
-        title,
-        body,
+        title: title.trim(), // 前後の空白を削除
+        body: body.trim(), // 前後の空白を削除
         scheduled_at: nowIso,
       }))
 
@@ -63,6 +73,7 @@ export default function AdminNotifications() {
       alert('通知ジョブを作成しました（ログイン中の端末に順次配信されます）。')
       setTitle('')
       setBody('')
+      setSelectedUserIds([]) // 選択をリセット
     } catch (err: any) {
       console.error('通知作成エラー:', err)
       alert('通知の作成に失敗しました: ' + (err.message || '詳細不明'))

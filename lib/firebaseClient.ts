@@ -227,7 +227,12 @@ export const subscribeInAppMessages = async () => {
             shownNotificationTags.delete(oldestTag)
           }
 
-          const notification = new Notification(title || '通知', {
+          // タイトルが空の場合は通知を表示しない（GASスクリプト側で送信される通知のみ表示）
+          if (!title || !title.trim()) {
+            return
+          }
+
+          const notification = new Notification(title, {
             body: body || '',
             icon: icon || '/icon-192x192.png',
             badge: '/icon-192x192.png',

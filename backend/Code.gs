@@ -73,13 +73,22 @@ function processNotifications() {
  */
 function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, accessToken) {
   try {
+    // 1. 送信前に sent_at を更新して重複処理を防ぐ（ロックとして機能）
+    // これにより、同じ通知が複数のGAS実行で処理されるのを防ぐ
+    var lockResult = markNotificationSent(supabaseUrl, supabaseKey, notif.id);
+    
+    // sent_at の更新に失敗した場合（既に他のプロセスで処理中など）はスキップ
+    if (!lockResult) {
+      console.log('スキップ: 既に処理中または処理済み (notification_id: ' + notif.id + ')');
+      return;
+    }
+
     // 2. 対象ユーザーの push_subscriptions から FCM トークンを取得
     const tokens = fetchUserTokens(supabaseUrl, supabaseKey, notif.target_user_id);
 
     if (!tokens || tokens.length === 0) {
       console.log('スキップ: トークンなし (notification_id: ' + notif.id + ', user_id: ' + notif.target_user_id + ')');
-      // トークンがない場合も「送信済み」扱いにして、無限ループを防ぐ
-      markNotificationSent(supabaseUrl, supabaseKey, notif.id);
+      // トークンがない場合は既に sent_at を更新済みなので、そのまま終了
       return;
     }
 
@@ -103,12 +112,12 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
       );
     });
 
-    // 4. 成功したら sent_at を更新
-    markNotificationSent(supabaseUrl, supabaseKey, notif.id);
+    // 4. sent_at は既に更新済み（送信前にロックとして更新）
 
   } catch (e) {
     console.error('個別通知エラー (id=' + notif.id + '): ' + e.toString());
     // 個別のエラーは握りつぶし、他の通知の処理を止めないようにする
+    // エラーが発生しても sent_at は既に更新されているため、無限ループは防げる
   }
 }
 
@@ -332,10 +341,12 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
 
 /**
  * 通知を「送信済み」にマークする
+ * 戻り値: 更新が成功した場合 true、既に更新済みまたは失敗した場合 false
  */
 function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
   var url = supabaseUrl + '/rest/v1/notifications'
-    + '?id=eq.' + encodeURIComponent(notifId);
+    + '?id=eq.' + encodeURIComponent(notifId)
+    + '&sent_at=is.null'; // sent_at が null のもののみ更新（重複防止）
 
   var body = {
     sent_at: new Date().toISOString(),
@@ -347,16 +358,34 @@ function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
       apikey: supabaseKey,
       Authorization: 'Bearer ' + supabaseKey,
       'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
+      Prefer: 'return=representation', // 更新された行数を確認するため
     },
     payload: JSON.stringify(body),
     muteHttpExceptions: true,
   };
 
   var res = UrlFetchApp.fetch(url, options);
-  if (res.getResponseCode() >= 300) {
+  var status = res.getResponseCode();
+  
+  if (status >= 300) {
     console.error('markNotificationSent error: ' + res.getContentText());
+    return false;
   }
+  
+  // 更新された行数を確認（0行の場合は既に更新済み）
+  var responseText = res.getContentText();
+  if (responseText) {
+    try {
+      var updated = JSON.parse(responseText);
+      return updated && updated.length > 0;
+    } catch (e) {
+      // JSONパースエラーは無視（更新は成功した可能性がある）
+      return true;
+    }
+  }
+  
+  // レスポンスがない場合は成功とみなす
+  return true;
 }
 
 /**
