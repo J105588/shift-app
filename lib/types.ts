@@ -58,3 +58,13 @@ export type Profile = {
     shiftGroupId?: string // 新構造用
     isGroupShift?: boolean // 団体付与かどうか
   }
+  
+  // グループチャットメッセージ
+  export type ShiftGroupChatMessage = {
+    id: string
+    shift_group_id: string
+    user_id: string
+    message: string
+    created_at: string
+    profiles?: Profile
+  }

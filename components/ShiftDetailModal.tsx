@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Clock, Users, UserCog, X, CalendarDays, Edit2, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import GroupChat from './GroupChat'
 
 type ShiftDetail = {
   id: string
@@ -285,6 +286,17 @@ export default function ShiftDetailModal({
                 ))}
               </div>
             </div>
+          )}
+
+          {/* グループチャット（団体シフトのみ） */}
+          {shift.isGroupShift && shift.shiftGroupId && currentUserId && (
+            <GroupChat
+              shiftGroupId={shift.shiftGroupId}
+              currentUserId={currentUserId}
+              shiftEndTime={shift.end}
+              shiftTitle={shift.title}
+              shiftStartTime={shift.start}
+            />
           )}
         </div>
       </div>
