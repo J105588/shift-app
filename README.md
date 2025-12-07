@@ -257,6 +257,10 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 -- database/migration_supervisor_edit_description.sql（統括者がシフトのメモを編集できるようにする）
 -- database/migration_shift_groups.sql（団体付与シフト機能）
 -- database/migration_add_shift_group_notification_link.sql（団体付与シフトの通知リンク）
+-- database/migration_add_shift_group_chat.sql（団体シフトグループチャット機能）
+-- database/migration_add_admin_chat_management.sql（管理者チャット管理機能）
+-- database/migration_add_chat_notification_policy.sql（チャット通知作成ポリシー）
+-- database/migration_fix_all_notification_policies.sql（notificationsテーブルのRLSポリシー完全修正）※重要
 ```
 
 ### データベース構造

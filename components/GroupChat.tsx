@@ -170,6 +170,28 @@ export default function GroupChat({
         firstPayload: payloads[0]
       })
 
+      // 認証状態を確認
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      console.log('認証状態確認:', {
+        authUser: authUser?.id,
+        currentUserId: currentUserId,
+        authError: authError,
+        match: authUser?.id === currentUserId
+      })
+
+      // shift_assignmentsの確認（デバッグ用）
+      const { data: assignmentCheck, error: assignmentError } = await supabase
+        .from('shift_assignments')
+        .select('id, user_id, shift_group_id')
+        .eq('shift_group_id', shiftGroupId)
+        .eq('user_id', currentUserId)
+      
+      console.log('shift_assignments確認:', {
+        assignmentCheck,
+        assignmentError,
+        isParticipant: assignmentCheck && assignmentCheck.length > 0
+      })
+
       const { data: insertedNotifications, error: insertError } = await supabase
         .from('notifications')
         .insert(payloads)
@@ -182,6 +204,13 @@ export default function GroupChat({
           message: insertError.message,
           details: insertError.details,
           hint: insertError.hint
+        })
+        console.error('デバッグ情報:', {
+          authUserId: authUser?.id,
+          currentUserId: currentUserId,
+          shiftGroupId: shiftGroupId,
+          isParticipant: assignmentCheck && assignmentCheck.length > 0,
+          payloads: payloads
         })
         return
       }
