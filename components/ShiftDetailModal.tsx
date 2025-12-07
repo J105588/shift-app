@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Clock, Users, UserCog, X, CalendarDays, Edit2, Save } from 'lucide-react'
+import { Clock, Users, UserCog, X, CalendarDays, Edit2, Save, MessageCircle, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 import GroupChat from './GroupChat'
 
 type ShiftDetail = {
@@ -41,6 +42,7 @@ export default function ShiftDetailModal({
   onDescriptionUpdated
 }: Props) {
   const supabase = createClient()
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [editedDescription, setEditedDescription] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -131,6 +133,13 @@ export default function ShiftDetailModal({
   const handleCancelEdit = () => {
     setIsEditing(false)
     setEditedDescription(shift.description || '')
+  }
+
+  const handleOpenChat = () => {
+    if (shift.isGroupShift && shift.shiftGroupId) {
+      // 新しいページでチャットを開く
+      window.open(`/chat/${shift.shiftGroupId}`, '_blank')
+    }
   }
 
   return (
@@ -290,13 +299,26 @@ export default function ShiftDetailModal({
 
           {/* グループチャット（団体シフトのみ） */}
           {shift.isGroupShift && shift.shiftGroupId && currentUserId && (
-            <GroupChat
-              shiftGroupId={shift.shiftGroupId}
-              currentUserId={currentUserId}
-              shiftEndTime={shift.end}
-              shiftTitle={shift.title}
-              shiftStartTime={shift.start}
-            />
+            <div className="space-y-3">
+              {/* チャットに移動ボタン */}
+              <button
+                onClick={handleOpenChat}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm"
+              >
+                <MessageCircle size={18} />
+                <span>チャットページで開く</span>
+                <ExternalLink size={16} />
+              </button>
+              
+              {/* インラインのチャットコンポーネント（既存の動作を維持） */}
+              <GroupChat
+                shiftGroupId={shift.shiftGroupId}
+                currentUserId={currentUserId}
+                shiftEndTime={shift.end}
+                shiftTitle={shift.title}
+                shiftStartTime={shift.start}
+              />
+            </div>
           )}
         </div>
       </div>

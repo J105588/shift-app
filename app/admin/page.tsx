@@ -8,6 +8,7 @@ import AdminCalendar from '@/components/AdminCalendar'
 import SpreadsheetView from '@/components/SpreadsheetView'
 import AdminNotifications from '@/components/AdminNotifications'
 import AdminSettings from '@/components/AdminSettings'
+import AdminChatManagement from '@/components/AdminChatManagement'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
 import { parse } from 'date-fns/parse'
@@ -15,7 +16,7 @@ import { startOfWeek } from 'date-fns/startOfWeek'
 import { getDay } from 'date-fns/getDay'
 import { ja } from 'date-fns/locale/ja'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
-import { Users, Calendar as CalIcon, Table2, Settings } from 'lucide-react'
+import { Users, Calendar as CalIcon, Table2, Settings, MessageCircle } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
 import { RefreshCw } from 'lucide-react'
 import FcmTokenManager from '@/components/FcmTokenManager'
@@ -32,7 +33,7 @@ export default function AdminPage() {
   const [events, setEvents] = useState<any[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [users, setUsers] = useState<Profile[]>([])
-  const [activeTab, setActiveTab] = useState<'calendar' | 'users' | 'notifications' | 'settings'>('calendar')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'users' | 'notifications' | 'chat' | 'settings'>('calendar')
   const [calendarView, setCalendarView] = useState<'calendar' | 'spreadsheet'>('calendar')
   
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -340,6 +341,18 @@ export default function AdminPage() {
             <span className="sm:hidden">通知</span>
           </button>
           <button 
+            onClick={() => setActiveTab('chat')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
+              activeTab === 'chat' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+            }`}
+          >
+            <MessageCircle size={18} /> 
+            <span className="hidden sm:inline">チャット</span>
+            <span className="sm:hidden">チャット</span>
+          </button>
+          <button 
             onClick={() => setActiveTab('settings')}
             className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
               activeTab === 'settings' 
@@ -446,6 +459,10 @@ export default function AdminPage() {
         ) : activeTab === 'notifications' ? (
           <div className="h-full overflow-y-auto">
             <AdminNotifications />
+          </div>
+        ) : activeTab === 'chat' ? (
+          <div className="h-full overflow-y-auto">
+            <AdminChatManagement />
           </div>
         ) : (
           <div className="h-full overflow-y-auto">

@@ -80,13 +80,17 @@ export default function GroupChat({
         return
       }
 
-      const { error } = await supabase
+      const messageText = newMessage.trim()
+      
+      const { data: insertedData, error } = await supabase
         .from('shift_group_chat_messages')
         .insert({
           shift_group_id: shiftGroupId,
           user_id: currentUserId,
-          message: newMessage.trim()
+          message: messageText
         })
+        .select('*, profiles!shift_group_chat_messages_user_id_fkey(id, display_name)')
+        .single()
 
       if (error) {
         console.error('メッセージ送信エラー:', error)
@@ -95,8 +99,15 @@ export default function GroupChat({
         return
       }
 
+      // 送信後すぐにDBと同期するため、メッセージ一覧を再取得
+      // リアルタイム購読もあるが、即座に反映させるために明示的に取得
+      await fetchMessages()
+
       // 通知を送信（参加者全員に、送信者以外）
-      await sendChatNotification(newMessage.trim())
+      // 通知は非同期で送信（送信のブロッキングを避ける）
+      sendChatNotification(messageText).catch((err) => {
+        console.error('通知送信エラー:', err)
+      })
 
       setNewMessage('')
     } catch (error) {
@@ -107,7 +118,7 @@ export default function GroupChat({
     }
   }
 
-  // チャット通知を送信
+  // チャット通知を送信（リアルタイム送信）
   const sendChatNotification = async (messageContent: string) => {
     try {
       // 送信者の情報を取得
@@ -147,13 +158,48 @@ export default function GroupChat({
         target_user_id: userId,
         title: notificationTitle,
         body: notificationBody,
-        scheduled_at: nowIso
+        scheduled_at: nowIso,
+        shift_group_id: shiftGroupId // チャットページへのリンク用
       }))
 
-      const { error } = await supabase.from('notifications').insert(payloads)
+      const { data: insertedNotifications, error: insertError } = await supabase
+        .from('notifications')
+        .insert(payloads)
+        .select('id')
       
-      if (error) {
-        console.error('通知作成エラー:', error)
+      if (insertError) {
+        console.error('通知作成エラー:', insertError)
+        return
+      }
+
+      // 通知IDを取得
+      const notificationIds = insertedNotifications?.map(n => n.id) || []
+      if (notificationIds.length === 0) return
+
+      // GASのWebhookエンドポイントを呼び出して即座に送信
+      const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL
+      if (gasWebhookUrl) {
+        try {
+          const response = await fetch(gasWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              notification_ids: notificationIds
+            })
+          })
+
+          if (!response.ok) {
+            console.error('GAS Webhook呼び出しエラー:', response.status, await response.text())
+          }
+        } catch (webhookError) {
+          // Webhook呼び出しに失敗しても、通知は作成されているので、通常のトリガーで送信される
+          console.error('GAS Webhook呼び出しエラー:', webhookError)
+        }
+      } else {
+        // Webhook URLが設定されていない場合は、通常のトリガーに任せる
+        console.warn('NEXT_PUBLIC_GAS_WEBHOOK_URLが設定されていません。通知は通常のトリガーで送信されます。')
       }
     } catch (error) {
       console.error('通知送信エラー:', error)

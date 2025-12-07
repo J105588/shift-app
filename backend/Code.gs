@@ -22,6 +22,10 @@
  * - 関数: processNotifications
  * - イベントのソース: 時間主導型
  * - タイプ: 分ベースのタイマー (1分おき)
+ * 
+ * 【Webhook設定】
+ * - このスクリプトをWebアプリとして公開し、doPost関数を実行可能に設定
+ * - 公開URLを取得して、クライアント側から呼び出し可能にする
  */
 
 // 1回の実行で処理する通知の最大件数 (タイムアウト対策)
@@ -111,7 +115,8 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
         notif.body,
         notif.id, // 通知IDを渡す（重複防止のため）
         supabaseUrl,
-        supabaseKey
+        supabaseKey,
+        notif.shift_group_id // チャットページへのリンク用
       );
     });
 
@@ -131,7 +136,7 @@ function processSingleNotification(notif, supabaseUrl, supabaseKey, projectId, a
 function fetchDueNotifications(supabaseUrl, supabaseKey, nowIso, limit) {
   // API URL構築
   var url = supabaseUrl + '/rest/v1/notifications'
-    + '?select=id,target_user_id,title,body,scheduled_at'
+    + '?select=id,target_user_id,title,body,scheduled_at,shift_group_id'
     + '&scheduled_at=lte.' + encodeURIComponent(nowIso)
     + '&sent_at=is.null'
     + '&limit=' + limit  // 件数制限
@@ -279,7 +284,7 @@ function base64UrlEncode_(obj) {
  * FCM HTTP v1 でプッシュ通知を送信 (アクセストークン再利用版)
  * 404 / 410 (UNREGISTERED) などの応答が返ったトークンは Supabase 側から自動削除する
  */
-function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body, notificationId, supabaseUrl, supabaseKey) {
+function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, body, notificationId, supabaseUrl, supabaseKey, shiftGroupId) {
   var url = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/messages:send';
 
   // 通知の重複を防ぐため、通知IDベースで一意の messageId を生成
@@ -310,7 +315,7 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
       // Webアプリの場合、クリック時のリンクなどを設定可能
       webpush: {
         fcm_options: {
-           link: "/" // 必要に応じて通知クリック時のURLを指定
+           link: shiftGroupId ? "/chat/" + shiftGroupId : "/" // チャット通知の場合はチャットページへ
         },
         // 通知の重複を防ぐため、一意の tag を設定
         headers: {
@@ -465,5 +470,136 @@ function deletePushSubscriptionByToken_(supabaseUrl, supabaseKey, token) {
   var res = UrlFetchApp.fetch(url, options);
   if (res.getResponseCode() >= 300) {
     throw new Error('deletePushSubscriptionByToken error: ' + res.getContentText());
+  }
+}
+
+/**
+ * Webアプリ用GETエンドポイント
+ * Webアプリとして公開する際に必要
+ */
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    message: 'Shift App Notification Service',
+    version: '1.0.0',
+    endpoints: {
+      post: 'POSTリクエストで通知を即座に送信できます'
+    }
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Webhookエンドポイント: 通知を即座に送信
+ * POSTリクエストで通知IDの配列を受け取り、即座に送信する
+ * 
+ * リクエストボディ例:
+ * {
+ *   "notification_ids": ["uuid1", "uuid2", ...]
+ * }
+ * 
+ * レスポンス:
+ * {
+ *   "success": true,
+ *   "processed": 2,
+ *   "errors": []
+ * }
+ */
+function doPost(e) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var SUPABASE_URL = props.getProperty('SUPABASE_URL');
+    var SUPABASE_KEY = props.getProperty('SUPABASE_SERVICE_ROLE_KEY');
+    var FCM_PROJECT_ID = props.getProperty('FCM_PROJECT_ID');
+    var FCM_SA_CLIENT_EMAIL = props.getProperty('FCM_SA_CLIENT_EMAIL');
+    var FCM_SA_PRIVATE_KEY = props.getProperty('FCM_SA_PRIVATE_KEY');
+
+    if (!SUPABASE_URL || !SUPABASE_KEY || !FCM_PROJECT_ID || !FCM_SA_CLIENT_EMAIL || !FCM_SA_PRIVATE_KEY) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: '設定エラー: スクリプトプロパティに必要な値が設定されていません。'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // リクエストボディをパース
+    var requestData;
+    try {
+      requestData = JSON.parse(e.postData.contents);
+    } catch (parseError) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: 'リクエストボディのパースに失敗しました: ' + parseError.toString()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var notificationIds = requestData.notification_ids;
+    if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: 'notification_ids が配列として提供されていません。'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // FCMアクセストークンを取得
+    var accessToken = getFcmAccessToken_(FCM_PROJECT_ID, FCM_SA_CLIENT_EMAIL, FCM_SA_PRIVATE_KEY);
+
+    // 各通知IDに対応する通知を取得して送信
+    var processed = 0;
+    var errors = [];
+
+    notificationIds.forEach(function(notifId) {
+      try {
+        // 通知情報を取得
+        var url = SUPABASE_URL + '/rest/v1/notifications'
+          + '?id=eq.' + encodeURIComponent(notifId)
+          + '&select=id,target_user_id,title,body,scheduled_at,sent_at,shift_group_id';
+
+        var options = {
+          method: 'get',
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: 'Bearer ' + SUPABASE_KEY,
+            'Content-Type': 'application/json',
+          },
+          muteHttpExceptions: true,
+        };
+
+        var res = UrlFetchApp.fetch(url, options);
+        if (res.getResponseCode() >= 300) {
+          errors.push({ id: notifId, error: '通知取得エラー: ' + res.getContentText() });
+          return;
+        }
+
+        var notifications = JSON.parse(res.getContentText());
+        if (!notifications || notifications.length === 0) {
+          errors.push({ id: notifId, error: '通知が見つかりません' });
+          return;
+        }
+
+        var notif = notifications[0];
+
+        // 既に送信済みの場合はスキップ
+        if (notif.sent_at) {
+          return;
+        }
+
+        // 通知を送信（shift_group_idも含まれる）
+        processSingleNotification(notif, SUPABASE_URL, SUPABASE_KEY, FCM_PROJECT_ID, accessToken);
+        processed++;
+      } catch (err) {
+        errors.push({ id: notifId, error: err.toString() });
+      }
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      processed: processed,
+      errors: errors
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (e) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: '全体処理エラー: ' + e.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
