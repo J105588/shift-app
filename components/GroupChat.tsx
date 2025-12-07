@@ -174,32 +174,46 @@ export default function GroupChat({
 
       // 通知IDを取得
       const notificationIds = insertedNotifications?.map(n => n.id) || []
-      if (notificationIds.length === 0) return
+      if (notificationIds.length === 0) {
+        console.warn('通知IDが取得できませんでした')
+        return
+      }
 
       // GASのWebhookエンドポイントを呼び出して即座に送信
       const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL
-      if (gasWebhookUrl) {
-        try {
-          const response = await fetch(gasWebhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              notification_ids: notificationIds
-            })
-          })
+      
+      console.log('GAS Webhook URL:', gasWebhookUrl ? '設定されています' : '未設定')
+      console.log('通知ID:', notificationIds)
 
-          if (!response.ok) {
-            console.error('GAS Webhook呼び出しエラー:', response.status, await response.text())
-          }
-        } catch (webhookError) {
-          // Webhook呼び出しに失敗しても、通知は作成されているので、通常のトリガーで送信される
-          console.error('GAS Webhook呼び出しエラー:', webhookError)
-        }
-      } else {
-        // Webhook URLが設定されていない場合は、通常のトリガーに任せる
+      if (!gasWebhookUrl) {
         console.warn('NEXT_PUBLIC_GAS_WEBHOOK_URLが設定されていません。通知は通常のトリガーで送信されます。')
+        return
+      }
+
+      try {
+        console.log('GAS Webhookにリクエストを送信中...', gasWebhookUrl)
+        
+        const response = await fetch(gasWebhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            notification_ids: notificationIds
+          }),
+          mode: 'no-cors' // CORSエラーを回避（GASのWebhookはno-corsが必要な場合がある）
+        })
+
+        // no-corsモードではresponseを読み取れないため、成功したとみなす
+        console.log('GAS Webhookリクエスト送信完了')
+      } catch (webhookError: any) {
+        // Webhook呼び出しに失敗しても、通知は作成されているので、通常のトリガーで送信される
+        console.error('GAS Webhook呼び出しエラー:', webhookError)
+        console.error('エラー詳細:', {
+          message: webhookError?.message,
+          stack: webhookError?.stack,
+          name: webhookError?.name
+        })
       }
     } catch (error) {
       console.error('通知送信エラー:', error)
@@ -230,6 +244,11 @@ export default function GroupChat({
       )
       .subscribe()
 
+    // 定期的にメッセージを取得（30秒ごと、リアルタイム購読の補完として）
+    const messageInterval = setInterval(() => {
+      fetchMessages()
+    }, 30000)
+
     // 定期的にチャット利用可能かチェック（1分ごと）
     const availabilityInterval = setInterval(() => {
       checkChatAvailability()
@@ -237,6 +256,7 @@ export default function GroupChat({
 
     return () => {
       supabase.removeChannel(channel)
+      clearInterval(messageInterval)
       clearInterval(availabilityInterval)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

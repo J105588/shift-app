@@ -304,28 +304,45 @@ export default function AdminChatManagement() {
 
       // 通知IDを取得
       const notificationIds = insertedNotifications?.map(n => n.id) || []
-      if (notificationIds.length === 0) return
+      if (notificationIds.length === 0) {
+        console.warn('通知IDが取得できませんでした')
+        return
+      }
 
       // GASのWebhookエンドポイントを呼び出して即座に送信
       const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL
-      if (gasWebhookUrl) {
-        try {
-          const response = await fetch(gasWebhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              notification_ids: notificationIds
-            })
-          })
+      
+      console.log('GAS Webhook URL:', gasWebhookUrl ? '設定されています' : '未設定')
+      console.log('通知ID:', notificationIds)
 
-          if (!response.ok) {
-            console.error('GAS Webhook呼び出しエラー:', response.status, await response.text())
-          }
-        } catch (webhookError) {
-          console.error('GAS Webhook呼び出しエラー:', webhookError)
-        }
+      if (!gasWebhookUrl) {
+        console.warn('NEXT_PUBLIC_GAS_WEBHOOK_URLが設定されていません。通知は通常のトリガーで送信されます。')
+        return
+      }
+
+      try {
+        console.log('GAS Webhookにリクエストを送信中...', gasWebhookUrl)
+        
+        const response = await fetch(gasWebhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            notification_ids: notificationIds
+          }),
+          mode: 'no-cors' // CORSエラーを回避（GASのWebhookはno-corsが必要な場合がある）
+        })
+
+        // no-corsモードではresponseを読み取れないため、成功したとみなす
+        console.log('GAS Webhookリクエスト送信完了')
+      } catch (webhookError: any) {
+        console.error('GAS Webhook呼び出しエラー:', webhookError)
+        console.error('エラー詳細:', {
+          message: webhookError?.message,
+          stack: webhookError?.stack,
+          name: webhookError?.name
+        })
       }
     } catch (error) {
       console.error('通知送信エラー:', error)
@@ -375,13 +392,29 @@ export default function AdminChatManagement() {
       )
       .subscribe()
 
+    // 定期的にメッセージを取得（30秒ごと、リアルタイム購読の補完として）
+    const messageInterval = setInterval(() => {
+      fetchMessages(selectedGroupId)
+    }, 30000)
+
     return () => {
       supabase.removeChannel(channel)
+      clearInterval(messageInterval)
     }
   }, [selectedGroupId, supabase])
 
+  // チャットグループ一覧の定期的な更新
   useEffect(() => {
     fetchChatGroups()
+
+    // 定期的にチャットグループ一覧を更新（30秒ごと、リアルタイム購読の補完として）
+    const groupInterval = setInterval(() => {
+      fetchChatGroups()
+    }, 30000)
+
+    return () => {
+      clearInterval(groupInterval)
+    }
   }, [])
 
   if (isLoading) {
