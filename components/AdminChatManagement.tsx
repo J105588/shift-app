@@ -289,7 +289,8 @@ export default function AdminChatManagement() {
         title: notificationTitle,
         body: notificationBody,
         scheduled_at: nowIso,
-        shift_group_id: groupId
+        shift_group_id: groupId,
+        created_by: currentUser.id // 作成者を記録
       }))
 
       const { data: insertedNotifications, error: insertError } = await supabase

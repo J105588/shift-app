@@ -74,10 +74,12 @@ with check (
   shift_group_id is not null
   and
   -- そのシフトグループの参加者である
+  -- INSERT時は、挿入される行のshift_group_idを参照する
+  -- テーブル名を明示的に指定
   exists (
-    select 1 from shift_assignments
-    where shift_group_id = notifications.shift_group_id
-    and user_id = auth.uid()
+    select 1 from shift_assignments sa
+    where sa.shift_group_id = notifications.shift_group_id
+    and sa.user_id = auth.uid()
   )
 );
 

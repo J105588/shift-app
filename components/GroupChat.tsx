@@ -159,8 +159,16 @@ export default function GroupChat({
         title: notificationTitle,
         body: notificationBody,
         scheduled_at: nowIso,
-        shift_group_id: shiftGroupId // チャットページへのリンク用
+        shift_group_id: shiftGroupId, // チャットページへのリンク用
+        created_by: currentUserId // 作成者を記録
       }))
+
+      console.log('通知作成開始:', {
+        payloadsCount: payloads.length,
+        shiftGroupId: shiftGroupId,
+        currentUserId: currentUserId,
+        firstPayload: payloads[0]
+      })
 
       const { data: insertedNotifications, error: insertError } = await supabase
         .from('notifications')
@@ -169,8 +177,19 @@ export default function GroupChat({
       
       if (insertError) {
         console.error('通知作成エラー:', insertError)
+        console.error('エラー詳細:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint
+        })
         return
       }
+
+      console.log('通知作成成功:', {
+        insertedCount: insertedNotifications?.length || 0,
+        notificationIds: insertedNotifications?.map(n => n.id) || []
+      })
 
       // 通知IDを取得
       const notificationIds = insertedNotifications?.map(n => n.id) || []
