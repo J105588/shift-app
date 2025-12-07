@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
-import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle, Send } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 
 type ChatGroup = {
@@ -23,6 +23,11 @@ export default function AdminChatManagement() {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [currentProfile, setCurrentProfile] = useState<any>(null)
+  const [newMessage, setNewMessage] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // チャットグループ一覧を取得
   const fetchChatGroups = async () => {
@@ -195,6 +200,186 @@ export default function AdminChatManagement() {
     setExpandedGroups(newExpanded)
   }
 
+  // メッセージ送信
+  const handleSendMessage = async (e: React.FormEvent, groupId: string) => {
+    e.preventDefault()
+    
+    if (!newMessage.trim() || isSending || !currentUser) return
+
+    setIsSending(true)
+    try {
+      const messageText = newMessage.trim()
+      
+      const { error } = await supabase
+        .from('shift_group_chat_messages')
+        .insert({
+          shift_group_id: groupId,
+          user_id: currentUser.id,
+          message: messageText
+        })
+
+      if (error) {
+        console.error('メッセージ送信エラー:', error)
+        alert('メッセージの送信に失敗しました: ' + error.message)
+        setIsSending(false)
+        return
+      }
+
+      // 送信後すぐにDBと同期するため、メッセージ一覧を再取得
+      await fetchMessages(groupId)
+      
+      // チャットグループ一覧も更新
+      await fetchChatGroups()
+
+      // 通知を送信（参加者全員に、送信者以外）
+      await sendChatNotification(messageText, groupId)
+
+      setNewMessage('')
+    } catch (error) {
+      console.error('メッセージ送信エラー:', error)
+      alert('メッセージの送信に失敗しました')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // チャット通知を送信（リアルタイム送信）
+  const sendChatNotification = async (messageContent: string, groupId: string) => {
+    try {
+      const senderName = currentProfile?.display_name || '管理者'
+
+      // シフトグループの参加者を取得
+      const { data: assignments } = await supabase
+        .from('shift_assignments')
+        .select('user_id')
+        .eq('shift_group_id', groupId)
+
+      if (!assignments) return
+
+      // 送信者以外の参加者に通知を送信
+      const targetUserIds = assignments
+        .map(a => a.user_id)
+        .filter(id => id !== currentUser.id)
+
+      if (targetUserIds.length === 0) return
+
+      // シフトグループ情報を取得
+      const { data: groupData } = await supabase
+        .from('shift_groups')
+        .select('title, start_time, end_time')
+        .eq('id', groupId)
+        .single()
+
+      if (!groupData) return
+
+      const startTime = new Date(groupData.start_time)
+      const endTime = new Date(groupData.end_time)
+
+      // シフト時間のフォーマット
+      const timeFormat = format(startTime, 'M/d HH:mm', { locale: ja }) + '〜' + format(endTime, 'HH:mm', { locale: ja })
+
+      // 通知タイトルと本文を作成
+      const notificationTitle = `${timeFormat}、${groupData.title}`
+      const notificationBody = `${senderName}（管理者）：${messageContent}`
+
+      // 通知を作成（即時送信）
+      const nowIso = new Date().toISOString()
+      const payloads = targetUserIds.map((userId) => ({
+        target_user_id: userId,
+        title: notificationTitle,
+        body: notificationBody,
+        scheduled_at: nowIso,
+        shift_group_id: groupId
+      }))
+
+      const { data: insertedNotifications, error: insertError } = await supabase
+        .from('notifications')
+        .insert(payloads)
+        .select('id')
+      
+      if (insertError) {
+        console.error('通知作成エラー:', insertError)
+        return
+      }
+
+      // 通知IDを取得
+      const notificationIds = insertedNotifications?.map(n => n.id) || []
+      if (notificationIds.length === 0) return
+
+      // GASのWebhookエンドポイントを呼び出して即座に送信
+      const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL
+      if (gasWebhookUrl) {
+        try {
+          const response = await fetch(gasWebhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              notification_ids: notificationIds
+            })
+          })
+
+          if (!response.ok) {
+            console.error('GAS Webhook呼び出しエラー:', response.status, await response.text())
+          }
+        } catch (webhookError) {
+          console.error('GAS Webhook呼び出しエラー:', webhookError)
+        }
+      }
+    } catch (error) {
+      console.error('通知送信エラー:', error)
+    }
+  }
+
+  // メッセージが更新されたらスクロール
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // 現在のユーザー情報を取得
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUser(user)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setCurrentProfile(profile)
+      }
+    }
+    init()
+  }, [supabase])
+
+  // リアルタイム購読
+  useEffect(() => {
+    if (!selectedGroupId) return
+
+    const channel = supabase
+      .channel(`admin_chat_${selectedGroupId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shift_group_chat_messages',
+          filter: `shift_group_id=eq.${selectedGroupId}`
+        },
+        () => {
+          fetchMessages(selectedGroupId)
+          fetchChatGroups()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [selectedGroupId, supabase])
+
   useEffect(() => {
     fetchChatGroups()
   }, [])
@@ -287,54 +472,104 @@ export default function AdminChatManagement() {
                   </div>
                 </div>
 
-                {/* メッセージ一覧 */}
+                {/* メッセージ一覧と送信フォーム */}
                 {isExpanded && selectedGroupId === group.id && (
                   <div className="border-t border-slate-200 bg-white">
                     {isLoadingMessages ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                       </div>
-                    ) : messages.length === 0 ? (
-                      <div className="text-center py-8 text-slate-500 text-sm">
-                        メッセージがありません
-                      </div>
                     ) : (
-                      <div className="max-h-96 overflow-y-auto p-4 space-y-3">
-                        {messages.map((msg) => {
-                          const isOwnMessage = false // 管理者視点なので常にfalse
-                          const senderName = msg.profiles?.display_name || '不明'
-                          const messageTime = format(new Date(msg.created_at), 'M/d HH:mm', { locale: ja })
+                      <>
+                        {/* メッセージ一覧 */}
+                        <div className="max-h-96 overflow-y-auto p-4 space-y-3">
+                          {messages.length === 0 ? (
+                            <div className="text-center py-8 text-slate-500 text-sm">
+                              メッセージがありません
+                            </div>
+                          ) : (
+                            messages.map((msg) => {
+                              const isOwnMessage = msg.user_id === currentUser?.id
+                              const senderName = msg.profiles?.display_name || '不明'
+                              const messageTime = format(new Date(msg.created_at), 'M/d HH:mm', { locale: ja })
 
-                          return (
-                            <div
-                              key={msg.id}
-                              className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-semibold text-slate-900">
-                                    {senderName}
-                                  </span>
-                                  <span className="text-xs text-slate-500">
-                                    {messageTime}
-                                  </span>
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
+                                    isOwnMessage
+                                      ? 'bg-blue-50 hover:bg-blue-100'
+                                      : 'bg-slate-50 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`text-sm font-semibold ${
+                                        isOwnMessage ? 'text-blue-900' : 'text-slate-900'
+                                      }`}>
+                                        {senderName}
+                                        {isOwnMessage && (
+                                          <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded">
+                                            管理者
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        {messageTime}
+                                      </span>
+                                    </div>
+                                    <div className={`text-sm whitespace-pre-wrap break-words ${
+                                      isOwnMessage ? 'text-blue-900' : 'text-slate-800'
+                                    }`}>
+                                      {msg.message}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteMessage(msg.id)}
+                                    className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                                    aria-label="メッセージを削除"
+                                    title="メッセージを削除"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </div>
-                                <div className="text-sm text-slate-800 whitespace-pre-wrap break-words">
-                                  {msg.message}
-                                </div>
-                              </div>
+                              )
+                            })
+                          )}
+                          <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* メッセージ送信フォーム */}
+                        <div className="border-t border-slate-200 p-4 bg-slate-50">
+                          <form onSubmit={(e) => handleSendMessage(e, group.id)} className="space-y-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                placeholder="メッセージを入力..."
+                                className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                                disabled={isSending}
+                                maxLength={500}
+                              />
                               <button
-                                onClick={() => handleDeleteMessage(msg.id)}
-                                className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                                aria-label="メッセージを削除"
-                                title="メッセージを削除"
+                                type="submit"
+                                disabled={!newMessage.trim() || isSending}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                               >
-                                <Trash2 size={16} />
+                                {isSending ? (
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Send size={16} />
+                                )}
                               </button>
                             </div>
-                          )
-                        })}
-                      </div>
+                            <p className="text-xs text-slate-500">
+                              {newMessage.length}/500文字
+                            </p>
+                          </form>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

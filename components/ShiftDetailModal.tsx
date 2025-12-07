@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { Clock, Users, UserCog, X, CalendarDays, Edit2, Save, MessageCircle, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import GroupChat from './GroupChat'
 
 type ShiftDetail = {
   id: string
@@ -299,26 +298,14 @@ export default function ShiftDetailModal({
 
           {/* グループチャット（団体シフトのみ） */}
           {shift.isGroupShift && shift.shiftGroupId && currentUserId && (
-            <div className="space-y-3">
-              {/* チャットに移動ボタン */}
-              <button
-                onClick={handleOpenChat}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm"
-              >
-                <MessageCircle size={18} />
-                <span>チャットページで開く</span>
-                <ExternalLink size={16} />
-              </button>
-              
-              {/* インラインのチャットコンポーネント（既存の動作を維持） */}
-              <GroupChat
-                shiftGroupId={shift.shiftGroupId}
-                currentUserId={currentUserId}
-                shiftEndTime={shift.end}
-                shiftTitle={shift.title}
-                shiftStartTime={shift.start}
-              />
-            </div>
+            <button
+              onClick={handleOpenChat}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm"
+            >
+              <MessageCircle size={18} />
+              <span>チャットページで開く</span>
+              <ExternalLink size={16} />
+            </button>
           )}
         </div>
       </div>
