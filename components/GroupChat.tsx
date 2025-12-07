@@ -244,10 +244,10 @@ export default function GroupChat({
       )
       .subscribe()
 
-    // 定期的にメッセージを取得（30秒ごと、リアルタイム購読の補完として）
+    // 定期的にメッセージを取得（10秒ごと、リアルタイム購読の補完として）
     const messageInterval = setInterval(() => {
       fetchMessages()
-    }, 30000)
+    }, 10000)
 
     // 定期的にチャット利用可能かチェック（1分ごと）
     const availabilityInterval = setInterval(() => {
