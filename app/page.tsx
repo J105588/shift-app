@@ -246,7 +246,7 @@ export default function LoginPage() {
               <div className="flex flex-col items-center justify-center gap-3 sm:gap-4">
                 <span className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
                 <p className="text-base sm:text-lg font-semibold text-slate-700">検証中...</p>
-                <p className="text-xs sm:text-sm text-slate-500">ログイン状態を確認しています</p>
+                <p className="text-xs sm:text-sm text-slate-500">権限を確認しています</p>
               </div>
             </div>
           </div>

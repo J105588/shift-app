@@ -192,20 +192,41 @@ export default function GroupChat({
         isParticipant: assignmentCheck && assignmentCheck.length > 0
       })
 
-      const { data: insertedNotifications, error: insertError } = await supabase
-        .from('notifications')
-        .insert(payloads)
-        .select('id')
+      // セキュリティチェック: ユーザーがshift_assignmentsに存在しない場合は通知を作成しない
+      if (!assignmentCheck || assignmentCheck.length === 0) {
+        console.error('セキュリティエラー: ユーザーがshift_assignmentsに存在しません')
+        return
+      }
+
+      // 複数レコードを一度に挿入する代わりに、1つずつ挿入を試す（デバッグ用）
+      // これにより、どのレコードが問題を引き起こしているか特定できる
+      const insertedNotifications: any[] = []
+      let hasError = false
       
-      if (insertError) {
-        console.error('通知作成エラー:', insertError)
-        console.error('エラー詳細:', {
-          code: insertError.code,
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint
-        })
-        console.error('デバッグ情報:', {
+      for (const payload of payloads) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('notifications')
+          .insert([payload])  // 1つずつ挿入
+          .select('id')
+        
+        if (insertError) {
+          console.error('通知作成エラー（個別）:', {
+            payload: payload,
+            error: insertError,
+            code: insertError.code,
+            message: insertError.message
+          })
+          hasError = true
+          break
+        }
+        
+        if (inserted && inserted.length > 0) {
+          insertedNotifications.push(...inserted)
+        }
+      }
+      
+      if (hasError) {
+        console.error('通知作成エラー:', {
           authUserId: authUser?.id,
           currentUserId: currentUserId,
           shiftGroupId: shiftGroupId,
