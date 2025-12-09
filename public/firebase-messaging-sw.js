@@ -23,6 +23,19 @@ firebase.initializeApp(firebaseConfig);
 // Messaging インスタンスを取得
 const messaging = firebase.messaging();
 
+// 処理済みメッセージを記録（重複防止用）
+// メモリリークを防ぐため、最大100件まで保持
+const processedMessages = new Set();
+const MAX_PROCESSED_MESSAGES = 100;
+
+// 処理済みメッセージのクリーンアップ
+function cleanupProcessedMessages() {
+  if (processedMessages.size > MAX_PROCESSED_MESSAGES) {
+    const oldestMessages = Array.from(processedMessages).slice(0, processedMessages.size - MAX_PROCESSED_MESSAGES);
+    oldestMessages.forEach(msg => processedMessages.delete(msg));
+  }
+}
+
 // バックグラウンドメッセージのハンドリング
 // 注意: このハンドラーはアプリが完全に閉じている（バックグラウンド）時のみ発火する
 // フォアグラウンド時は onMessage が発火するため、重複通知を避ける
@@ -34,16 +47,27 @@ messaging.onBackgroundMessage((payload) => {
   }
   
   // GAS 側で生成した messageId を data から取得（重複防止用）
-  const tag = payload.data?.messageId || 
-              payload.messageId || 
-              `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const messageId = payload.data?.messageId || payload.messageId;
+  const tag = messageId || `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  
+  // 既に処理済みのメッセージの場合はスキップ（同期的にチェック）
+  if (messageId && processedMessages.has(messageId)) {
+    console.log('重複通知をスキップ（処理済み） (messageId: ' + messageId + ', tag: ' + tag + ')');
+    return Promise.resolve();
+  }
+  
+  // 処理済みとして記録（同期的に実行）
+  if (messageId) {
+    processedMessages.add(messageId);
+    cleanupProcessedMessages();
+  }
   
   // 既に同じ tag の通知が表示されている場合は閉じる（重複防止）
   return self.registration.getNotifications({ tag: tag }).then((notifications) => {
     // 既に同じ tag の通知が存在する場合は、新しい通知を表示しない
     if (notifications && notifications.length > 0) {
-      console.log('重複通知をスキップ (tag: ' + tag + ', title: ' + notificationTitle + ')');
-      // 既存の通知を閉じて、新しい通知を表示しない
+      console.log('重複通知をスキップ（既存通知あり） (tag: ' + tag + ', title: ' + notificationTitle + ')');
+      // 既存の通知を閉じる
       notifications.forEach((n) => n.close());
       return Promise.resolve();
     }
@@ -116,34 +140,60 @@ self.addEventListener('push', (event) => {
     // 1. notification オブジェクトが存在する
     // 2. data オブジェクトに messageId が含まれる
     // 3. from が 'firebase' または firebase プロパティが存在する
-    if (
+    // 4. FCMのメッセージIDが存在する
+    const messageId = payload.data?.messageId || payload.messageId || payload.fcmMessageId;
+    const isFcmMessage = !!(
       payload.notification ||
-      payload.data?.messageId ||
+      messageId ||
       payload.from === 'firebase' ||
       payload.firebase ||
-      payload.fcmMessageId
-    ) {
+      payload['gcm.message_id'] ||
+      payload['google.c.a.e']
+    );
+    
+    if (isFcmMessage) {
       // FCMメッセージは onBackgroundMessage で処理されるため、ここでは何もしない
+      // 既に処理済みのメッセージの場合は確実にスキップ
+      if (messageId && processedMessages.has(messageId)) {
+        console.log('pushイベント: 重複FCMメッセージをスキップ (messageId: ' + messageId + ')');
+        return;
+      }
+      // 注意: 処理済みとして記録しない（onBackgroundMessageで処理されるため）
+      // pushイベントで記録すると、onBackgroundMessageが発火する前に記録されてしまう可能性がある
       return;
     }
     
     // FCM以外のPush通知のみ処理
     const title = payload.title || '通知';
-    const options = {
-      body: payload.body || '',
-      icon: '/icon-192x192.png',
-      badge: '/icon-192x192.png',
-      data: payload.data || {},
-      tag: payload.tag || `push-${Date.now()}`,
-      renotify: true,
-      priority: 'high',
-    };
+    const tag = payload.tag || `push-${Date.now()}`;
     
+    // 既に同じ tag の通知が表示されている場合はスキップ
     event.waitUntil(
-      self.registration.showNotification(title, options)
+      self.registration.getNotifications({ tag: tag }).then((notifications) => {
+        if (notifications && notifications.length > 0) {
+          console.log('pushイベント: 重複通知をスキップ (tag: ' + tag + ')');
+          return Promise.resolve();
+        }
+        
+        const options = {
+          body: payload.body || '',
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          data: payload.data || {},
+          tag: tag,
+          renotify: false, // 重複通知を防ぐ
+          priority: 'high',
+        };
+        
+        return self.registration.showNotification(title, options);
+      }).catch(() => {
+        // エラー時は通知を表示しない
+        console.warn('pushイベント: getNotifications error');
+      })
     );
   } catch (e) {
     // JSONパースエラーは無視（FCMメッセージの可能性があるため）
+    console.warn('pushイベント: JSON parse error');
   }
 });
 
@@ -152,6 +202,40 @@ self.addEventListener('push', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  
+  // クライアント側から処理済みメッセージの確認リクエスト
+  if (event.data && event.data.type === 'CHECK_PROCESSED_MESSAGE') {
+    const messageId = event.data.messageId;
+    const isProcessed = messageId && processedMessages.has(messageId);
+    
+    // クライアントに結果を返す
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ 
+        success: true, 
+        isProcessed: isProcessed,
+        messageId: messageId 
+      });
+    }
+    return;
+  }
+  
+  // クライアント側からメッセージを処理済みとして記録するリクエスト
+  if (event.data && event.data.type === 'MARK_PROCESSED') {
+    const messageId = event.data.messageId;
+    if (messageId) {
+      processedMessages.add(messageId);
+      cleanupProcessedMessages();
+    }
+    
+    // クライアントに結果を返す
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ 
+        success: true, 
+        messageId: messageId 
+      });
+    }
+    return;
   }
   
   // クライアントにメッセージを返す
@@ -164,8 +248,12 @@ self.addEventListener('message', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  // 通知の data に URL が含まれている場合はそのページを開く
-  const urlToOpen = event.notification.data?.url || '/';
+  // 通知の data から URL を取得
+  // shift_group_id がある場合はチャットページへ、なければ data.url または '/'
+  const shiftGroupId = event.notification.data?.shiftGroupId;
+  const urlToOpen = shiftGroupId 
+    ? '/chat/' + shiftGroupId 
+    : (event.notification.data?.url || '/');
   
   event.waitUntil(
     clients.matchAll({
@@ -175,7 +263,10 @@ self.addEventListener('notificationclick', (event) => {
       // 既に開いているウィンドウがある場合はフォーカス
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+        // URLが一致するか、チャットページの場合はシフトグループIDで判定
+        if (shiftGroupId && client.url.includes('/chat/' + shiftGroupId)) {
+          return client.focus();
+        } else if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }

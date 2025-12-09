@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
-import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle, Send } from 'lucide-react'
+import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle, Send, Reply } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 
 type ChatGroup = {
@@ -27,6 +27,7 @@ export default function AdminChatManagement() {
   const [currentProfile, setCurrentProfile] = useState<any>(null)
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<ShiftGroupChatMessage | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // チャットグループ一覧を取得
@@ -99,7 +100,16 @@ export default function AdminChatManagement() {
       
       const { data, error } = await supabase
         .from('shift_group_chat_messages')
-        .select('*, profiles!shift_group_chat_messages_user_id_fkey(id, display_name)')
+        .select(`
+          *,
+          profiles!shift_group_chat_messages_user_id_fkey(id, display_name),
+          reply_to_message:shift_group_chat_messages!shift_group_chat_messages_reply_to_fkey(
+            id,
+            message,
+            user_id,
+            profiles:profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
+          )
+        `)
         .eq('shift_group_id', groupId)
         .order('created_at', { ascending: true })
 
@@ -215,7 +225,8 @@ export default function AdminChatManagement() {
         .insert({
           shift_group_id: groupId,
           user_id: currentUser.id,
-          message: messageText
+          message: messageText,
+          reply_to: replyingTo?.id || null
         })
 
       if (error) {
@@ -235,6 +246,7 @@ export default function AdminChatManagement() {
       await sendChatNotification(messageText, groupId)
 
       setNewMessage('')
+      setReplyingTo(null) // リプライ状態をリセット
     } catch (error) {
       console.error('メッセージ送信エラー:', error)
       alert('メッセージの送信に失敗しました')
@@ -583,56 +595,89 @@ export default function AdminChatManagement() {
                     ) : (
                       <>
                         {/* メッセージ一覧 */}
-                        <div className="max-h-96 overflow-y-auto p-4 space-y-3">
+                        <div className="h-96 overflow-y-auto p-4 space-y-3 bg-white">
                           {messages.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500 text-sm">
-                              メッセージがありません
+                            <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+                              まだメッセージがありません
                             </div>
                           ) : (
                             messages.map((msg) => {
                               const isOwnMessage = msg.user_id === currentUser?.id
                               const senderName = msg.profiles?.display_name || '不明'
-                              const messageTime = format(new Date(msg.created_at), 'M/d HH:mm', { locale: ja })
+                              const messageTime = format(new Date(msg.created_at), 'HH:mm', { locale: ja })
+                              const replyToMessage = msg.reply_to_message as ShiftGroupChatMessage | null
+                              const replyToSenderName = replyToMessage?.profiles?.display_name || '不明'
 
                               return (
                                 <div
                                   key={msg.id}
-                                  className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
-                                    isOwnMessage
-                                      ? 'bg-blue-50 hover:bg-blue-100'
-                                      : 'bg-slate-50 hover:bg-slate-100'
-                                  }`}
+                                  className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} group relative`}
                                 >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className={`text-sm font-semibold ${
-                                        isOwnMessage ? 'text-blue-900' : 'text-slate-900'
-                                      }`}>
+                                  <div
+                                    className={`max-w-[80%] rounded-lg px-3 py-2 relative ${
+                                      isOwnMessage
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-slate-100 text-slate-900'
+                                    }`}
+                                  >
+                                    {/* リプライ先のメッセージ表示 */}
+                                    {replyToMessage && (
+                                      <div
+                                        className={`text-xs mb-2 pb-2 border-b ${
+                                          isOwnMessage
+                                            ? 'border-white/30 text-white/80'
+                                            : 'border-slate-300 text-slate-600'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-1">
+                                          <Reply size={12} />
+                                          <span className="font-semibold">{replyToSenderName}</span>
+                                        </div>
+                                        <div className="truncate mt-0.5">{replyToMessage.message}</div>
+                                      </div>
+                                    )}
+                                    
+                                    {!isOwnMessage && (
+                                      <div className="text-xs font-semibold mb-1 opacity-90">
                                         {senderName}
-                                        {isOwnMessage && (
-                                          <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded">
-                                            管理者
-                                          </span>
-                                        )}
-                                      </span>
-                                      <span className="text-xs text-slate-500">
-                                        {messageTime}
-                                      </span>
-                                    </div>
-                                    <div className={`text-sm whitespace-pre-wrap break-words ${
-                                      isOwnMessage ? 'text-blue-900' : 'text-slate-800'
-                                    }`}>
+                                      </div>
+                                    )}
+                                    <div className="text-sm whitespace-pre-wrap break-words">
                                       {msg.message}
                                     </div>
+                                    <div className="flex items-center justify-between mt-1">
+                                      <div
+                                        className={`text-xs ${
+                                          isOwnMessage ? 'text-white/70' : 'text-slate-500'
+                                        }`}
+                                      >
+                                        {messageTime}
+                                      </div>
+                                      <div className="flex items-center gap-1 ml-2">
+                                        {/* リプライボタン */}
+                                        <button
+                                          onClick={() => setReplyingTo(msg)}
+                                          className={`p-1 rounded hover:bg-opacity-20 transition-colors opacity-0 group-hover:opacity-100 ${
+                                            isOwnMessage
+                                              ? 'hover:bg-white text-white/70 hover:text-white'
+                                              : 'hover:bg-slate-200 text-slate-500 hover:text-slate-700'
+                                          }`}
+                                          title="リプライ"
+                                        >
+                                          <Reply size={12} />
+                                        </button>
+                                        {/* 削除ボタン */}
+                                        <button
+                                          onClick={() => handleDeleteMessage(msg.id)}
+                                          className="p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md"
+                                          aria-label="メッセージを削除"
+                                          title="メッセージを削除"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <button
-                                    onClick={() => handleDeleteMessage(msg.id)}
-                                    className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                                    aria-label="メッセージを削除"
-                                    title="メッセージを削除"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
                                 </div>
                               )
                             })
@@ -641,35 +686,53 @@ export default function AdminChatManagement() {
                         </div>
 
                         {/* メッセージ送信フォーム */}
-                        <div className="border-t border-slate-200 p-4 bg-slate-50">
-                          <form onSubmit={(e) => handleSendMessage(e, group.id)} className="space-y-2">
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="メッセージを入力..."
-                                className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
-                                disabled={isSending}
-                                maxLength={500}
-                              />
+                        <form onSubmit={(e) => handleSendMessage(e, group.id)} className="p-4 border-t border-slate-200 bg-white">
+                          {/* リプライ先のメッセージ表示 */}
+                          {replyingTo && (
+                            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1 text-xs text-blue-700 font-semibold mb-1">
+                                  <Reply size={12} />
+                                  {replyingTo.profiles?.display_name || '不明'}にリプライ
+                                </div>
+                                <div className="text-xs text-blue-600 truncate">{replyingTo.message}</div>
+                              </div>
                               <button
-                                type="submit"
-                                disabled={!newMessage.trim() || isSending}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                                type="button"
+                                onClick={() => setReplyingTo(null)}
+                                className="ml-2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                                title="リプライをキャンセル"
                               >
-                                {isSending ? (
-                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <Send size={16} />
-                                )}
+                                <X size={14} />
                               </button>
                             </div>
-                            <p className="text-xs text-slate-500">
-                              {newMessage.length}/500文字
-                            </p>
-                          </form>
-                        </div>
+                          )}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={newMessage}
+                              onChange={(e) => setNewMessage(e.target.value)}
+                              placeholder={replyingTo ? `${replyingTo.profiles?.display_name || '不明'}にリプライ...` : 'メッセージを入力...'}
+                              className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                              disabled={isSending}
+                              maxLength={500}
+                            />
+                            <button
+                              type="submit"
+                              disabled={!newMessage.trim() || isSending}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                            >
+                              {isSending ? (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Send size={16} />
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">
+                            {newMessage.length}/500文字
+                          </p>
+                        </form>
                       </>
                     )}
                   </div>

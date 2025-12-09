@@ -192,6 +192,60 @@ export const getFcmToken = async (): Promise<string | null> => {
   }
 }
 
+// Service Workerにメッセージを送信して処理済みか確認
+async function checkProcessedMessage(messageId: string): Promise<boolean> {
+  if (!messageId || typeof window === 'undefined' || !navigator.serviceWorker) {
+    return false
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready
+    return new Promise((resolve) => {
+      const messageChannel = new MessageChannel()
+      
+      messageChannel.port1.onmessage = (event) => {
+        const result = event.data
+        resolve(result.isProcessed === true)
+      }
+      
+      registration.active?.postMessage(
+        {
+          type: 'CHECK_PROCESSED_MESSAGE',
+          messageId: messageId
+        },
+        [messageChannel.port2]
+      )
+      
+      // タイムアウト（100ms）で false を返す
+      setTimeout(() => resolve(false), 100)
+    })
+  } catch (e) {
+    return false
+  }
+}
+
+// Service Workerにメッセージを処理済みとして記録
+async function markMessageProcessed(messageId: string): Promise<void> {
+  if (!messageId || typeof window === 'undefined' || !navigator.serviceWorker) {
+    return
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready
+    const messageChannel = new MessageChannel()
+    
+    registration.active?.postMessage(
+      {
+        type: 'MARK_PROCESSED',
+        messageId: messageId
+      },
+      [messageChannel.port2]
+    )
+  } catch (e) {
+    // エラーは無視
+  }
+}
+
 export const subscribeInAppMessages = async () => {
   const messagingResult = await getFirebaseMessaging()
   if (!messagingResult) return
@@ -213,14 +267,29 @@ export const subscribeInAppMessages = async () => {
           // 同じ messageId の通知が既に表示されている場合は重複を避ける
           // GAS側で通知IDベースで生成されたmessageIdを優先的に使用
           // これにより、同じ通知IDの通知は同じtagになり、重複を防げる
-          const tag = payload.data?.messageId || 
-                     payload.messageId || 
-                     `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+          const messageId = payload.data?.messageId || payload.messageId
+          const tag = messageId || `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
           
-          // 既に同じ tag の通知を表示済みの場合はスキップ
+          // 既に同じ tag の通知を表示済みの場合はスキップ（同期的にチェック）
           if (shownNotificationTags.has(tag)) {
-            console.log('重複通知をスキップ (tag: ' + tag + ', title: ' + title + ')');
+            console.log('重複通知をスキップ（クライアント側） (tag: ' + tag + ', title: ' + title + ')');
             return
+          }
+          
+          // Service Workerで既に処理済みか確認（非同期だが、可能な限り早くチェック）
+          // 非同期処理はPromiseとして実行し、結果を待たずに続行
+          if (messageId) {
+            checkProcessedMessage(messageId).then((isProcessed) => {
+              if (isProcessed) {
+                console.log('重複通知をスキップ（Service Worker処理済み） (messageId: ' + messageId + ', tag: ' + tag + ')');
+                return
+              }
+              
+              // Service Workerに処理済みとして記録
+              markMessageProcessed(messageId)
+            }).catch(() => {
+              // エラーは無視
+            })
           }
           
           // 通知を表示する前に、Setに追加して重複を防ぐ（同期的に実行）
@@ -278,10 +347,22 @@ export const subscribeInAppMessages = async () => {
             event.preventDefault()
             window.focus()
             
-            // 通知の data に URL が含まれている場合はそのページを開く
-            if (payload.data && payload.data.url) {
-              window.open(payload.data.url, '_blank')
+            // 通知の data から URL を取得
+            // shift_group_id がある場合はチャットページへ、なければ data.url または '/'
+            const shiftGroupId = payload.data?.shiftGroupId
+            const urlToOpen = shiftGroupId 
+              ? '/chat/' + shiftGroupId 
+              : (payload.data?.url || '/')
+            
+            // 現在のページが同じチャットページの場合は何もしない（既に開いている）
+            if (shiftGroupId && window.location.pathname === urlToOpen) {
+              notification.close()
+              shownNotificationTags.delete(tag)
+              return
             }
+            
+            // ページを開く
+            window.location.href = urlToOpen
             
             notification.close()
             shownNotificationTags.delete(tag)

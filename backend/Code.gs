@@ -322,9 +322,11 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
           'Tag': messageId
         }
       },
-      // data に messageId を含める（クライアント側の onMessage で使用）
+      // data に messageId と shift_group_id を含める（クライアント側の onMessage で使用）
       data: {
-        messageId: messageId
+        messageId: messageId,
+        shiftGroupId: shiftGroupId || '',
+        url: shiftGroupId ? '/chat/' + shiftGroupId : '/'
       }
     },
   };

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
-import { Send, MessageCircle } from 'lucide-react'
+import { Send, MessageCircle, Reply, X } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 
 type ChatMessage = ShiftGroupChatMessage
@@ -29,6 +29,7 @@ export default function GroupChat({
   const [isSending, setIsSending] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [canChat, setCanChat] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
@@ -44,9 +45,19 @@ export default function GroupChat({
   // メッセージを取得
   const fetchMessages = async () => {
     try {
+      // リプライ先のメッセージ情報も取得するため、LEFT JOINを使用
       const { data, error } = await supabase
         .from('shift_group_chat_messages')
-        .select('*, profiles!shift_group_chat_messages_user_id_fkey(id, display_name)')
+        .select(`
+          *,
+          profiles!shift_group_chat_messages_user_id_fkey(id, display_name),
+          reply_to_message:shift_group_chat_messages!shift_group_chat_messages_reply_to_fkey(
+            id,
+            message,
+            user_id,
+            profiles:profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
+          )
+        `)
         .eq('shift_group_id', shiftGroupId)
         .order('created_at', { ascending: true })
 
@@ -87,7 +98,8 @@ export default function GroupChat({
         .insert({
           shift_group_id: shiftGroupId,
           user_id: currentUserId,
-          message: messageText
+          message: messageText,
+          reply_to: replyingTo?.id || null
         })
         .select('*, profiles!shift_group_chat_messages_user_id_fkey(id, display_name)')
         .single()
@@ -110,6 +122,7 @@ export default function GroupChat({
       })
 
       setNewMessage('')
+      setReplyingTo(null) // リプライ状態をリセット
     } catch (error) {
       console.error('メッセージ送信エラー:', error)
       alert('メッセージの送信に失敗しました')
@@ -393,6 +406,8 @@ export default function GroupChat({
             const isOwnMessage = msg.user_id === currentUserId
             const senderName = msg.profiles?.display_name || '不明'
             const messageTime = format(new Date(msg.created_at), 'HH:mm', { locale: ja })
+            const replyToMessage = msg.reply_to_message as ChatMessage | null
+            const replyToSenderName = replyToMessage?.profiles?.display_name || '不明'
 
             return (
               <div
@@ -406,6 +421,23 @@ export default function GroupChat({
                       : 'bg-slate-100 text-slate-900'
                   }`}
                 >
+                  {/* リプライ先のメッセージ表示 */}
+                  {replyToMessage && (
+                    <div
+                      className={`text-xs mb-2 pb-2 border-b ${
+                        isOwnMessage
+                          ? 'border-white/30 text-white/80'
+                          : 'border-slate-300 text-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <Reply size={12} />
+                        <span className="font-semibold">{replyToSenderName}</span>
+                      </div>
+                      <div className="truncate mt-0.5">{replyToMessage.message}</div>
+                    </div>
+                  )}
+                  
                   {!isOwnMessage && (
                     <div className="text-xs font-semibold mb-1 opacity-90">
                       {senderName}
@@ -414,12 +446,27 @@ export default function GroupChat({
                   <div className="text-sm whitespace-pre-wrap break-words">
                     {msg.message}
                   </div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      isOwnMessage ? 'text-white/70' : 'text-slate-500'
-                    }`}
-                  >
-                    {messageTime}
+                  <div className="flex items-center justify-between mt-1">
+                    <div
+                      className={`text-xs ${
+                        isOwnMessage ? 'text-white/70' : 'text-slate-500'
+                      }`}
+                    >
+                      {messageTime}
+                    </div>
+                    {canChat && (
+                      <button
+                        onClick={() => setReplyingTo(msg)}
+                        className={`ml-2 p-1 rounded hover:bg-opacity-20 transition-colors ${
+                          isOwnMessage
+                            ? 'hover:bg-white text-white/70 hover:text-white'
+                            : 'hover:bg-slate-200 text-slate-500 hover:text-slate-700'
+                        }`}
+                        title="リプライ"
+                      >
+                        <Reply size={12} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -432,12 +479,32 @@ export default function GroupChat({
       {/* メッセージ入力 */}
       {canChat ? (
         <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 bg-white">
+          {/* リプライ先のメッセージ表示 */}
+          {replyingTo && (
+            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 text-xs text-blue-700 font-semibold mb-1">
+                  <Reply size={12} />
+                  {replyingTo.profiles?.display_name || '不明'}にリプライ
+                </div>
+                <div className="text-xs text-blue-600 truncate">{replyingTo.message}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyingTo(null)}
+                className="ml-2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                title="リプライをキャンセル"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="メッセージを入力..."
+              placeholder={replyingTo ? `${replyingTo.profiles?.display_name || '不明'}にリプライ...` : 'メッセージを入力...'}
               className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
               disabled={isSending}
               maxLength={500}

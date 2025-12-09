@@ -66,5 +66,7 @@ export type Profile = {
     user_id: string
     message: string
     created_at: string
+    reply_to?: string | null
     profiles?: Profile
+    reply_to_message?: ShiftGroupChatMessage | null // リプライ先のメッセージ（JOINで取得）
   }
