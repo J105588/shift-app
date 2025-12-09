@@ -226,18 +226,15 @@ export const subscribeInAppMessages = async () => {
           // 通知を表示する前に、Setに追加して重複を防ぐ（同期的に実行）
           shownNotificationTags.add(tag)
           
-          // ブラウザの通知APIで既に同じtagの通知が表示されているか確認（非同期だが、表示前にチェック）
-          // ただし、getNotifications APIは一部のブラウザでサポートされていないため、try-catchで囲む
+          // Service Workerで既に同じtagの通知が表示されているか確認（非同期）
+          // 既存の通知が見つかった場合は閉じる
           try {
             if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-              // 非同期でチェックするが、通知表示は同期的に実行される
               navigator.serviceWorker.ready.then((registration) => {
                 registration.getNotifications({ tag: tag }).then((notifications) => {
                   if (notifications && notifications.length > 0) {
                     console.log('既存の通知を閉じる (tag: ' + tag + ')');
                     notifications.forEach((n) => n.close());
-                    // 既存の通知が見つかった場合は、Setからも削除（次回表示可能にする）
-                    shownNotificationTags.delete(tag);
                   }
                 }).catch(() => {
                   // getNotifications が使えない環境では無視

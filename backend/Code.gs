@@ -362,61 +362,24 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
 }
 
 /**
- * 通知を「送信済み」にマークする
+ * 通知を「送信済み」にマークする（アトミックな更新）
  * 戻り値: 更新が成功した場合 true、既に更新済みまたは失敗した場合 false
+ * 
+ * この関数は、PostgreSQLのSELECT ... FOR UPDATE SKIP LOCKEDを使用して
+ * アトミックな更新を保証し、重複処理を防ぐ
  */
 function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
-  // まず、通知が既に送信済みかどうかを確認
-  var checkUrl = supabaseUrl + '/rest/v1/notifications'
-    + '?id=eq.' + encodeURIComponent(notifId)
-    + '&select=id,sent_at';
+  // RPC関数を使用してアトミックな更新を実行
+  var url = supabaseUrl + '/rest/v1/rpc/mark_notification_sent_atomic';
   
-  var checkOptions = {
-    method: 'get',
-    headers: {
-      apikey: supabaseKey,
-      Authorization: 'Bearer ' + supabaseKey,
-      'Content-Type': 'application/json',
-    },
-    muteHttpExceptions: true,
-  };
-  
-  var checkRes = UrlFetchApp.fetch(checkUrl, checkOptions);
-  if (checkRes.getResponseCode() >= 300) {
-    console.error('markNotificationSent check error: ' + checkRes.getContentText());
-    return false;
-  }
-  
-  var checkData = JSON.parse(checkRes.getContentText());
-  if (!checkData || checkData.length === 0) {
-    console.log('通知が見つかりません (notification_id: ' + notifId + ')');
-    return false;
-  }
-  
-  // 既に送信済みの場合は false を返す
-  if (checkData[0].sent_at) {
-    console.log('既に送信済み (notification_id: ' + notifId + ')');
-    return false;
-  }
-  
-  // sent_at が null のもののみ更新（重複防止）
-  var url = supabaseUrl + '/rest/v1/notifications'
-    + '?id=eq.' + encodeURIComponent(notifId)
-    + '&sent_at=is.null';
-
-  var body = {
-    sent_at: new Date().toISOString(),
-  };
-
   var options = {
-    method: 'patch',
+    method: 'post',
     headers: {
       apikey: supabaseKey,
       Authorization: 'Bearer ' + supabaseKey,
       'Content-Type': 'application/json',
-      Prefer: 'return=representation', // 更新された行数を確認するため
     },
-    payload: JSON.stringify(body),
+    payload: JSON.stringify({ p_notification_id: notifId }),
     muteHttpExceptions: true,
   };
 
@@ -428,25 +391,22 @@ function markNotificationSent(supabaseUrl, supabaseKey, notifId) {
     return false;
   }
   
-  // 更新された行数を確認（0行の場合は既に更新済み）
-  var responseText = res.getContentText();
-  if (responseText) {
-    try {
-      var updated = JSON.parse(responseText);
-      var success = updated && updated.length > 0;
-      if (!success) {
-        console.log('更新失敗: 既に他のプロセスで更新済み (notification_id: ' + notifId + ')');
-      }
-      return success;
-    } catch (e) {
-      // JSONパースエラーは無視（更新は成功した可能性がある）
-      console.warn('markNotificationSent JSON parse error: ' + e.toString());
+  // RPC関数はbooleanを返す
+  try {
+    var result = JSON.parse(res.getContentText());
+    // RPC関数の戻り値はboolean（true/false）
+    if (result === true) {
       return true;
+    } else {
+      console.log('更新失敗: 既に他のプロセスで更新済み (notification_id: ' + notifId + ')');
+      return false;
     }
+  } catch (e) {
+    // JSONパースエラーは無視（更新は成功した可能性がある）
+    console.warn('markNotificationSent JSON parse error: ' + e.toString());
+    // レスポンスが空の場合は失敗とみなす
+    return false;
   }
-  
-  // レスポンスがない場合は成功とみなす
-  return true;
 }
 
 /**
