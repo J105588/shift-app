@@ -98,20 +98,64 @@ export default function AdminChatManagement() {
     try {
       setIsLoadingMessages(true)
       
+      // まず基本のメッセージを取得
       const { data, error } = await supabase
         .from('shift_group_chat_messages')
         .select(`
           *,
-          profiles!shift_group_chat_messages_user_id_fkey(id, display_name),
-          reply_to_message:shift_group_chat_messages!shift_group_chat_messages_reply_to_fkey(
-            id,
-            message,
-            user_id,
-            profiles:profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
-          )
+          profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
         `)
         .eq('shift_group_id', groupId)
         .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('メッセージ取得エラー:', error)
+        return
+      }
+
+      if (!data) {
+        setMessages([])
+        return
+      }
+
+      // リプライ先のメッセージIDを収集
+      const replyToIds = data
+        .map(msg => msg.reply_to)
+        .filter((id): id is string => id !== null && id !== undefined)
+
+      // リプライ先のメッセージを一括取得
+      let replyToMessages: Record<string, ShiftGroupChatMessage> = {}
+      if (replyToIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('shift_group_chat_messages')
+          .select(`
+            id,
+            message,
+            user_id,
+            profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
+          `)
+          .in('id', replyToIds)
+
+        if (replyData) {
+          replyToMessages = replyData.reduce((acc, msg) => {
+            acc[msg.id] = {
+              ...msg,
+              shift_group_id: '',
+              created_at: '',
+              profiles: Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles
+            } as ShiftGroupChatMessage
+            return acc
+          }, {} as Record<string, ShiftGroupChatMessage>)
+        }
+      }
+
+      // メッセージにリプライ先の情報を追加
+      const messagesWithReplies = data.map(msg => ({
+        ...msg,
+        reply_to_message: msg.reply_to ? replyToMessages[msg.reply_to] || null : null
+      })) as ShiftGroupChatMessage[]
+
+      setMessages(messagesWithReplies)
 
       if (error) {
         console.error('メッセージ取得エラー:', error)

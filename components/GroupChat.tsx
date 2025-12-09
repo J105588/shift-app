@@ -45,18 +45,12 @@ export default function GroupChat({
   // メッセージを取得
   const fetchMessages = async () => {
     try {
-      // リプライ先のメッセージ情報も取得するため、LEFT JOINを使用
+      // まず基本のメッセージを取得
       const { data, error } = await supabase
         .from('shift_group_chat_messages')
         .select(`
           *,
-          profiles!shift_group_chat_messages_user_id_fkey(id, display_name),
-          reply_to_message:shift_group_chat_messages!shift_group_chat_messages_reply_to_fkey(
-            id,
-            message,
-            user_id,
-            profiles:profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
-          )
+          profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
         `)
         .eq('shift_group_id', shiftGroupId)
         .order('created_at', { ascending: true })
@@ -66,9 +60,49 @@ export default function GroupChat({
         return
       }
 
-      if (data) {
-        setMessages(data as ChatMessage[])
+      if (!data) {
+        setMessages([])
+        return
       }
+
+      // リプライ先のメッセージIDを収集
+      const replyToIds = data
+        .map(msg => msg.reply_to)
+        .filter((id): id is string => id !== null && id !== undefined)
+
+      // リプライ先のメッセージを一括取得
+      let replyToMessages: Record<string, ChatMessage> = {}
+      if (replyToIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('shift_group_chat_messages')
+          .select(`
+            id,
+            message,
+            user_id,
+            profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
+          `)
+          .in('id', replyToIds)
+
+        if (replyData) {
+          replyToMessages = replyData.reduce((acc, msg) => {
+            acc[msg.id] = {
+              ...msg,
+              shift_group_id: '',
+              created_at: '',
+              profiles: Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles
+            } as ChatMessage
+            return acc
+          }, {} as Record<string, ChatMessage>)
+        }
+      }
+
+      // メッセージにリプライ先の情報を追加
+      const messagesWithReplies = data.map(msg => ({
+        ...msg,
+        reply_to_message: msg.reply_to ? replyToMessages[msg.reply_to] || null : null
+      })) as ChatMessage[]
+
+      setMessages(messagesWithReplies)
     } catch (error) {
       console.error('メッセージ取得エラー:', error)
     } finally {
