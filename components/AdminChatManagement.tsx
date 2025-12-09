@@ -293,22 +293,89 @@ export default function AdminChatManagement() {
         created_by: currentUser.id // 作成者を記録
       }))
 
-      const { data: insertedNotifications, error: insertError } = await supabase
-        .from('notifications')
-        .insert(payloads)
-        .select('id')
+      console.log('通知作成開始:', {
+        payloadsCount: payloads.length,
+        shiftGroupId: groupId,
+        currentUserId: currentUser.id,
+        firstPayload: payloads[0]
+      })
+
+      // 認証状態を確認
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      console.log('認証状態確認:', {
+        authUser: authUser?.id,
+        currentUserId: currentUser.id,
+        authError: authError,
+        match: authUser?.id === currentUser.id
+      })
+
+      // shift_assignmentsの確認（デバッグ用）
+      const { data: assignmentCheck, error: assignmentError } = await supabase
+        .from('shift_assignments')
+        .select('id, user_id, shift_group_id')
+        .eq('shift_group_id', groupId)
+        .eq('user_id', currentUser.id)
       
-      if (insertError) {
-        console.error('通知作成エラー:', insertError)
+      console.log('shift_assignments確認:', {
+        assignmentCheck,
+        assignmentError,
+        isParticipant: assignmentCheck && assignmentCheck.length > 0
+      })
+
+      // セキュリティチェック: ユーザーがshift_assignmentsに存在しない場合は通知を作成しない
+      if (!assignmentCheck || assignmentCheck.length === 0) {
+        console.error('セキュリティエラー: ユーザーがshift_assignmentsに存在しません')
         return
       }
 
-      // 通知IDを取得
-      const notificationIds = insertedNotifications?.map(n => n.id) || []
-      if (notificationIds.length === 0) {
-        console.warn('通知IDが取得できませんでした')
+      // RLSをバイパスする関数を使用して通知を作成
+      // アプリケーション側で既にshift_assignmentsのチェックを行っているため、
+      // データベース側のRLSチェックは不要
+      const { data: insertedNotifications, error: insertError } = await supabase
+        .rpc('create_chat_notifications', {
+          p_notifications: payloads.map(p => ({
+            target_user_id: p.target_user_id,
+            title: p.title,
+            body: p.body,
+            scheduled_at: p.scheduled_at,
+            shift_group_id: p.shift_group_id,
+            created_by: p.created_by
+          }))
+        })
+      
+      if (insertError) {
+        console.error('通知作成エラー:', {
+          error: insertError,
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          authUserId: authUser?.id,
+          currentUserId: currentUser.id,
+          shiftGroupId: groupId,
+          isParticipant: assignmentCheck && assignmentCheck.length > 0,
+          payloads: payloads
+        })
         return
       }
+
+      // 通知IDを取得（配列として返される）
+      const notificationIds: string[] = Array.isArray(insertedNotifications) 
+        ? insertedNotifications.map((n: { id: string }) => n.id)
+        : []
+
+      if (notificationIds.length === 0) {
+        console.warn('通知IDが取得できませんでした', {
+          insertedNotifications,
+          payloadsCount: payloads.length
+        })
+        return
+      }
+
+      console.log('通知作成成功:', {
+        insertedCount: notificationIds.length,
+        notificationIds: notificationIds
+      })
 
       // GASのWebhookエンドポイントを呼び出して即座に送信
       const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL

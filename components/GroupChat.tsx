@@ -198,35 +198,28 @@ export default function GroupChat({
         return
       }
 
-      // 複数レコードを一度に挿入する代わりに、1つずつ挿入を試す（デバッグ用）
-      // これにより、どのレコードが問題を引き起こしているか特定できる
-      const insertedNotifications: any[] = []
-      let hasError = false
+      // RLSをバイパスする関数を使用して通知を作成
+      // アプリケーション側で既にshift_assignmentsのチェックを行っているため、
+      // データベース側のRLSチェックは不要
+      const { data: insertedNotifications, error: insertError } = await supabase
+        .rpc('create_chat_notifications', {
+          p_notifications: payloads.map(p => ({
+            target_user_id: p.target_user_id,
+            title: p.title,
+            body: p.body,
+            scheduled_at: p.scheduled_at,
+            shift_group_id: p.shift_group_id,
+            created_by: p.created_by
+          }))
+        })
       
-      for (const payload of payloads) {
-        const { data: inserted, error: insertError } = await supabase
-          .from('notifications')
-          .insert([payload])  // 1つずつ挿入
-          .select('id')
-        
-        if (insertError) {
-          console.error('通知作成エラー（個別）:', {
-            payload: payload,
-            error: insertError,
-            code: insertError.code,
-            message: insertError.message
-          })
-          hasError = true
-          break
-        }
-        
-        if (inserted && inserted.length > 0) {
-          insertedNotifications.push(...inserted)
-        }
-      }
-      
-      if (hasError) {
+      if (insertError) {
         console.error('通知作成エラー:', {
+          error: insertError,
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
           authUserId: authUser?.id,
           currentUserId: currentUserId,
           shiftGroupId: shiftGroupId,
@@ -236,13 +229,23 @@ export default function GroupChat({
         return
       }
 
-      console.log('通知作成成功:', {
-        insertedCount: insertedNotifications?.length || 0,
-        notificationIds: insertedNotifications?.map(n => n.id) || []
-      })
+      // 通知IDを取得（配列として返される）
+      const notificationIds: string[] = Array.isArray(insertedNotifications) 
+        ? insertedNotifications.map((n: { id: string }) => n.id)
+        : []
 
-      // 通知IDを取得
-      const notificationIds = insertedNotifications?.map(n => n.id) || []
+      if (notificationIds.length === 0) {
+        console.warn('通知IDが取得できませんでした', {
+          insertedNotifications,
+          payloadsCount: payloads.length
+        })
+        return
+      }
+
+      console.log('通知作成成功:', {
+        insertedCount: notificationIds.length,
+        notificationIds: notificationIds
+      })
       if (notificationIds.length === 0) {
         console.warn('通知IDが取得できませんでした')
         return

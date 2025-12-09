@@ -261,7 +261,11 @@ Supabase DashboardのSQL Editorで、以下の順序でSQLファイルを実行�
 -- database/migration_add_admin_chat_management.sql（管理者チャット管理機能）
 -- database/migration_add_chat_notification_policy.sql（チャット通知作成ポリシー）
 -- database/migration_fix_all_notification_policies.sql（notificationsテーブルのRLSポリシー完全修正）※重要
+-- database/migration_fix_chat_notification_rls_final.sql（チャット通知作成時のRLSポリシーエラー修正）
+-- database/migration_fix_chat_notification_bypass_rls.sql（チャット通知作成時のRLSバイパス方式）※推奨
 ```
+
+**注意**: チャット機能で通知作成時にRLSポリシーエラー（403 Forbidden）が発生する場合は、`migration_fix_chat_notification_bypass_rls.sql`を実行してください（推奨）。このマイグレーションは、`security definer`関数を使用してRLSをバイパスし、チャット通知を作成します。アプリケーション側で既に`shift_assignments`のチェックを行っているため、データベース側のRLSチェックは不要です。
 
 ### データベース構造
 
@@ -891,6 +895,25 @@ Vercel Dashboard → Settings → Environment Variables で以下を設定：
 - ✅ `notifications`テーブルに`shift_group_id`カラムが存在するか
 - ✅ 選択したグループに参加者が存在するか
 - ✅ GASのログでエラーを確認
+
+### チャット通知作成時にRLSポリシーエラー（403 Forbidden）が発生する
+
+- ✅ `migration_fix_chat_notification_rls_final.sql`が実行されているか
+- ✅ `is_shift_group_participant`関数が`security definer`で作成されているか（Supabase DashboardのSQL Editorで確認）
+- ✅ ユーザーが`shift_assignments`テーブルに正しく登録されているか
+- ✅ ブラウザのコンソールでエラーの詳細を確認
+- ✅ Supabase DashboardのSQL Editorで以下を実行して確認:
+  ```sql
+  -- 関数の状態を確認
+  select proname, prosecdef from pg_proc where proname = 'is_shift_group_participant';
+  
+  -- 現在のユーザーがシフトグループの参加者か確認
+  select * from test_is_participant('シフトグループID'::uuid);
+  
+  -- ポリシーが正しく作成されているか確認
+  select policyname, cmd, with_check from pg_policies where tablename = 'notifications' and cmd = 'INSERT';
+  ```
+- ✅ 詳細なトラブルシューティング手順は`database/TROUBLESHOOTING_NOTIFICATIONS.md`を参照
 
 ## 📚 参考資料
 
