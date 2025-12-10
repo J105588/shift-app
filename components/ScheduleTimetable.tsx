@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, isToday } from 'date-fns'
 import { ja } from 'date-fns/locale/ja'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User } from 'lucide-react'
+import { getTextColor } from '@/lib/colorUtils'
 
 type CalendarEvent = {
   id: string
@@ -306,14 +307,6 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
                     <div className="px-4 pb-4 space-y-2">
                       {eventsForDay.map((event) => {
                         const eventColor = (event as any).color || (isMyShift(event) ? '#3b82f6' : '#64748b')
-                        const getTextColor = (bgColor: string) => {
-                          const hex = bgColor.replace('#', '')
-                          const r = parseInt(hex.substr(0, 2), 16)
-                          const g = parseInt(hex.substr(2, 2), 16)
-                          const b = parseInt(hex.substr(4, 2), 16)
-                          const brightness = (r * 299 + g * 587 + b * 114) / 1000
-                          return brightness > 128 ? '#1e293b' : '#ffffff'
-                        }
                         const textColor = getTextColor(eventColor)
                         
                         return (

@@ -4,6 +4,7 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks,
 import { ja } from 'date-fns/locale/ja'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, UserCog } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
+import { getShiftColor, getTextColor, addOpacity } from '@/lib/colorUtils'
 
 type ShiftWithProfile = Shift & {
   profiles?: Profile
@@ -187,19 +188,10 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                             dayShifts.map((shift) => {
                               const isGroupShift = shift.isGroupShift || false
                               const isSupervisor = shift.isGroupShift && shift.assignments?.find((a: any) => a.user_id === user.id && a.is_supervisor)
-                              const shiftColor = shift.color || (isGroupShift ? '#a855f7' : '#3b82f6')
-                              // 色の明るさを計算してテキスト色を決定
-                              const getTextColor = (bgColor: string) => {
-                                const hex = bgColor.replace('#', '')
-                                const r = parseInt(hex.substr(0, 2), 16)
-                                const g = parseInt(hex.substr(2, 2), 16)
-                                const b = parseInt(hex.substr(4, 2), 16)
-                                const brightness = (r * 299 + g * 587 + b * 114) / 1000
-                                return brightness > 128 ? '#1e293b' : '#ffffff'
-                              }
+                              const shiftColor = getShiftColor(shift)
                               const textColor = getTextColor(shiftColor)
                               const borderColor = shiftColor
-                              const bgColor = shiftColor + '20' // 20% opacity
+                              const bgColor = addOpacity(shiftColor, 0.2) // 20% opacity
                               
                               return (
                                 <div

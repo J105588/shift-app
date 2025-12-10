@@ -118,13 +118,14 @@ export default function AdminPage() {
               color: group.color || '#a855f7'
             })
             
-            // シフトデータとして保存
+            // シフトデータとして保存（colorを含める）
             allShifts.push({
               ...group,
               isGroupShift: true,
               assignments: assignments,
               supervisor: supervisor?.profiles,
-              memberCount: memberCount
+              memberCount: memberCount,
+              color: group.color || null
             })
           }
         }

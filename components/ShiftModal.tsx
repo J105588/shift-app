@@ -105,8 +105,11 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     return template?.color || customColor
   }
 
-  // フォーム初期値設定
+  // フォーム初期値設定（テンプレート読み込み完了後に実行）
   useEffect(() => {
+    // テンプレートがまだ読み込まれていない場合は待機
+    if (shiftTemplates.length === 0 && !customColor) return
+
     if (editShift) {
       // 編集モード: 個別付与モード（既存のシフトを編集）
       setMode('individual')
@@ -123,9 +126,16 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       setSelectedUserIds([])
       setSupervisorId('')
       setIndividualTitles({})
-      setUseTemplate(jobTemplates.includes(editShift.title) || shiftTemplates.some(t => t.name === editShift.title))
-      // 編集時は既存の色を設定
-      setSelectedColor((editShift as any).color || getColorForTemplate(editShift.title) || customColor)
+      const isTemplate = jobTemplates.includes(editShift.title) || shiftTemplates.some(t => t.name === editShift.title)
+      setUseTemplate(isTemplate)
+      // 編集時は既存の色を優先、なければテンプレートから取得
+      const existingColor = (editShift as any).color
+      if (existingColor) {
+        setSelectedColor(existingColor)
+      } else {
+        const templateColor = getColorForTemplate(editShift.title)
+        setSelectedColor(templateColor)
+      }
     } else if (initialDate) {
       // 新規作成モード（クリックした日付をセット）
       setMode('group') // デフォルトで団体付与モード
@@ -145,9 +155,10 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       setIndividualTitles({})
       setUseTemplate(true)
       // デフォルトテンプレートの色を設定
-      setSelectedColor(getColorForTemplate('受付') || customColor)
+      const defaultColor = getColorForTemplate('受付')
+      setSelectedColor(defaultColor)
     }
-  }, [editShift, initialDate, isOpen])
+  }, [editShift, initialDate, isOpen, shiftTemplates, customColor])
 
   // シフトに関連する通知を作成するヘルパー関数
   // shiftIdはshift_groupsのIDまたはshiftsのIDのいずれか

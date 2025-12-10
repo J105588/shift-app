@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, isToday, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale/ja'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock } from 'lucide-react'
+import { getTextColor, addOpacity } from '@/lib/colorUtils'
 
 type CalendarEvent = {
   id: string
@@ -234,14 +235,6 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
                     <div className="px-3 pb-3 space-y-2">
                       {eventsForDay.map((event) => {
                         const eventColor = (event as any).color || '#3b82f6'
-                        const getTextColor = (bgColor: string) => {
-                          const hex = bgColor.replace('#', '')
-                          const r = parseInt(hex.substr(0, 2), 16)
-                          const g = parseInt(hex.substr(2, 2), 16)
-                          const b = parseInt(hex.substr(4, 2), 16)
-                          const brightness = (r * 299 + g * 587 + b * 114) / 1000
-                          return brightness > 128 ? '#1e293b' : '#ffffff'
-                        }
                         const textColor = getTextColor(eventColor)
                         
                         return (
@@ -249,7 +242,7 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
                             key={event.id}
                             className="p-3 rounded-lg cursor-pointer transition-all active:scale-95 border-2 hover:shadow-md"
                             style={{
-                              backgroundColor: eventColor + '20',
+                              backgroundColor: addOpacity(eventColor, 0.2),
                               borderColor: eventColor,
                               color: textColor,
                             }}
