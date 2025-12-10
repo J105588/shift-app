@@ -111,20 +111,60 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     if (shiftTemplates.length === 0 && !customColor) return
 
     if (editShift) {
-      // 編集モード: 個別付与モード（既存のシフトを編集）
-      setMode('individual')
-      setIndividualMode('single')
-      setFormData({
-        user_id: editShift.user_id,
-        title: editShift.title,
-        start: new Date(editShift.start_time).toISOString().slice(0, 16),
-        end: new Date(editShift.end_time).toISOString().slice(0, 16),
-        supervisor_id: editShift.supervisor_id || '',
-        description: editShift.description || '',
-        location: ''
-      })
-      setSelectedUserIds([])
-      setSupervisorId('')
+      // 編集モード: シフトの種類に応じてモードを設定
+      const isGroupShift = (editShift as any).isGroupShift || false
+      
+      if (isGroupShift) {
+        // 団体付与シフトの編集
+        setMode('group')
+        setIndividualMode('single')
+        
+        // 参加者と統括者を取得（非同期）
+        const shiftGroupId = (editShift as any).id
+        supabase
+          .from('shift_assignments')
+          .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
+          .eq('shift_group_id', shiftGroupId)
+          .then(({ data: assignments }) => {
+            if (assignments) {
+              const userIds = assignments.map((a: any) => a.user_id)
+              setSelectedUserIds(userIds)
+              
+              const supervisor = assignments.find((a: any) => a.is_supervisor)
+              if (supervisor) {
+                setSupervisorId(supervisor.user_id)
+              }
+            }
+          })
+        
+        setFormData({
+          user_id: '',
+          title: editShift.title,
+          start: new Date(editShift.start_time).toISOString().slice(0, 16),
+          end: new Date(editShift.end_time).toISOString().slice(0, 16),
+          supervisor_id: '',
+          description: editShift.description || '',
+          location: (editShift as any).location || ''
+        })
+        setSelectedUserIds([])
+        setSupervisorId('')
+      } else {
+        // 個別付与シフトの編集
+        setMode('individual')
+        setIndividualMode('single')
+        setFormData({
+          user_id: editShift.user_id,
+          title: editShift.title,
+          start: new Date(editShift.start_time).toISOString().slice(0, 16),
+          end: new Date(editShift.end_time).toISOString().slice(0, 16),
+          supervisor_id: editShift.supervisor_id || '',
+          description: editShift.description || '',
+          location: ''
+        })
+        setSelectedUserIds([])
+        setSupervisorId('')
+      }
+      
       setIndividualTitles({})
       const isTemplate = jobTemplates.includes(editShift.title) || shiftTemplates.some(t => t.name === editShift.title)
       setUseTemplate(isTemplate)
@@ -331,39 +371,121 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       }
 
       if (editShift) {
-        // 編集モード: 既存のシフトを更新（後方互換性のためshiftsテーブルを使用）
-        if (!formData.user_id) {
-          alert('担当者を選択してください')
-          setIsSubmitting(false)
-          return
-        }
+        // 編集モード
+        const isGroupShift = (editShift as any).isGroupShift || false
+        
+        if (isGroupShift) {
+          // 団体付与シフトの編集
+          if (selectedUserIds.length === 0) {
+            alert('少なくとも1人の参加者を選択してください')
+            setIsSubmitting(false)
+            return
+          }
 
-        const payload: any = {
-          user_id: formData.user_id,
-          title: formData.title,
-          start_time: new Date(formData.start).toISOString(),
-          end_time: new Date(formData.end).toISOString(),
-          description: formData.description || null,
-          color: selectedColor || null,
-        }
-        if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
-          payload.supervisor_id = formData.supervisor_id
-        }
+          if (!supervisorId) {
+            alert('統括者を選択してください')
+            setIsSubmitting(false)
+            return
+          }
 
-        const { error } = await supabase.from('shifts').update(payload).eq('id', editShift.id)
-        if (error) {
-          console.error('シフト更新エラー:', error)
-          throw error
-        }
+          if (!formData.title) {
+            alert('業務内容を入力してください')
+            setIsSubmitting(false)
+            return
+          }
 
-        await deleteShiftNotifications(editShift.id)
-        await createShiftNotifications(
-          editShift.id,
-          formData.user_id,
-          formData.title,
-          payload.start_time,
-          payload.end_time
-        )
+          // 1. shift_groupを更新
+          const { error: groupError } = await supabase
+            .from('shift_groups')
+            .update({
+              title: formData.title,
+              start_time: new Date(formData.start).toISOString(),
+              end_time: new Date(formData.end).toISOString(),
+              description: formData.description || null,
+              location: formData.location || null,
+              color: selectedColor || null,
+            })
+            .eq('id', editShift.id)
+
+          if (groupError) {
+            console.error('シフトグループ更新エラー:', groupError)
+            throw groupError
+          }
+
+          // 2. 既存のshift_assignmentsを削除
+          const { error: deleteError } = await supabase
+            .from('shift_assignments')
+            .delete()
+            .eq('shift_group_id', editShift.id)
+
+          if (deleteError) {
+            console.error('シフト割り当て削除エラー:', deleteError)
+            throw deleteError
+          }
+
+          // 3. 新しいshift_assignmentsを作成
+          const assignments = selectedUserIds.map(userId => ({
+            shift_group_id: editShift.id,
+            user_id: userId,
+            is_supervisor: userId === supervisorId,
+          }))
+
+          const { error: assignmentError } = await supabase
+            .from('shift_assignments')
+            .insert(assignments)
+
+          if (assignmentError) {
+            console.error('シフト割り当て作成エラー:', assignmentError)
+            throw assignmentError
+          }
+
+          // 4. 通知を削除して再作成
+          await deleteShiftNotifications(editShift.id, true)
+          for (const userId of selectedUserIds) {
+            await createShiftNotifications(
+              editShift.id,
+              userId,
+              formData.title,
+              new Date(formData.start).toISOString(),
+              new Date(formData.end).toISOString(),
+              true
+            )
+          }
+        } else {
+          // 個別付与シフトの編集
+          if (!formData.user_id) {
+            alert('担当者を選択してください')
+            setIsSubmitting(false)
+            return
+          }
+
+          const payload: any = {
+            user_id: formData.user_id,
+            title: formData.title,
+            start_time: new Date(formData.start).toISOString(),
+            end_time: new Date(formData.end).toISOString(),
+            description: formData.description || null,
+            color: selectedColor || null,
+          }
+          if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
+            payload.supervisor_id = formData.supervisor_id
+          }
+
+          const { error } = await supabase.from('shifts').update(payload).eq('id', editShift.id)
+          if (error) {
+            console.error('シフト更新エラー:', error)
+            throw error
+          }
+
+          await deleteShiftNotifications(editShift.id, false)
+          await createShiftNotifications(
+            editShift.id,
+            formData.user_id,
+            formData.title,
+            payload.start_time,
+            payload.end_time
+          )
+        }
       } else if (mode === 'group') {
         // 団体付与モード: shift_groupsとshift_assignmentsを使用
         if (selectedUserIds.length === 0) {
@@ -618,47 +740,50 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         </div>
         
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-white overflow-y-auto flex-1">
-          {/* モード選択（編集時は表示しない） */}
-          {!editShift && (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 space-y-4">
-              <label className="block text-sm font-semibold text-slate-700">付与モード</label>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('individual')
-                    setIndividualMode('single')
-                    setSelectedUserIds([])
-                    setSupervisorId('')
-                    setFormData({...formData, user_id: ''})
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
-                    mode === 'individual'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <UserCheck size={18} />
-                  個別付与
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('group')
-                    setSelectedUserIds([])
-                    setSupervisorId('')
-                    setFormData({...formData, user_id: ''})
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
-                    mode === 'group'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <Users size={18} />
-                  団体付与
-                </button>
-              </div>
+          {/* モード選択 */}
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 space-y-4">
+            <label className="block text-sm font-semibold text-slate-700">付与モード</label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (editShift) return // 編集時はモード変更不可
+                  setMode('individual')
+                  setIndividualMode('single')
+                  setSelectedUserIds([])
+                  setSupervisorId('')
+                  setFormData({...formData, user_id: ''})
+                }}
+                disabled={!!editShift && mode !== 'individual'}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
+                  mode === 'individual'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                } ${!!editShift && mode !== 'individual' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <UserCheck size={18} />
+                個別付与
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (editShift) return // 編集時はモード変更不可
+                  setMode('group')
+                  setSelectedUserIds([])
+                  setSupervisorId('')
+                  setFormData({...formData, user_id: ''})
+                }}
+                disabled={!!editShift && mode !== 'group'}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
+                  mode === 'group'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                } ${!!editShift && mode !== 'group' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <Users size={18} />
+                団体付与
+              </button>
+            </div>
               
               {/* 個別付与モード内のサブモード選択 */}
               {mode === 'individual' && (
@@ -695,10 +820,9 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
                 </div>
               )}
             </div>
-          )}
 
           {/* ユーザー選択 */}
-          {(mode === 'individual' && individualMode === 'single') || editShift ? (
+          {(mode === 'individual' && individualMode === 'single') ? (
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">担当者</label>
               <select 
