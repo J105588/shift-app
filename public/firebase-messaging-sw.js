@@ -40,8 +40,9 @@ function cleanupProcessedMessages() {
 // 注意: このハンドラーはアプリが完全に閉じている（バックグラウンド）時のみ発火する
 // フォアグラウンド時は onMessage が発火するため、重複通知を避ける
 messaging.onBackgroundMessage((payload) => {
-  // タイトルが空の場合は通知を表示しない
-  const notificationTitle = payload.notification?.title;
+  // 通知タイトル・本文を data メッセージからも取得する（notification payload なしでも動作させる）
+  const notificationTitle = payload.notification?.title || payload.data?.title;
+  const notificationBody = payload.notification?.body || payload.data?.body || '';
   if (!notificationTitle || !notificationTitle.trim()) {
     return Promise.resolve();
   }
@@ -73,8 +74,8 @@ messaging.onBackgroundMessage((payload) => {
     }
     
     const notificationOptions = {
-      body: payload.notification?.body || '',
-      icon: '/icon-192x192.png',
+      body: notificationBody,
+      icon: payload.notification?.icon || payload.data?.icon || '/icon-192x192.png',
       badge: '/icon-192x192.png',
       data: payload.data || {},
       // iOS向けの設定
@@ -93,8 +94,8 @@ messaging.onBackgroundMessage((payload) => {
     // getNotifications が使えない環境では、通常通り通知を表示
     console.warn('getNotifications error: ' + error.toString());
     const notificationOptions = {
-      body: payload.notification?.body || '',
-      icon: '/icon-192x192.png',
+      body: notificationBody,
+      icon: payload.notification?.icon || payload.data?.icon || '/icon-192x192.png',
       badge: '/icon-192x192.png',
       data: payload.data || {},
       requireInteraction: false,
@@ -164,7 +165,7 @@ self.addEventListener('push', (event) => {
     }
     
     // FCM以外のPush通知のみ処理
-    const title = payload.title || '通知';
+    const title = payload.title || payload.data?.title || '通知';
     const tag = payload.tag || `push-${Date.now()}`;
     
     // 既に同じ tag の通知が表示されている場合はスキップ
@@ -176,8 +177,8 @@ self.addEventListener('push', (event) => {
         }
         
         const options = {
-          body: payload.body || '',
-          icon: '/icon-192x192.png',
+          body: payload.body || payload.data?.body || '',
+          icon: payload.data?.icon || '/icon-192x192.png',
           badge: '/icon-192x192.png',
           data: payload.data || {},
           tag: tag,

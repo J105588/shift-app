@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { createClient } from '@/lib/supabase'
 import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
-import { Send, MessageCircle, Reply, X } from 'lucide-react'
+import { Send, MessageCircle, Reply, X, Image as ImageIcon } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 
 type ChatMessage = ShiftGroupChatMessage
@@ -24,8 +24,12 @@ export default function GroupChat({
   shiftStartTime
 }: Props) {
   const supabase = createClient()
+  const chatImageBucket = process.env.NEXT_PUBLIC_SUPABASE_CHAT_IMAGE_BUCKET || 'shift-chat-images'
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [canChat, setCanChat] = useState(false)
@@ -111,10 +115,11 @@ export default function GroupChat({
   }
 
   // メッセージ送信
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault()
     
-    if (!newMessage.trim() || isSending || !canChat) return
+    const hasContent = newMessage.trim().length > 0 || selectedFile !== null
+    if (!hasContent || isSending || !canChat) return
 
     setIsSending(true)
     try {
@@ -125,7 +130,50 @@ export default function GroupChat({
         return
       }
 
-      const messageText = newMessage.trim()
+      const messageText = newMessage.trim() || (selectedFile ? '画像を送信しました' : '')
+      let uploadedImageUrl: string | null = null
+
+      if (selectedFile) {
+        if (!selectedFile.type.startsWith('image/')) {
+          alert('画像ファイルを選択してください')
+          setIsSending(false)
+          return
+        }
+
+        // ファイルサイズ上限: 5MB
+        const maxSize = 5 * 1024 * 1024
+        if (selectedFile.size > maxSize) {
+          alert('画像サイズは5MB以下にしてください')
+          setIsSending(false)
+          return
+        }
+
+        const fileExt = selectedFile.name.split('.').pop() || 'jpg'
+        const uniqueName = `${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString()}-${selectedFile.name}`
+        const sanitizedName = uniqueName.replace(/\s+/g, '_')
+        const filePath = `${shiftGroupId}/${currentUserId}/${sanitizedName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from(chatImageBucket)
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: selectedFile.type || `image/${fileExt}`
+          })
+
+        if (uploadError) {
+          console.error('画像アップロードエラー:', uploadError)
+          alert('画像のアップロードに失敗しました')
+          setIsSending(false)
+          return
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from(chatImageBucket)
+          .getPublicUrl(filePath)
+
+        uploadedImageUrl = publicUrlData?.publicUrl || null
+      }
       
       const { data: insertedData, error } = await supabase
         .from('shift_group_chat_messages')
@@ -133,7 +181,8 @@ export default function GroupChat({
           shift_group_id: shiftGroupId,
           user_id: currentUserId,
           message: messageText,
-          reply_to: replyingTo?.id || null
+          reply_to: replyingTo?.id || null,
+          image_url: uploadedImageUrl
         })
         .select('*, profiles!shift_group_chat_messages_user_id_fkey(id, display_name)')
         .single()
@@ -151,11 +200,18 @@ export default function GroupChat({
 
       // 通知を送信（参加者全員に、送信者以外）
       // 通知は非同期で送信（送信のブロッキングを避ける）
-      sendChatNotification(messageText).catch((err) => {
+      const notificationContent = uploadedImageUrl ? `${messageText} [画像]` : messageText
+      sendChatNotification(notificationContent).catch((err) => {
         console.error('通知送信エラー:', err)
       })
 
       setNewMessage('')
+      setSelectedFile(null)
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
+      setUploadError(null)
       setReplyingTo(null) // リプライ状態をリセット
     } catch (error) {
       console.error('メッセージ送信エラー:', error)
@@ -386,6 +442,49 @@ export default function GroupChat({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // ファイルプレビューのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('画像ファイルを選択してください')
+      event.target.value = ''
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      setUploadError('画像サイズは5MB以下にしてください')
+      event.target.value = ''
+      return
+    }
+
+    setUploadError(null)
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setSelectedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const clearSelectedFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    setUploadError(null)
+  }
+
   // チャット利用可能時間を計算
   const getChatEndTime = () => {
     const chatEndTime = new Date(shiftEndTime.getTime() + 30 * 60 * 1000)
@@ -480,6 +579,17 @@ export default function GroupChat({
                   <div className="text-sm whitespace-pre-wrap break-words">
                     {msg.message}
                   </div>
+                  {msg.image_url && (
+                    <div className="mt-2">
+                      <img
+                        src={msg.image_url}
+                        alt="共有された画像"
+                        className={`rounded border ${
+                          isOwnMessage ? 'border-white/40' : 'border-slate-200'
+                        } max-h-64 object-contain`}
+                      />
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-1">
                     <div
                       className={`text-xs ${
@@ -533,7 +643,24 @@ export default function GroupChat({
               </button>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-start">
+            <div className="relative">
+              <input
+                id="chat-image-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+                disabled={isSending}
+              />
+              <label
+                htmlFor="chat-image-input"
+                className="flex items-center justify-center w-10 h-10 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
+                title="画像を添付"
+              >
+                <ImageIcon size={18} />
+              </label>
+            </div>
             <input
               type="text"
               value={newMessage}
@@ -545,7 +672,7 @@ export default function GroupChat({
             />
             <button
               type="submit"
-              disabled={!newMessage.trim() || isSending}
+              disabled={(!newMessage.trim() && !selectedFile) || isSending}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               {isSending ? (
@@ -555,6 +682,31 @@ export default function GroupChat({
               )}
             </button>
           </div>
+          {(selectedFile || uploadError) && (
+            <div className="mt-2 flex items-center gap-3">
+              {selectedFile && (
+                <div className="flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-xs">
+                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={clearSelectedFile}
+                    className="text-slate-500 hover:text-slate-800"
+                    title="添付を削除"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              {uploadError && <span className="text-xs text-red-600">{uploadError}</span>}
+              {previewUrl && (
+                <img
+                  src={previewUrl}
+                  alt="プレビュー"
+                  className="h-12 w-12 object-cover rounded border border-slate-200"
+                />
+              )}
+            </div>
+          )}
           <p className="text-xs text-slate-500 mt-2">
             {newMessage.length}/500文字
           </p>

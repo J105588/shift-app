@@ -65,6 +65,7 @@ export type Profile = {
     shift_group_id: string
     user_id: string
     message: string
+    image_url?: string | null
     created_at: string
     reply_to?: string | null
     profiles?: Profile

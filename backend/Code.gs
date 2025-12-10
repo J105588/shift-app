@@ -308,11 +308,8 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
   var payload = {
     message: {
       token: token,
-      notification: {
-        title: title,
-        body: body,
-      },
-      // Webアプリの場合、クリック時のリンクなどを設定可能
+      // WebPush はデータメッセージのみ送信し、クライアント/ServiceWorker で表示を制御する
+      // これにより FCM の自動表示と二重表示を防ぐ
       webpush: {
         fcm_options: {
            link: shiftGroupId ? "/chat/" + shiftGroupId : "/" // チャット通知の場合はチャットページへ
@@ -322,11 +319,14 @@ function sendFcmNotificationV1WithToken(projectId, accessToken, token, title, bo
           'Tag': messageId
         }
       },
-      // data に messageId と shift_group_id を含める（クライアント側の onMessage で使用）
+      // data に必要情報をすべて含める（タイトル・本文・遷移先・messageId）
       data: {
         messageId: messageId,
+        title: title || '',
+        body: body || '',
         shiftGroupId: shiftGroupId || '',
-        url: shiftGroupId ? '/chat/' + shiftGroupId : '/'
+        url: shiftGroupId ? '/chat/' + shiftGroupId : '/',
+        icon: '/icon-192x192.png'
       }
     },
   };

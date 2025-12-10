@@ -258,9 +258,11 @@ export const subscribeInAppMessages = async () => {
     // 注意: フォアグラウンド時は onMessage のみが発火し、
     // Service Worker の onBackgroundMessage は発火しないため、ここで表示する
     // ただし、同じ messageId の通知が既に表示されている場合は重複を避ける
-    if (payload.notification) {
-      const { title, body, icon } = payload.notification
-      
+    const title = payload.notification?.title || payload.data?.title
+    const body = payload.notification?.body || payload.data?.body
+    const icon = payload.notification?.icon || payload.data?.icon
+
+    if (title) {
       // ブラウザの通知APIを使用（iOS 16.4以降でサポート）
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
