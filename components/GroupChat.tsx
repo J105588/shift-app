@@ -54,7 +54,12 @@ export default function GroupChat({
         .from('shift_group_chat_messages')
         .select(`
           *,
-          profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
+          profiles!shift_group_chat_messages_user_id_fkey(id, display_name),
+          read_receipts:shift_group_chat_read_receipts(
+            user_id,
+            created_at,
+            profiles!shift_group_chat_read_receipts_user_id_fkey(id, display_name)
+          )
         `)
         .eq('shift_group_id', shiftGroupId)
         .order('created_at', { ascending: true })
@@ -107,10 +112,35 @@ export default function GroupChat({
       })) as ChatMessage[]
 
       setMessages(messagesWithReplies)
+      markMessagesAsRead(messagesWithReplies)
     } catch (error) {
       console.error('メッセージ取得エラー:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // 既読を記録
+  const markMessagesAsRead = async (msgs: ChatMessage[]) => {
+    const unreadMessages = msgs.filter(
+      (m) =>
+        m.user_id !== currentUserId &&
+        !(m.read_receipts || []).some((r) => r.user_id === currentUserId)
+    )
+
+    if (unreadMessages.length === 0) return
+
+    const payloads = unreadMessages.map((m) => ({
+      message_id: m.id,
+      user_id: currentUserId
+    }))
+
+    const { error } = await supabase
+      .from('shift_group_chat_read_receipts')
+      .upsert(payloads, { onConflict: 'message_id,user_id' })
+
+    if (error) {
+      console.error('既読登録エラー:', error)
     }
   }
 
@@ -541,6 +571,8 @@ export default function GroupChat({
             const messageTime = format(new Date(msg.created_at), 'HH:mm', { locale: ja })
             const replyToMessage = msg.reply_to_message as ChatMessage | null
             const replyToSenderName = replyToMessage?.profiles?.display_name || '不明'
+            const readBy = (msg.read_receipts || []).filter((r) => r.user_id !== msg.user_id)
+            const readNames = readBy.map((r) => r.profiles?.display_name || '不明')
 
             return (
               <div
@@ -612,6 +644,15 @@ export default function GroupChat({
                       </button>
                     )}
                   </div>
+                  {readBy.length > 0 && (
+                    <div
+                      className={`mt-1 text-[11px] ${
+                        isOwnMessage ? 'text-white/70' : 'text-slate-500'
+                      }`}
+                    >
+                      既読: {readNames.join('、')}
+                    </div>
+                  )}
                 </div>
               </div>
             )

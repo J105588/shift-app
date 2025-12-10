@@ -70,4 +70,12 @@ export type Profile = {
     reply_to?: string | null
     profiles?: Profile
     reply_to_message?: ShiftGroupChatMessage | null // リプライ先のメッセージ（JOINで取得）
+    read_receipts?: ShiftGroupChatReadReceipt[] // 既読情報
   }
+
+export type ShiftGroupChatReadReceipt = {
+    message_id: string
+    user_id: string
+    created_at: string
+    profiles?: Profile
+}
