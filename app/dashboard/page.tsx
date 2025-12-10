@@ -9,6 +9,7 @@ import ScheduleTimetable from '@/components/ScheduleTimetable'
 import ShiftDetailModal from '@/components/ShiftDetailModal'
 import { Clock } from 'lucide-react'
 import FcmTokenManager from '@/components/FcmTokenManager'
+import { getTextColor, addOpacity } from '@/lib/colorUtils'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -434,24 +435,43 @@ export default function Dashboard() {
               <p className="text-slate-600 text-sm sm:text-base">今日も1日頑張りましょう！</p>
             </div>
             
-            {nextShift ? (
-              <div className={`${nextShift.isCurrent ? 'bg-red-50 border-2 border-red-200' : 'bg-blue-50 border-2 border-blue-200'} px-4 sm:px-6 py-4 rounded-lg flex items-center gap-3 sm:gap-4 w-full lg:w-auto`}>
-                <div className={`${nextShift.isCurrent ? 'bg-red-100' : 'bg-blue-100'} p-2 sm:p-3 rounded-lg flex-shrink-0`}>
-                  <Clock size={24} className={`${nextShift.isCurrent ? 'text-red-600' : 'text-blue-600'} sm:w-7 sm:h-7`} />
+            {nextShift ? (() => {
+              const shiftColor = (nextShift as any).color || (nextShift.isCurrent ? '#ef4444' : '#3b82f6')
+              const textColor = getTextColor(shiftColor)
+              
+              return (
+                <div 
+                  className={`px-4 sm:px-6 py-4 rounded-lg flex items-center gap-3 sm:gap-4 w-full lg:w-auto border-2`}
+                  style={{
+                    backgroundColor: nextShift.isCurrent ? addOpacity('#ef4444', 0.1) : addOpacity(shiftColor, 0.1),
+                    borderColor: nextShift.isCurrent ? '#ef4444' : shiftColor,
+                  }}
+                >
+                  <div 
+                    className="p-2 sm:p-3 rounded-lg flex-shrink-0"
+                    style={{
+                      backgroundColor: nextShift.isCurrent ? '#ef4444' : shiftColor,
+                    }}
+                  >
+                    <Clock size={24} className="text-white sm:w-7 sm:h-7" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div 
+                      className="text-xs font-semibold uppercase tracking-wider mb-1"
+                      style={{ color: nextShift.isCurrent ? '#ef4444' : shiftColor }}
+                    >
+                      {nextShift.isCurrent ? '進行中のシフト' : '次のシフト'}
+                    </div>
+                    <div className="font-bold text-slate-900 text-base sm:text-lg truncate">
+                      {format(nextShift.start, 'M/d(E) HH:mm', { locale: ja })} 〜 {format(nextShift.end, 'HH:mm', { locale: ja })}
+                    </div>
+                    <div className="text-sm text-slate-600 mt-1 truncate">
+                      {nextShift.shiftTitle || nextShift.title}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className={`text-xs ${nextShift.isCurrent ? 'text-red-600' : 'text-blue-600'} font-semibold uppercase tracking-wider mb-1`}>
-                    {nextShift.isCurrent ? '進行中のシフト' : '次のシフト'}
-                  </div>
-                  <div className={`font-bold text-slate-900 text-base sm:text-lg truncate`}>
-                    {format(nextShift.start, 'M/d(E) HH:mm', { locale: ja })} 〜 {format(nextShift.end, 'HH:mm', { locale: ja })}
-                  </div>
-                  <div className={`text-sm ${nextShift.isCurrent ? 'text-red-700' : 'text-slate-600'} mt-1 truncate`}>
-                    {nextShift.shiftTitle || nextShift.title}
-                  </div>
-                </div>
-              </div>
-            ) : (
+              )
+            })() : (
               <div className="bg-slate-50 px-4 sm:px-6 py-4 rounded-lg border-2 border-slate-200 text-slate-600 text-sm font-medium w-full lg:w-auto">
                 予定されているシフトはありません
               </div>
@@ -483,6 +503,7 @@ export default function Dashboard() {
                 supervisor_id: selectedEvent.supervisor_id,
                 isGroupShift: selectedEvent.isGroupShift || false,
                 shiftGroupId: selectedEvent.isGroupShift ? selectedEvent.id : undefined,
+                color: (selectedEvent as any).color || null,
               }
             : null
         }

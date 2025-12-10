@@ -228,28 +228,36 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {eventsForDay.map((event) => (
-                          <div
-                            key={event.id}
-                            className={`p-2 rounded-lg text-xs cursor-pointer transition-all hover:shadow-md ${
-                              isMyShift(event)
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-slate-100 text-slate-700 border border-slate-200'
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation() // 親要素のクリックイベントを防ぐ
-                              onEventClick?.(event)
-                            }}
-                          >
-                            <div className="font-semibold mb-1 flex items-center gap-1">
-                              <Clock size={12} />
-                              {formatTime(event.start)} - {formatTime(event.end)}
+                        {eventsForDay.map((event) => {
+                          const eventColor = (event as any).color || (isMyShift(event) ? '#3b82f6' : '#64748b')
+                          const textColor = getTextColor(eventColor)
+                          
+                          return (
+                            <div
+                              key={event.id}
+                              className={`p-2 rounded-lg text-xs cursor-pointer transition-all hover:shadow-md ${
+                                isMyShift(event) ? '' : 'border'
+                              }`}
+                              style={{
+                                backgroundColor: isMyShift(event) ? eventColor : '#ffffff',
+                                borderColor: isMyShift(event) ? eventColor : eventColor,
+                                color: textColor,
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation() // 親要素のクリックイベントを防ぐ
+                                onEventClick?.(event)
+                              }}
+                            >
+                              <div className="font-semibold mb-1 flex items-center gap-1">
+                                <Clock size={12} style={{ color: isMyShift(event) ? textColor : eventColor }} />
+                                {formatTime(event.start)} - {formatTime(event.end)}
+                              </div>
+                              <div className="text-xs opacity-90">
+                                {event.shiftTitle || event.title || event.displayName}
+                              </div>
                             </div>
-                            <div className="text-xs opacity-90">
-                              {event.shiftTitle || event.title || event.displayName}
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
