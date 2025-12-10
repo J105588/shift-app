@@ -59,18 +59,20 @@ export default function ChatPage() {
           return
         }
 
-        // このシフトグループに参加しているか確認
-        const { data: assignment } = await supabase
-          .from('shift_assignments')
-          .select('*')
-          .eq('shift_group_id', shiftGroupId)
-          .eq('user_id', currentUser.id)
-          .single()
+        // このシフトグループに参加しているか確認（管理者はスキップ）
+        if (profileData.role !== 'admin') {
+          const { data: assignment } = await supabase
+            .from('shift_assignments')
+            .select('*')
+            .eq('shift_group_id', shiftGroupId)
+            .eq('user_id', currentUser.id)
+            .single()
 
-        if (!assignment) {
-          alert('このシフトグループに参加していません')
-          router.back()
-          return
+          if (!assignment) {
+            alert('このシフトグループに参加していません')
+            router.back()
+            return
+          }
         }
 
         setShiftGroup(groupData)

@@ -41,8 +41,12 @@ export default function GroupChat({
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const isAdmin = currentUserRole === 'admin'
 
-  // チャットが利用可能かチェック（シフト終了後30分まで）
+  // チャットが利用可能かチェック（シフト終了後30分まで、管理者は常に利用可能）
   const checkChatAvailability = () => {
+    if (isAdmin) {
+      setCanChat(true)
+      return true
+    }
     const now = new Date()
     const chatEndTime = new Date(shiftEndTime.getTime() + 30 * 60 * 1000) // 30分後
     const isAvailable = now <= chatEndTime
@@ -585,15 +589,14 @@ export default function GroupChat({
             return (
               <div
                 key={msg.id}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-1`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 ${
                     isOwnMessage
                       ? 'bg-blue-600 text-white'
                       : 'bg-slate-100 text-slate-900'
-                  } ${canViewReadReceipts && readCount > 0 ? 'cursor-pointer ' + (isOwnMessage ? 'hover:bg-blue-700' : 'hover:bg-slate-200') + ' transition-colors' : ''}`}
-                  onClick={canViewReadReceipts && readCount > 0 ? () => setReadReceiptModal(msg) : undefined}
+                  }`}
                 >
                   {/* リプライ先のメッセージ表示 */}
                   {replyToMessage && (
@@ -653,18 +656,27 @@ export default function GroupChat({
                       </button>
                     )}
                   </div>
-                  {/* 自分のメッセージまたは管理者の場合のみ既読数を表示 */}
-                  {canViewReadReceipts && readCount > 0 && (
-                    <div
-                      className={`mt-1 text-[11px] flex items-center gap-1 ${
-                        isOwnMessage ? 'text-white/70' : 'text-slate-500'
-                      }`}
-                    >
-                      <CheckCheck size={12} />
-                      <span>既読 {readCount}人</span>
-                    </div>
-                  )}
                 </div>
+                {/* 自分のメッセージの場合のみ既読数を表示（メッセージボックスの外、左下） */}
+                {isOwnMessage && readCount > 0 && (
+                  <button
+                    onClick={() => setReadReceiptModal(msg)}
+                    className="text-[10px] text-slate-500 hover:text-slate-700 transition-colors mb-1"
+                    title="既読一覧を表示"
+                  >
+                    既読{readCount}
+                  </button>
+                )}
+                {/* 管理者の場合、全てのメッセージの既読数を表示 */}
+                {isAdmin && !isOwnMessage && readCount > 0 && (
+                  <button
+                    onClick={() => setReadReceiptModal(msg)}
+                    className="text-[10px] text-slate-500 hover:text-slate-700 transition-colors mb-1"
+                    title="既読一覧を表示"
+                  >
+                    既読{readCount}
+                  </button>
+                )}
               </div>
             )
           })

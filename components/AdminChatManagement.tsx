@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
-import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle, Send, Reply } from 'lucide-react'
+import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle, Send, Reply, Image as ImageIcon, CheckCheck } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 
 type ChatGroup = {
@@ -26,9 +26,14 @@ export default function AdminChatManagement() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [currentProfile, setCurrentProfile] = useState<any>(null)
   const [newMessage, setNewMessage] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
   const [replyingTo, setReplyingTo] = useState<ShiftGroupChatMessage | null>(null)
+  const [readReceiptModal, setReadReceiptModal] = useState<ShiftGroupChatMessage | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const chatImageBucket = process.env.NEXT_PUBLIC_SUPABASE_CHAT_IMAGE_BUCKET || 'shift-chat-images'
 
   // チャットグループ一覧を取得
   const fetchChatGroups = async () => {
@@ -103,7 +108,12 @@ export default function AdminChatManagement() {
         .from('shift_group_chat_messages')
         .select(`
           *,
-          profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
+          profiles!shift_group_chat_messages_user_id_fkey(id, display_name),
+          read_receipts:shift_group_chat_read_receipts(
+            user_id,
+            created_at,
+            profiles!shift_group_chat_read_receipts_user_id_fkey(id, display_name)
+          )
         `)
         .eq('shift_group_id', groupId)
         .order('created_at', { ascending: true })
@@ -156,13 +166,6 @@ export default function AdminChatManagement() {
       })) as ShiftGroupChatMessage[]
 
       setMessages(messagesWithReplies)
-
-      if (error) {
-        console.error('メッセージ取得エラー:', error)
-        return
-      }
-
-      setMessages(data as ShiftGroupChatMessage[] || [])
     } catch (error) {
       console.error('メッセージ取得エラー:', error)
     } finally {
@@ -254,15 +257,94 @@ export default function AdminChatManagement() {
     setExpandedGroups(newExpanded)
   }
 
+  // ファイル選択ハンドラー
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('画像ファイルを選択してください')
+      event.target.value = ''
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      setUploadError('画像サイズは5MB以下にしてください')
+      event.target.value = ''
+      return
+    }
+
+    setUploadError(null)
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setSelectedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const clearSelectedFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    setUploadError(null)
+  }
+
   // メッセージ送信
   const handleSendMessage = async (e: React.FormEvent, groupId: string) => {
     e.preventDefault()
     
-    if (!newMessage.trim() || isSending || !currentUser) return
+    const hasContent = newMessage.trim().length > 0 || selectedFile !== null
+    if (!hasContent || isSending || !currentUser) return
 
     setIsSending(true)
     try {
-      const messageText = newMessage.trim()
+      const messageText = newMessage.trim() || (selectedFile ? '画像を送信しました' : '')
+      let uploadedImageUrl: string | null = null
+
+      if (selectedFile) {
+        if (!selectedFile.type.startsWith('image/')) {
+          alert('画像ファイルを選択してください')
+          setIsSending(false)
+          return
+        }
+
+        // ファイルサイズ上限: 5MB
+        const maxSize = 5 * 1024 * 1024
+        if (selectedFile.size > maxSize) {
+          alert('画像サイズは5MB以下にしてください')
+          setIsSending(false)
+          return
+        }
+
+        const fileExt = selectedFile.name.split('.').pop() || 'jpg'
+        const uniqueName = `${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString()}-${selectedFile.name}`
+        const sanitizedName = uniqueName.replace(/\s+/g, '_')
+        const filePath = `${groupId}/${currentUser.id}/${sanitizedName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from(chatImageBucket)
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: selectedFile.type || `image/${fileExt}`
+          })
+
+        if (uploadError) {
+          console.error('画像アップロードエラー:', uploadError)
+          alert('画像のアップロードに失敗しました')
+          setIsSending(false)
+          return
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from(chatImageBucket)
+          .getPublicUrl(filePath)
+
+        uploadedImageUrl = publicUrlData?.publicUrl || null
+      }
       
       const { error } = await supabase
         .from('shift_group_chat_messages')
@@ -270,7 +352,8 @@ export default function AdminChatManagement() {
           shift_group_id: groupId,
           user_id: currentUser.id,
           message: messageText,
-          reply_to: replyingTo?.id || null
+          reply_to: replyingTo?.id || null,
+          image_url: uploadedImageUrl
         })
 
       if (error) {
@@ -280,6 +363,7 @@ export default function AdminChatManagement() {
         return
       }
 
+      
       // 送信後すぐにDBと同期するため、メッセージ一覧を再取得
       await fetchMessages(groupId)
       
@@ -287,9 +371,16 @@ export default function AdminChatManagement() {
       await fetchChatGroups()
 
       // 通知を送信（参加者全員に、送信者以外）
-      await sendChatNotification(messageText, groupId)
+      const notificationContent = uploadedImageUrl ? `${messageText} [画像]` : messageText
+      await sendChatNotification(notificationContent, groupId)
 
       setNewMessage('')
+      setSelectedFile(null)
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
+      setUploadError(null)
       setReplyingTo(null) // リプライ状態をリセット
     } catch (error) {
       console.error('メッセージ送信エラー:', error)
@@ -365,23 +456,28 @@ export default function AdminChatManagement() {
         match: authUser?.id === currentUser.id
       })
 
-      // shift_assignmentsの確認（デバッグ用）
-      const { data: assignmentCheck, error: assignmentError } = await supabase
-        .from('shift_assignments')
-        .select('id, user_id, shift_group_id')
-        .eq('shift_group_id', groupId)
-        .eq('user_id', currentUser.id)
+      // 管理者の場合はshift_assignmentsのチェックをスキップ
+      const isAdmin = currentProfile?.role === 'admin'
       
-      console.log('shift_assignments確認:', {
-        assignmentCheck,
-        assignmentError,
-        isParticipant: assignmentCheck && assignmentCheck.length > 0
-      })
+      if (!isAdmin) {
+        // 一般ユーザーの場合のみshift_assignmentsの確認
+        const { data: assignmentCheck, error: assignmentError } = await supabase
+          .from('shift_assignments')
+          .select('id, user_id, shift_group_id')
+          .eq('shift_group_id', groupId)
+          .eq('user_id', currentUser.id)
+        
+        console.log('shift_assignments確認:', {
+          assignmentCheck,
+          assignmentError,
+          isParticipant: assignmentCheck && assignmentCheck.length > 0
+        })
 
-      // セキュリティチェック: ユーザーがshift_assignmentsに存在しない場合は通知を作成しない
-      if (!assignmentCheck || assignmentCheck.length === 0) {
-        console.error('セキュリティエラー: ユーザーがshift_assignmentsに存在しません')
-        return
+        // セキュリティチェック: ユーザーがshift_assignmentsに存在しない場合は通知を作成しない
+        if (!assignmentCheck || assignmentCheck.length === 0) {
+          console.error('セキュリティエラー: ユーザーがshift_assignmentsに存在しません')
+          return
+        }
       }
 
       // RLSをバイパスする関数を使用して通知を作成
@@ -409,7 +505,7 @@ export default function AdminChatManagement() {
           authUserId: authUser?.id,
           currentUserId: currentUser.id,
           shiftGroupId: groupId,
-          isParticipant: assignmentCheck && assignmentCheck.length > 0,
+          isAdmin: isAdmin,
           payloads: payloads
         })
         return
@@ -477,6 +573,15 @@ export default function AdminChatManagement() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // ファイルプレビューのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   // 現在のユーザー情報を取得
   useEffect(() => {
@@ -651,11 +756,13 @@ export default function AdminChatManagement() {
                               const messageTime = format(new Date(msg.created_at), 'HH:mm', { locale: ja })
                               const replyToMessage = msg.reply_to_message as ShiftGroupChatMessage | null
                               const replyToSenderName = replyToMessage?.profiles?.display_name || '不明'
+                              const readBy = (msg.read_receipts || []).filter((r) => r.user_id !== msg.user_id)
+                              const readCount = readBy.length
 
                               return (
                                 <div
                                   key={msg.id}
-                                  className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} group relative`}
+                                  className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-1 group relative`}
                                 >
                                   <div
                                     className={`max-w-[80%] rounded-lg px-3 py-2 relative ${
@@ -689,6 +796,17 @@ export default function AdminChatManagement() {
                                     <div className="text-sm whitespace-pre-wrap break-words">
                                       {msg.message}
                                     </div>
+                                    {msg.image_url && (
+                                      <div className="mt-2">
+                                        <img
+                                          src={msg.image_url}
+                                          alt="共有された画像"
+                                          className={`rounded border ${
+                                            isOwnMessage ? 'border-white/40' : 'border-slate-200'
+                                          } max-h-64 object-contain`}
+                                        />
+                                      </div>
+                                    )}
                                     <div className="flex items-center justify-between mt-1">
                                       <div
                                         className={`text-xs ${
@@ -722,6 +840,16 @@ export default function AdminChatManagement() {
                                       </div>
                                     </div>
                                   </div>
+                                  {/* 既読数表示（管理者は全メッセージの既読を見れる） */}
+                                  {readCount > 0 && (
+                                    <button
+                                      onClick={() => setReadReceiptModal(msg)}
+                                      className="text-[10px] text-slate-500 hover:text-slate-700 transition-colors mb-1"
+                                      title="既読一覧を表示"
+                                    >
+                                      既読{readCount}
+                                    </button>
+                                  )}
                                 </div>
                               )
                             })
@@ -751,7 +879,24 @@ export default function AdminChatManagement() {
                               </button>
                             </div>
                           )}
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-start">
+                            <div className="relative">
+                              <input
+                                id={`chat-image-input-${group.id}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleFileChange}
+                                disabled={isSending}
+                              />
+                              <label
+                                htmlFor={`chat-image-input-${group.id}`}
+                                className="flex items-center justify-center w-10 h-10 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
+                                title="画像を添付"
+                              >
+                                <ImageIcon size={18} />
+                              </label>
+                            </div>
                             <input
                               type="text"
                               value={newMessage}
@@ -763,7 +908,7 @@ export default function AdminChatManagement() {
                             />
                             <button
                               type="submit"
-                              disabled={!newMessage.trim() || isSending}
+                              disabled={(!newMessage.trim() && !selectedFile) || isSending}
                               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                             >
                               {isSending ? (
@@ -773,6 +918,31 @@ export default function AdminChatManagement() {
                               )}
                             </button>
                           </div>
+                          {(selectedFile || uploadError) && (
+                            <div className="mt-2 flex items-center gap-3">
+                              {selectedFile && (
+                                <div className="flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-xs">
+                                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={clearSelectedFile}
+                                    className="text-slate-500 hover:text-slate-800"
+                                    title="添付を削除"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              )}
+                              {uploadError && <span className="text-xs text-red-600">{uploadError}</span>}
+                              {previewUrl && (
+                                <img
+                                  src={previewUrl}
+                                  alt="プレビュー"
+                                  className="h-12 w-12 object-cover rounded border border-slate-200"
+                                />
+                              )}
+                            </div>
+                          )}
                           <p className="text-xs text-slate-500 mt-2">
                             {newMessage.length}/500文字
                           </p>
@@ -784,6 +954,56 @@ export default function AdminChatManagement() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* 既読一覧モーダル */}
+      {readReceiptModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900">既読一覧</h3>
+              <button
+                onClick={() => setReadReceiptModal(null)}
+                className="text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 flex-1">
+              {readReceiptModal.read_receipts && readReceiptModal.read_receipts.length > 0 ? (
+                <div className="space-y-2">
+                  {readReceiptModal.read_receipts
+                    .filter((r) => r.user_id !== readReceiptModal.user_id)
+                    .map((receipt) => {
+                      const readTime = format(new Date(receipt.created_at), 'M/d HH:mm', { locale: ja })
+                      return (
+                        <div
+                          key={`${receipt.message_id}-${receipt.user_id}`}
+                          className="flex items-center justify-between p-2 bg-slate-50 rounded-lg"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                              {(receipt.profiles?.display_name || '不明').charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-slate-900">
+                                {receipt.profiles?.display_name || '不明'}
+                              </div>
+                              <div className="text-xs text-slate-500">{readTime}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              ) : (
+                <div className="text-center text-slate-500 py-8">
+                  まだ既読がありません
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
