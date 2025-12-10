@@ -528,7 +528,7 @@ export default function GroupChat({
       {/* メッセージ一覧 */}
       <div
         ref={chatContainerRef}
-        className="h-64 overflow-y-auto p-4 space-y-3 bg-white"
+        className="h-[70vh] overflow-y-auto p-4 space-y-3 bg-white"
       >
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-slate-500 text-sm">
