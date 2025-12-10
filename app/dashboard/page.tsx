@@ -50,7 +50,8 @@ export default function Dashboard() {
           description: s.description,
           supervisor_id: s.supervisor_id,
           user_id: s.user_id,
-          isGroupShift: false
+          isGroupShift: false,
+          color: s.color || '#3b82f6'
         })
       })
     }
@@ -102,7 +103,8 @@ export default function Dashboard() {
             isGroupShift: true,
             isSupervisor: isSupervisor,
             memberCount: memberCount,
-            assignments: allAssignments
+            assignments: allAssignments,
+            color: group.color || '#a855f7'
           })
         }
       }

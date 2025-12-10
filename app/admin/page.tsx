@@ -74,7 +74,8 @@ export default function AdminPage() {
             start: new Date(s.start_time),
             end: new Date(s.end_time),
             resource: s,
-            isGroupShift: false
+            isGroupShift: false,
+            color: s.color || '#3b82f6'
           })
         })
         allShifts.push(...shiftsWithSupervisor)
@@ -113,7 +114,8 @@ export default function AdminPage() {
                 supervisor: supervisor?.profiles,
                 memberCount: memberCount
               },
-              isGroupShift: true
+              isGroupShift: true,
+              color: group.color || '#a855f7'
             })
             
             // シフトデータとして保存
@@ -445,6 +447,16 @@ export default function AdminPage() {
                     selectable
                     onSelectSlot={handleSelectSlot}
                     onSelectEvent={handleSelectEvent}
+                    eventPropGetter={(event: any) => {
+                      const color = event.color || '#3b82f6'
+                      return {
+                        style: {
+                          backgroundColor: color,
+                          borderColor: color,
+                          color: '#ffffff',
+                        }
+                      }
+                    }}
                     messages={{ next: "次", previous: "前", today: "今日", month: "月", week: "週", day: "日" }}
                   />
                 </div>

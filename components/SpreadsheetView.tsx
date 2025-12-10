@@ -187,6 +187,19 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                             dayShifts.map((shift) => {
                               const isGroupShift = shift.isGroupShift || false
                               const isSupervisor = shift.isGroupShift && shift.assignments?.find((a: any) => a.user_id === user.id && a.is_supervisor)
+                              const shiftColor = shift.color || (isGroupShift ? '#a855f7' : '#3b82f6')
+                              // 色の明るさを計算してテキスト色を決定
+                              const getTextColor = (bgColor: string) => {
+                                const hex = bgColor.replace('#', '')
+                                const r = parseInt(hex.substr(0, 2), 16)
+                                const g = parseInt(hex.substr(2, 2), 16)
+                                const b = parseInt(hex.substr(4, 2), 16)
+                                const brightness = (r * 299 + g * 587 + b * 114) / 1000
+                                return brightness > 128 ? '#1e293b' : '#ffffff'
+                              }
+                              const textColor = getTextColor(shiftColor)
+                              const borderColor = shiftColor
+                              const bgColor = shiftColor + '20' // 20% opacity
                               
                               return (
                                 <div
@@ -194,36 +207,34 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                                   onClick={() => onShiftClick?.(shift)}
                                   className={`p-1 sm:p-1.5 rounded text-[10px] sm:text-xs cursor-pointer transition-all ${
                                     onShiftClick ? 'hover:shadow-md active:scale-95' : ''
-                                  } ${
-                                    isGroupShift 
-                                      ? 'bg-purple-100 border border-purple-200 hover:border-purple-400' 
-                                      : 'bg-blue-100 border border-blue-200 hover:border-blue-400'
                                   }`}
+                                  style={{
+                                    backgroundColor: bgColor,
+                                    borderColor: borderColor,
+                                    borderWidth: '1px',
+                                    borderStyle: 'solid',
+                                  }}
                                 >
                                   <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5 sm:mb-1 flex-wrap">
-                                    <Clock size={9} className="text-blue-600 flex-shrink-0" />
-                                    <span className={`font-semibold ${
-                                      isGroupShift ? 'text-purple-700' : 'text-blue-700'
-                                    } leading-tight`}>
+                                    <Clock size={9} style={{ color: borderColor }} className="flex-shrink-0" />
+                                    <span className="font-semibold leading-tight" style={{ color: textColor }}>
                                       {formatTime(new Date(shift.start_time))}-{formatTime(new Date(shift.end_time))}
                                     </span>
                                   </div>
-                                  <div className={`font-medium mb-0.5 sm:mb-1 leading-tight ${
-                                    isGroupShift ? 'text-purple-900' : 'text-blue-900'
-                                  }`}>
+                                  <div className="font-medium mb-0.5 sm:mb-1 leading-tight" style={{ color: textColor }}>
                                     {shift.title}
                                     {isGroupShift && shift.memberCount && shift.memberCount > 1 && (
-                                      <span className="text-[9px] ml-1">({shift.memberCount}名)</span>
+                                      <span className="text-[9px] ml-1 opacity-80">({shift.memberCount}名)</span>
                                     )}
                                   </div>
                                   {isSupervisor && (
-                                    <div className="flex items-center gap-0.5 sm:gap-1 text-purple-600">
+                                    <div className="flex items-center gap-0.5 sm:gap-1" style={{ color: borderColor }}>
                                       <UserCog size={9} />
                                       <span className="text-[9px] sm:text-xs">統括</span>
                                     </div>
                                   )}
                                   {!isGroupShift && shift.supervisor && (
-                                    <div className="flex items-center gap-0.5 sm:gap-1 text-blue-600">
+                                    <div className="flex items-center gap-0.5 sm:gap-1" style={{ color: borderColor }}>
                                       <UserCog size={9} />
                                       <span className="text-[9px] sm:text-xs">
                                         {shift.supervisor.display_name}

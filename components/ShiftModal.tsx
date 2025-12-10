@@ -32,8 +32,11 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
   const [individualTitles, setIndividualTitles] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [useTemplate, setUseTemplate] = useState(true)
+  const [shiftTemplates, setShiftTemplates] = useState<Array<{ name: string; color: string }>>([])
+  const [customColor, setCustomColor] = useState('#64748b')
+  const [selectedColor, setSelectedColor] = useState<string>('')
 
-  // よく使う仕事内容のテンプレート
+  // よく使う仕事内容のテンプレート（デフォルト、後方互換性のため保持）
   const jobTemplates = [
     '受付',
     '案内',
@@ -57,6 +60,51 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
+  // シフトテンプレートと色の設定を取得
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        // テンプレート設定を取得
+        const { data: templatesData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'shift_templates')
+          .single()
+
+        if (templatesData?.value) {
+          try {
+            const parsed = JSON.parse(templatesData.value) as Array<{ name: string; color: string }>
+            setShiftTemplates(parsed)
+          } catch (e) {
+            console.error('テンプレートJSON解析エラー:', e)
+          }
+        }
+
+        // 自由入力のデフォルト色を取得
+        const { data: customColorData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'shift_custom_color')
+          .single()
+
+        if (customColorData?.value) {
+          setCustomColor(customColorData.value)
+          setSelectedColor(customColorData.value)
+        }
+      } catch (error) {
+        console.error('テンプレート取得エラー:', error)
+      }
+    }
+
+    if (isOpen) fetchTemplates()
+  }, [isOpen, supabase])
+
+  // テンプレート名から色を取得
+  const getColorForTemplate = (templateName: string): string => {
+    const template = shiftTemplates.find(t => t.name === templateName)
+    return template?.color || customColor
+  }
+
   // フォーム初期値設定
   useEffect(() => {
     if (editShift) {
@@ -75,7 +123,9 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       setSelectedUserIds([])
       setSupervisorId('')
       setIndividualTitles({})
-      setUseTemplate(jobTemplates.includes(editShift.title))
+      setUseTemplate(jobTemplates.includes(editShift.title) || shiftTemplates.some(t => t.name === editShift.title))
+      // 編集時は既存の色を設定
+      setSelectedColor((editShift as any).color || getColorForTemplate(editShift.title) || customColor)
     } else if (initialDate) {
       // 新規作成モード（クリックした日付をセット）
       setMode('group') // デフォルトで団体付与モード
@@ -94,6 +144,8 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       setSupervisorId('')
       setIndividualTitles({})
       setUseTemplate(true)
+      // デフォルトテンプレートの色を設定
+      setSelectedColor(getColorForTemplate('受付') || customColor)
     }
   }, [editShift, initialDate, isOpen])
 
@@ -281,6 +333,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
           description: formData.description || null,
+          color: selectedColor || null,
         }
         if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
           payload.supervisor_id = formData.supervisor_id
@@ -329,6 +382,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
             end_time: new Date(formData.end).toISOString(),
             description: formData.description || null,
             location: formData.location || null,
+            color: selectedColor || null,
           })
           .select()
           .single()
@@ -381,6 +435,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           start_time: new Date(formData.start).toISOString(),
           end_time: new Date(formData.end).toISOString(),
           description: formData.description || null,
+          color: selectedColor || null,
         }
         // supervisor_idが空文字列でない場合のみ追加
         if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
@@ -428,14 +483,22 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         }
 
         const payloads = selectedUserIds.map(userId => {
+          const title = titleMode === 'same' 
+            ? formData.title 
+            : (individualTitles[userId] || formData.title)
+          const color = useTemplate && titleMode === 'same'
+            ? getColorForTemplate(formData.title)
+            : (titleMode === 'individual' && individualTitles[userId]
+              ? getColorForTemplate(individualTitles[userId])
+              : selectedColor)
+          
           const payload: any = {
             user_id: userId,
-            title: titleMode === 'same' 
-              ? formData.title 
-              : (individualTitles[userId] || formData.title),
+            title: title,
             start_time: new Date(formData.start).toISOString(),
             end_time: new Date(formData.end).toISOString(),
             description: formData.description || null,
+            color: color || null,
           }
           // supervisor_idが空文字列でない場合のみ追加
           if (formData.supervisor_id && formData.supervisor_id.trim() !== '') {
@@ -827,33 +890,71 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
                   </button>
                 </div>
                 {useTemplate ? (
-                  <select
-                    className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-                    value={formData.title}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setFormData({...formData, title: value})
-                      if (value === 'その他') {
-                        setUseTemplate(false)
-                        setFormData({...formData, title: ''})
-                      }
-                    }}
-                    required={(mode === 'individual' && individualMode === 'single') || !!editShift || titleMode === 'same' || mode === 'group'}
-                  >
-                    <option value="">選択してください</option>
-                    {jobTemplates.map(template => (
-                      <option key={template} value={template}>{template}</option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <select
+                      className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                      value={formData.title}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({...formData, title: value})
+                        // テンプレート選択時に色を自動設定
+                        if (value) {
+                          const color = getColorForTemplate(value)
+                          setSelectedColor(color)
+                        }
+                        if (value === 'その他') {
+                          setUseTemplate(false)
+                          setFormData({...formData, title: ''})
+                        }
+                      }}
+                      required={(mode === 'individual' && individualMode === 'single') || !!editShift || titleMode === 'same' || mode === 'group'}
+                    >
+                      <option value="">選択してください</option>
+                      {shiftTemplates.length > 0 ? (
+                        shiftTemplates.map(template => (
+                          <option key={template.name} value={template.name}>{template.name}</option>
+                        ))
+                      ) : (
+                        jobTemplates.map(template => (
+                          <option key={template} value={template}>{template}</option>
+                        ))
+                      )}
+                    </select>
+                    {formData.title && (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-8 h-8 rounded-lg border-2 border-slate-200"
+                          style={{ backgroundColor: selectedColor }}
+                        />
+                        <span className="text-sm text-slate-600">色: {selectedColor}</span>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <input 
-                    type="text" 
-                    className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-                    placeholder="例: 受付、案内、販売など"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    required={(mode === 'individual' && individualMode === 'single') || !!editShift || titleMode === 'same' || mode === 'group'}
-                  />
+                  <div className="space-y-2">
+                    <input 
+                      type="text" 
+                      className="w-full border-2 border-slate-200 p-3 sm:p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                      placeholder="例: 受付、案内、販売など"
+                      value={formData.title}
+                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      required={(mode === 'individual' && individualMode === 'single') || !!editShift || titleMode === 'same' || mode === 'group'}
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-semibold text-slate-700">色:</label>
+                      <input
+                        type="color"
+                        value={selectedColor}
+                        onChange={(e) => setSelectedColor(e.target.value)}
+                        className="w-12 h-10 border-2 border-slate-200 rounded-lg cursor-pointer"
+                      />
+                      <div
+                        className="w-10 h-10 rounded-lg border-2 border-slate-200"
+                        style={{ backgroundColor: selectedColor }}
+                      />
+                      <span className="text-sm text-slate-600">{selectedColor}</span>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

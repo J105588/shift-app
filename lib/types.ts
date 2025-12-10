@@ -16,6 +16,7 @@ export type Profile = {
     profiles?: Profile
     supervisor?: Profile
     description?: string | null
+    color?: string | null
   }
   
   // 新構造: シフトグループ（業務枠）
@@ -26,6 +27,7 @@ export type Profile = {
     end_time: string
     description?: string | null
     location?: string | null
+    color?: string | null
     created_at: string
     updated_at: string
   }

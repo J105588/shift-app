@@ -304,39 +304,53 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
                   {/* イベントリスト（折りたたみ可能） */}
                   {eventsForDay.length > 0 && (
                     <div className="px-4 pb-4 space-y-2">
-                      {eventsForDay.map((event) => (
-                        <div
-                          key={event.id}
-                          className={`p-3 rounded-lg cursor-pointer transition-all active:scale-95 ${
-                            isMyShift(event)
-                              ? 'bg-blue-500 text-white shadow-md'
-                              : 'bg-white text-slate-700 border-2 border-slate-200'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation() // 親要素のクリックイベントを防ぐ
-                            onEventClick?.(event)
-                          }}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Clock size={16} className={isMyShift(event) ? 'text-blue-100' : 'text-blue-600'} />
-                              <span className="font-bold text-sm">
-                                {formatTime(event.start)} - {formatTime(event.end)}
-                              </span>
+                      {eventsForDay.map((event) => {
+                        const eventColor = (event as any).color || (isMyShift(event) ? '#3b82f6' : '#64748b')
+                        const getTextColor = (bgColor: string) => {
+                          const hex = bgColor.replace('#', '')
+                          const r = parseInt(hex.substr(0, 2), 16)
+                          const g = parseInt(hex.substr(2, 2), 16)
+                          const b = parseInt(hex.substr(4, 2), 16)
+                          const brightness = (r * 299 + g * 587 + b * 114) / 1000
+                          return brightness > 128 ? '#1e293b' : '#ffffff'
+                        }
+                        const textColor = getTextColor(eventColor)
+                        
+                        return (
+                          <div
+                            key={event.id}
+                            className={`p-3 rounded-lg cursor-pointer transition-all active:scale-95 ${
+                              isMyShift(event) ? 'shadow-md' : 'border-2'
+                            }`}
+                            style={{
+                              backgroundColor: isMyShift(event) ? eventColor : '#ffffff',
+                              borderColor: isMyShift(event) ? eventColor : eventColor,
+                              color: isMyShift(event) ? textColor : '#1e293b',
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation() // 親要素のクリックイベントを防ぐ
+                              onEventClick?.(event)
+                            }}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Clock size={16} style={{ color: isMyShift(event) ? textColor : eventColor }} />
+                                <span className="font-bold text-sm" style={{ color: isMyShift(event) ? textColor : '#1e293b' }}>
+                                  {formatTime(event.start)} - {formatTime(event.end)}
+                                </span>
+                              </div>
+                              {isMyShift(event) && (
+                                <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: eventColor, color: textColor }}>
+                                  あなた
+                                </span>
+                              )}
                             </div>
-                            {isMyShift(event) && (
-                              <span className="text-xs bg-blue-600 px-2 py-0.5 rounded-full font-semibold">
-                                あなた
-                              </span>
-                            )}
+                            <div className="text-sm font-medium" style={{ color: isMyShift(event) ? textColor : '#1e293b' }}>
+                              {event.shiftTitle || event.title || event.displayName}
+                            </div>
                           </div>
-                          <div className={`text-sm font-medium ${
-                            isMyShift(event) ? 'text-blue-50' : 'text-slate-900'
-                          }`}>
-                            {event.shiftTitle || event.title || event.displayName}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
