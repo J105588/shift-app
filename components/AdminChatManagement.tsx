@@ -764,6 +764,16 @@ export default function AdminChatManagement() {
                                   key={msg.id}
                                   className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-1 group relative`}
                                 >
+                                  {/* 自分のメッセージの場合のみ既読数を表示（メッセージボックスの左側） */}
+                                  {isOwnMessage && readCount > 0 && (
+                                    <button
+                                      onClick={() => setReadReceiptModal(msg)}
+                                      className="text-[10px] text-slate-500 hover:text-slate-700 transition-colors mb-1"
+                                      title="既読一覧を表示"
+                                    >
+                                      既読{readCount}
+                                    </button>
+                                  )}
                                   <div
                                     className={`max-w-[80%] rounded-lg px-3 py-2 relative ${
                                       isOwnMessage
@@ -840,8 +850,8 @@ export default function AdminChatManagement() {
                                       </div>
                                     </div>
                                   </div>
-                                  {/* 既読数表示（管理者は全メッセージの既読を見れる） */}
-                                  {readCount > 0 && (
+                                  {/* 他の人のメッセージの場合のみ既読数を表示（メッセージボックスの右側） */}
+                                  {!isOwnMessage && readCount > 0 && (
                                     <button
                                       onClick={() => setReadReceiptModal(msg)}
                                       className="text-[10px] text-slate-500 hover:text-slate-700 transition-colors mb-1"

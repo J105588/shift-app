@@ -170,6 +170,30 @@ export default function Dashboard() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return window.location.href = '/'
+
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      
+      // 管理者の場合、ビューモードをチェック
+      if (profile?.role === 'admin') {
+        const viewMode = typeof window !== 'undefined' 
+          ? localStorage.getItem('shift-app-view-mode') as 'admin' | 'user' | null
+          : null
+        
+        // 管理者モードの場合は管理者ページにリダイレクト
+        if (viewMode === 'admin') {
+          router.replace('/admin')
+          return
+        }
+        
+        // ビューモードが未設定の場合は管理者モードに設定してリダイレクト
+        if (!viewMode) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('shift-app-view-mode', 'admin')
+          }
+          router.replace('/admin')
+          return
+        }
+      }
       
       // メンテナンスモードをチェック
       const { data: maintenanceSetting } = await supabase
@@ -180,9 +204,8 @@ export default function Dashboard() {
 
       const isMaintenanceMode = maintenanceSetting?.value === 'true'
 
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      
       // メンテナンスモードが有効で、一般ユーザーの場合はメンテナンスページへリダイレクト（ログアウトしない）
+      // 管理者が通常モードの場合はメンテナンスモードの影響を受けない
       if (isMaintenanceMode && profile?.role !== 'admin') {
         router.replace('/maintenance')
         return

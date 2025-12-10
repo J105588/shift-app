@@ -8,6 +8,9 @@ import { Profile, Shift } from '@/lib/types'
 type ShiftWithProfile = Shift & {
   profiles?: Profile
   supervisor?: Profile
+  isGroupShift?: boolean
+  assignments?: any[]
+  memberCount?: number
 }
 
 type Props = {
@@ -34,10 +37,31 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
       const dayMap = new Map<string, ShiftWithProfile[]>()
       
       users.forEach(user => {
-        const userShifts = shifts.filter(shift => 
-          shift.user_id === user.id && 
-          isSameDay(new Date(shift.start_time), day)
-        )
+        const userShifts: ShiftWithProfile[] = []
+        
+        shifts.forEach(shift => {
+          const shiftDate = new Date(shift.start_time)
+          
+          // 個別付与シフトの場合
+          if (!shift.isGroupShift && shift.user_id === user.id && isSameDay(shiftDate, day)) {
+            userShifts.push(shift)
+          }
+          // 団体付与シフトの場合
+          else if (shift.isGroupShift && shift.assignments && isSameDay(shiftDate, day)) {
+            // このユーザーが参加しているか確認
+            const assignment = shift.assignments.find((a: any) => a.user_id === user.id)
+            if (assignment) {
+              // ユーザーごとのシフトとして表示するため、user_idを設定
+              userShifts.push({
+                ...shift,
+                user_id: user.id,
+                // 統括者情報を設定（既存のsupervisorがある場合はそれを使用、なければユーザーが統括者の場合はユーザー情報を使用）
+                supervisor: shift.supervisor || (assignment.is_supervisor ? user : undefined)
+              })
+            }
+          }
+        })
+        
         if (userShifts.length > 0) {
           dayMap.set(user.id, userShifts)
         }
@@ -112,100 +136,128 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
 
       {/* スプレッドシートテーブル */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead className="bg-slate-50 sticky top-0 z-10">
-            <tr>
-              <th className="border border-slate-200 p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold text-slate-700 min-w-[120px] sm:min-w-[150px]">
-                ユーザー
-              </th>
-              {weekDays.map((day) => {
-                const dayKey = format(day, 'yyyy-MM-dd')
-                const isDayToday = isToday(day)
-                return (
-                  <th
-                    key={dayKey}
-                    className={`border border-slate-200 p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold min-w-[140px] sm:min-w-[180px] ${
-                      isDayToday ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
-                    }`}
-                  >
-                    <div>{format(day, 'E', { locale: ja })}</div>
-                    <div className={`text-base sm:text-lg font-bold ${isDayToday ? 'text-blue-700' : 'text-slate-900'}`}>
-                      {format(day, 'd')}
-                    </div>
-                  </th>
-                )
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                <td className="border border-slate-200 p-2 sm:p-3 text-xs sm:text-sm font-semibold text-slate-900 bg-slate-50 sticky left-0 z-5">
-                  {user.display_name}
-                </td>
+        <div className="min-w-full inline-block">
+          <table className="w-full border-collapse min-w-[600px]">
+            <thead className="bg-slate-50 sticky top-0 z-10">
+              <tr>
+                <th className="border border-slate-200 p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold text-slate-700 min-w-[100px] sm:min-w-[120px] bg-slate-50 sticky left-0 z-20">
+                  ユーザー
+                </th>
                 {weekDays.map((day) => {
                   const dayKey = format(day, 'yyyy-MM-dd')
-                  const dayShifts = shiftsByDayAndUser.get(dayKey)?.get(user.id) || []
                   const isDayToday = isToday(day)
-                  
                   return (
-                    <td
+                    <th
                       key={dayKey}
-                      className={`border border-slate-200 p-1 sm:p-2 align-top ${
-                        isDayToday ? 'bg-blue-50/30' : 'bg-white'
+                      className={`border border-slate-200 p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] ${
+                        isDayToday ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
                       }`}
                     >
-                      <div className="space-y-1">
-                        {dayShifts.length === 0 ? (
-                          <div className="text-xs text-slate-400 text-center py-2">-</div>
-                        ) : (
-                          dayShifts.map((shift) => (
-                            <div
-                              key={shift.id}
-                              onClick={() => onShiftClick?.(shift)}
-                              className={`p-1.5 sm:p-2 rounded text-xs cursor-pointer transition-all hover:shadow-md ${
-                                onShiftClick ? 'hover:scale-105' : ''
-                              } bg-blue-100 border border-blue-200 hover:border-blue-400`}
-                            >
-                              <div className="flex items-center gap-1 mb-1">
-                                <Clock size={10} className="text-blue-600" />
-                                <span className="font-semibold text-blue-700">
-                                  {formatTime(new Date(shift.start_time))} - {formatTime(new Date(shift.end_time))}
-                                </span>
-                              </div>
-                              <div className="text-blue-900 font-medium mb-1">
-                                {shift.title}
-                              </div>
-                              {shift.supervisor && (
-                                <div className="flex items-center gap-1 text-blue-600">
-                                  <UserCog size={10} />
-                                  <span className="text-xs">
-                                    {shift.supervisor.display_name}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
+                      <div className="text-[10px] sm:text-xs">{format(day, 'E', { locale: ja })}</div>
+                      <div className={`text-sm sm:text-base font-bold ${isDayToday ? 'text-blue-700' : 'text-slate-900'}`}>
+                        {format(day, 'd')}
                       </div>
-                    </td>
+                    </th>
                   )
                 })}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="border border-slate-200 p-2 sm:p-3 text-xs sm:text-sm font-semibold text-slate-900 bg-slate-50 sticky left-0 z-10 whitespace-nowrap">
+                    {user.display_name}
+                  </td>
+                  {weekDays.map((day) => {
+                    const dayKey = format(day, 'yyyy-MM-dd')
+                    const dayShifts = shiftsByDayAndUser.get(dayKey)?.get(user.id) || []
+                    const isDayToday = isToday(day)
+                    
+                    return (
+                      <td
+                        key={dayKey}
+                        className={`border border-slate-200 p-1 sm:p-2 align-top ${
+                          isDayToday ? 'bg-blue-50/30' : 'bg-white'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          {dayShifts.length === 0 ? (
+                            <div className="text-[10px] text-slate-400 text-center py-1 sm:py-2">-</div>
+                          ) : (
+                            dayShifts.map((shift) => {
+                              const isGroupShift = shift.isGroupShift || false
+                              const isSupervisor = shift.isGroupShift && shift.assignments?.find((a: any) => a.user_id === user.id && a.is_supervisor)
+                              
+                              return (
+                                <div
+                                  key={shift.id}
+                                  onClick={() => onShiftClick?.(shift)}
+                                  className={`p-1 sm:p-1.5 rounded text-[10px] sm:text-xs cursor-pointer transition-all ${
+                                    onShiftClick ? 'hover:shadow-md active:scale-95' : ''
+                                  } ${
+                                    isGroupShift 
+                                      ? 'bg-purple-100 border border-purple-200 hover:border-purple-400' 
+                                      : 'bg-blue-100 border border-blue-200 hover:border-blue-400'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5 sm:mb-1 flex-wrap">
+                                    <Clock size={9} className="text-blue-600 flex-shrink-0" />
+                                    <span className={`font-semibold ${
+                                      isGroupShift ? 'text-purple-700' : 'text-blue-700'
+                                    } leading-tight`}>
+                                      {formatTime(new Date(shift.start_time))}-{formatTime(new Date(shift.end_time))}
+                                    </span>
+                                  </div>
+                                  <div className={`font-medium mb-0.5 sm:mb-1 leading-tight ${
+                                    isGroupShift ? 'text-purple-900' : 'text-blue-900'
+                                  }`}>
+                                    {shift.title}
+                                    {isGroupShift && shift.memberCount && shift.memberCount > 1 && (
+                                      <span className="text-[9px] ml-1">({shift.memberCount}名)</span>
+                                    )}
+                                  </div>
+                                  {isSupervisor && (
+                                    <div className="flex items-center gap-0.5 sm:gap-1 text-purple-600">
+                                      <UserCog size={9} />
+                                      <span className="text-[9px] sm:text-xs">統括</span>
+                                    </div>
+                                  )}
+                                  {!isGroupShift && shift.supervisor && (
+                                    <div className="flex items-center gap-0.5 sm:gap-1 text-blue-600">
+                                      <UserCog size={9} />
+                                      <span className="text-[9px] sm:text-xs">
+                                        {shift.supervisor.display_name}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* 凡例 */}
-      <div className="bg-slate-50 p-3 border-t border-slate-200">
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-100 border border-blue-200 rounded"></div>
-            <span>シフト</span>
+      <div className="bg-slate-50 p-2 sm:p-3 border-t border-slate-200">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-600">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-100 border border-blue-200 rounded"></div>
+            <span>個別シフト</span>
           </div>
-          <div className="flex items-center gap-2">
-            <UserCog size={14} className="text-blue-600" />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-100 border border-purple-200 rounded"></div>
+            <span>団体シフト</span>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <UserCog size={12} className="text-blue-600" />
             <span>統括者</span>
           </div>
         </div>

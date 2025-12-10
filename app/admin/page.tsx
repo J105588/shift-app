@@ -148,6 +148,24 @@ export default function AdminPage() {
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (data?.role !== 'admin') return window.location.href = '/dashboard'
       
+      // ビューモードをチェック（管理者の場合のみ）
+      const viewMode = typeof window !== 'undefined' 
+        ? localStorage.getItem('shift-app-view-mode') as 'admin' | 'user' | null
+        : null
+      
+      // 通常モードの場合はダッシュボードにリダイレクト
+      if (viewMode === 'user') {
+        window.location.href = '/dashboard'
+        return
+      }
+      
+      // ビューモードが未設定の場合は管理者モードに設定
+      if (!viewMode) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('shift-app-view-mode', 'admin')
+        }
+      }
+      
       setUser(user)
       setProfile(data)
       fetchShifts()
@@ -440,7 +458,7 @@ export default function AdminPage() {
                 </div>
               </>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -mx-3 sm:mx-0">
                 <SpreadsheetView
                   shifts={shifts}
                   users={users}

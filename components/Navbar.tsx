@@ -1,13 +1,45 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { LogOut, Shield, CalendarDays, User, X } from 'lucide-react'
 
+const VIEW_MODE_KEY = 'shift-app-view-mode' // 'admin' or 'user'
+
 export default function Navbar({ user, profile }: { user: any, profile: any }) {
   const supabase = createClient()
+  const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'admin' | 'user'>('admin')
+
+  // 管理者の場合のみ、ビューモードを読み込む
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      const savedMode = typeof window !== 'undefined' 
+        ? localStorage.getItem(VIEW_MODE_KEY) as 'admin' | 'user' | null
+        : null
+      const mode = savedMode || 'admin'
+      setViewMode(mode)
+    }
+  }, [profile])
+
+  // ビューモードを切り替え
+  const toggleViewMode = () => {
+    if (profile?.role !== 'admin') return
+    
+    const newMode = viewMode === 'admin' ? 'user' : 'admin'
+    setViewMode(newMode)
+    localStorage.setItem(VIEW_MODE_KEY, newMode)
+    
+    // 現在のページに応じて適切なページにリダイレクト
+    if (newMode === 'user') {
+      router.push('/dashboard')
+    } else {
+      router.push('/admin')
+    }
+  }
 
   const handleLogout = async () => {
     if (isLoggingOut) return // 二重送信防止
@@ -55,7 +87,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
     <nav className="bg-white text-slate-900 shadow-sm border-b border-slate-200">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href={profile?.role === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
+          <Link href={profile?.role === 'admin' && viewMode === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
             <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors duration-200 shadow-sm">
               <CalendarDays size={20} className="text-white" />
             </div>
@@ -68,13 +100,40 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
           {user && (
             <div className="flex items-center gap-3">
               {profile?.role === 'admin' && (
-                <Link 
-                  href="/admin" 
-                  className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm font-semibold"
-                >
-                  <Shield size={16} />
-                  <span className="hidden sm:inline">管理者</span>
-                </Link>
+                <>
+                  {/* ビューモード切り替えボタン */}
+                  <button
+                    onClick={toggleViewMode}
+                    className={`flex items-center gap-2 text-sm px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 shadow-sm font-semibold ${
+                      viewMode === 'admin'
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                    }`}
+                    title={viewMode === 'admin' ? '通常モードに切り替え' : '管理者モードに切り替え'}
+                  >
+                    {viewMode === 'admin' ? (
+                      <>
+                        <Shield size={16} />
+                        <span className="hidden sm:inline">管理者モード</span>
+                      </>
+                    ) : (
+                      <>
+                        <User size={16} />
+                        <span className="hidden sm:inline">通常モード</span>
+                      </>
+                    )}
+                  </button>
+                  {/* 管理者ページへのリンク（管理者モードの時のみ表示） */}
+                  {viewMode === 'admin' && (
+                    <Link 
+                      href="/admin" 
+                      className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm font-semibold"
+                    >
+                      <Shield size={16} />
+                      <span className="hidden sm:inline">管理者</span>
+                    </Link>
+                  )}
+                </>
               )}
               <button 
                 onClick={() => setIsUserModalOpen(true)}

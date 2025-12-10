@@ -591,10 +591,10 @@ export default function GroupChat({
             return (
               <div
                 key={msg.id}
-                className={`flex ${isOwnMessage && readCount > 0 ? 'justify-between' : isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-1`}
+                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-1`}
               >
-                {/* 自分のメッセージの場合のみ既読数を表示（メッセージボックスの左側） */}
-                {isOwnMessage && readCount > 0 && (
+                {/* 管理者の場合、全てのメッセージの既読数を表示（左側） */}
+                {isAdmin && !isOwnMessage && readCount > 0 && (
                   <button
                     onClick={() => setReadReceiptModal(msg)}
                     className="text-[10px] text-slate-500 hover:text-slate-700 transition-colors mb-1"
@@ -603,8 +603,8 @@ export default function GroupChat({
                     既読{readCount}
                   </button>
                 )}
-                {/* 管理者の場合、全てのメッセージの既読数を表示（左側） */}
-                {isAdmin && !isOwnMessage && readCount > 0 && (
+                {/* 自分のメッセージの場合のみ既読数を表示（メッセージボックスの左側） */}
+                {isOwnMessage && readCount > 0 && (
                   <button
                     onClick={() => setReadReceiptModal(msg)}
                     className="text-[10px] text-slate-500 hover:text-slate-700 transition-colors mb-1"
