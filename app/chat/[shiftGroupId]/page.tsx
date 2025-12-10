@@ -137,6 +137,7 @@ export default function ChatPage() {
         <GroupChat
           shiftGroupId={shiftGroupId}
           currentUserId={user.id}
+          currentUserRole={profile.role}
           shiftEndTime={shiftEndTime}
           shiftTitle={shiftGroup.title}
           shiftStartTime={shiftStartTime}

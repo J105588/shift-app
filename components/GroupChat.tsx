@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'r
 import { createClient } from '@/lib/supabase'
 import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
-import { Send, MessageCircle, Reply, X, Image as ImageIcon } from 'lucide-react'
+import { Send, MessageCircle, Reply, X, Image as ImageIcon, CheckCheck } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 
 type ChatMessage = ShiftGroupChatMessage
@@ -11,6 +11,7 @@ type ChatMessage = ShiftGroupChatMessage
 type Props = {
   shiftGroupId: string
   currentUserId: string
+  currentUserRole: 'admin' | 'staff'
   shiftEndTime: Date
   shiftTitle: string
   shiftStartTime: Date
@@ -19,6 +20,7 @@ type Props = {
 export default function GroupChat({
   shiftGroupId,
   currentUserId,
+  currentUserRole,
   shiftEndTime,
   shiftTitle,
   shiftStartTime
@@ -34,8 +36,10 @@ export default function GroupChat({
   const [isLoading, setIsLoading] = useState(true)
   const [canChat, setCanChat] = useState(false)
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
+  const [readReceiptModal, setReadReceiptModal] = useState<ChatMessage | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
+  const isAdmin = currentUserRole === 'admin'
 
   // チャットが利用可能かチェック（シフト終了後30分まで）
   const checkChatAvailability = () => {
@@ -571,8 +575,12 @@ export default function GroupChat({
             const messageTime = format(new Date(msg.created_at), 'HH:mm', { locale: ja })
             const replyToMessage = msg.reply_to_message as ChatMessage | null
             const replyToSenderName = replyToMessage?.profiles?.display_name || '不明'
-            const readBy = (msg.read_receipts || []).filter((r) => r.user_id !== msg.user_id)
-            const readNames = readBy.map((r) => r.profiles?.display_name || '不明')
+            // 既読情報: 自分のメッセージまたは管理者の場合は全て表示
+            const canViewReadReceipts = isOwnMessage || isAdmin
+            const readBy = canViewReadReceipts
+              ? (msg.read_receipts || []).filter((r) => r.user_id !== msg.user_id)
+              : []
+            const readCount = readBy.length
 
             return (
               <div
@@ -584,7 +592,8 @@ export default function GroupChat({
                     isOwnMessage
                       ? 'bg-blue-600 text-white'
                       : 'bg-slate-100 text-slate-900'
-                  }`}
+                  } ${canViewReadReceipts && readCount > 0 ? 'cursor-pointer ' + (isOwnMessage ? 'hover:bg-blue-700' : 'hover:bg-slate-200') + ' transition-colors' : ''}`}
+                  onClick={canViewReadReceipts && readCount > 0 ? () => setReadReceiptModal(msg) : undefined}
                 >
                   {/* リプライ先のメッセージ表示 */}
                   {replyToMessage && (
@@ -644,13 +653,15 @@ export default function GroupChat({
                       </button>
                     )}
                   </div>
-                  {readBy.length > 0 && (
+                  {/* 自分のメッセージまたは管理者の場合のみ既読数を表示 */}
+                  {canViewReadReceipts && readCount > 0 && (
                     <div
-                      className={`mt-1 text-[11px] ${
+                      className={`mt-1 text-[11px] flex items-center gap-1 ${
                         isOwnMessage ? 'text-white/70' : 'text-slate-500'
                       }`}
                     >
-                      既読: {readNames.join('、')}
+                      <CheckCheck size={12} />
+                      <span>既読 {readCount}人</span>
                     </div>
                   )}
                 </div>
@@ -660,6 +671,56 @@ export default function GroupChat({
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* 既読一覧モーダル */}
+      {readReceiptModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900">既読一覧</h3>
+              <button
+                onClick={() => setReadReceiptModal(null)}
+                className="text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 flex-1">
+              {readReceiptModal.read_receipts && readReceiptModal.read_receipts.length > 0 ? (
+                <div className="space-y-2">
+                  {readReceiptModal.read_receipts
+                    .filter((r) => r.user_id !== readReceiptModal.user_id)
+                    .map((receipt) => {
+                      const readTime = format(new Date(receipt.created_at), 'M/d HH:mm', { locale: ja })
+                      return (
+                        <div
+                          key={`${receipt.message_id}-${receipt.user_id}`}
+                          className="flex items-center justify-between p-2 bg-slate-50 rounded-lg"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                              {(receipt.profiles?.display_name || '不明').charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-slate-900">
+                                {receipt.profiles?.display_name || '不明'}
+                              </div>
+                              <div className="text-xs text-slate-500">{readTime}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              ) : (
+                <div className="text-center text-slate-500 py-8">
+                  まだ既読がありません
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* メッセージ入力 */}
       {canChat ? (
