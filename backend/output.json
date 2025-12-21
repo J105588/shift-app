@@ -1,0 +1,2892 @@
+{
+    "status": "success",
+    "generatedAt": "2025-12-21T16:39:52.228Z",
+    "data": [
+        {
+            "member": "田辺誠",
+            "shifts": [
+                {
+                    "task": "総合案内所",
+                    "startTime": "08:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "有木奏人",
+            "shifts": [
+                {
+                    "task": "総合案内所",
+                    "startTime": "08:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "石塚陽音",
+            "shifts": [
+                {
+                    "task": "自転車誘導",
+                    "startTime": "07:30",
+                    "endTime": "08:30"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "西埜晃正",
+            "shifts": [
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:30",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "13:00",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "髙橋蒼生",
+            "shifts": [
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "総合案内所待機",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "中川空",
+            "shifts": [
+                {
+                    "task": "入構管理統括",
+                    "startTime": "08:40",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "進路相談展示",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "入構管理統括",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "進路相談展示",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "入構管理統括",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "坂口ゆえ",
+            "shifts": [
+                {
+                    "task": "物販宣伝",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:30",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "退館誘導",
+                    "startTime": "16:00",
+                    "endTime": "16:30"
+                }
+            ]
+        },
+        {
+            "member": "竹林美優",
+            "shifts": [
+                {
+                    "task": "入構朝一誘導",
+                    "startTime": "08:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "入構管理統括",
+                    "startTime": "10:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "入構管理統括",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "入構管理統括",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "呉沫萱",
+            "shifts": [
+                {
+                    "task": "入構朝一誘導",
+                    "startTime": "08:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "退館誘導",
+                    "startTime": "16:00",
+                    "endTime": "16:30"
+                }
+            ]
+        },
+        {
+            "member": "福田孝治",
+            "shifts": [
+                {
+                    "task": "入構朝一誘導",
+                    "startTime": "08:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "退館誘導",
+                    "startTime": "16:00",
+                    "endTime": "16:30"
+                }
+            ]
+        },
+        {
+            "member": "笛田泰志",
+            "shifts": [
+                {
+                    "task": "入構朝一誘導",
+                    "startTime": "08:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "退館誘導",
+                    "startTime": "16:00",
+                    "endTime": "16:30"
+                }
+            ]
+        },
+        {
+            "member": "中村和奏",
+            "shifts": [
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "藤巻佑太朗",
+            "shifts": [
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "金井美羽",
+            "shifts": [
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "11:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "渡辺星直",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "染谷怜花",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                }
+            ]
+        },
+        {
+            "member": "佐々木結香",
+            "shifts": [
+                {
+                    "task": "装飾見回り",
+                    "startTime": "08:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "金宣兒",
+            "shifts": [
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "黒石果歩",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                }
+            ]
+        },
+        {
+            "member": "西浦瑠人",
+            "shifts": [
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "井上双葉",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "佐々木陽太",
+            "shifts": [
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "鎌倉和大",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "佐藤耀基",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "澤田直波",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "白岩晟",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "中谷誠大",
+            "shifts": [
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "Nステ整理券",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "齊藤悠希",
+            "shifts": [
+                {
+                    "task": "炎の体育会IG誘導",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                }
+            ]
+        },
+        {
+            "member": "髙橋直也",
+            "shifts": []
+        },
+        {
+            "member": "松山詞",
+            "shifts": [
+                {
+                    "task": "炎の体育会IG誘導",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "栁田紗良",
+            "shifts": [
+                {
+                    "task": "炎の体育会IG誘導",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "河野ななみ",
+            "shifts": [
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "小栗智樹",
+            "shifts": [
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                }
+            ]
+        },
+        {
+            "member": "神倉暖",
+            "shifts": [
+                {
+                    "task": "Nステ",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "河野隼司",
+            "shifts": [
+                {
+                    "task": "Nステ",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "佐野晴紀",
+            "shifts": [
+                {
+                    "task": "Nステ",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "三枝宥仁",
+            "shifts": [
+                {
+                    "task": "炎の体育会IG",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "津田壮眞",
+            "shifts": [
+                {
+                    "task": "イベント部統括",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "産賀美紀",
+            "shifts": [
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "長島凰祥",
+            "shifts": [
+                {
+                    "task": "Nステ",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "池田暁斗",
+            "shifts": [
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "林拓斗",
+            "shifts": [
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "田篠双葉",
+            "shifts": [
+                {
+                    "task": "Nステ",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "井口舞衣",
+            "shifts": [
+                {
+                    "task": "Nステ",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "中島瑠羽",
+            "shifts": [
+                {
+                    "task": "Nステ",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "何亦凡",
+            "shifts": [
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "土田那奈",
+            "shifts": []
+        },
+        {
+            "member": "髙橋司",
+            "shifts": [
+                {
+                    "task": "炎の体育会IG",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "金子颯太",
+            "shifts": [
+                {
+                    "task": "炎の体育会IG",
+                    "startTime": "09:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "北湯口怜奈",
+            "shifts": [
+                {
+                    "task": "炎の体育会IG",
+                    "startTime": "09:00",
+                    "endTime": "14:40"
+                },
+                {
+                    "task": "炎の体育会IG",
+                    "startTime": "15:40",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "成瀬結菜",
+            "shifts": [
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:20"
+                },
+                {
+                    "task": "Nステ欄干注意",
+                    "startTime": "14:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "高木爽",
+            "shifts": [
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "炎の体育会IG誘導",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "岩瀬友哉",
+            "shifts": [
+                {
+                    "task": "国枝列劇部",
+                    "startTime": "09:30",
+                    "endTime": "10:10"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                }
+            ]
+        },
+        {
+            "member": "越後謙心",
+            "shifts": [
+                {
+                    "task": "国枝列オケ部",
+                    "startTime": "13:00",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "荻野遼太",
+            "shifts": []
+        },
+        {
+            "member": "髙橋乃愛",
+            "shifts": [
+                {
+                    "task": "国枝列劇部",
+                    "startTime": "09:30",
+                    "endTime": "10:10"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                }
+            ]
+        },
+        {
+            "member": "北橋京悟",
+            "shifts": [
+                {
+                    "task": "国枝列マーチング",
+                    "startTime": "11:20",
+                    "endTime": "11:50"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:50",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "13:00",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "釜田陸",
+            "shifts": [
+                {
+                    "task": "換気見回り",
+                    "startTime": "09:00",
+                    "endTime": "09:20"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "換気見回り",
+                    "startTime": "15:00",
+                    "endTime": "15:20"
+                }
+            ]
+        },
+        {
+            "member": "王曄哲",
+            "shifts": [
+                {
+                    "task": "換気見回り",
+                    "startTime": "09:00",
+                    "endTime": "09:20"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "換気見回り",
+                    "startTime": "15:00",
+                    "endTime": "15:20"
+                }
+            ]
+        },
+        {
+            "member": "栗原穂",
+            "shifts": [
+                {
+                    "task": "換気見回り",
+                    "startTime": "09:00",
+                    "endTime": "09:20"
+                },
+                {
+                    "task": "進路相談展示",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "換気見回り",
+                    "startTime": "15:00",
+                    "endTime": "15:20"
+                }
+            ]
+        },
+        {
+            "member": "大竹悠義",
+            "shifts": [
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "換気見回り",
+                    "startTime": "11:00",
+                    "endTime": "11:20"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "永井千晴",
+            "shifts": [
+                {
+                    "task": "換気見回り",
+                    "startTime": "11:00",
+                    "endTime": "11:20"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "栗栖煌貴",
+            "shifts": [
+                {
+                    "task": "換気見回り",
+                    "startTime": "11:00",
+                    "endTime": "11:20"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "稲田悠吾",
+            "shifts": [
+                {
+                    "task": "換気見回り",
+                    "startTime": "13:00",
+                    "endTime": "13:20"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "13:20",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "14:30",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "執行果帆",
+            "shifts": [
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "換気見回り",
+                    "startTime": "13:00",
+                    "endTime": "13:20"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "14:30",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "藁谷光冶",
+            "shifts": [
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "換気見回り",
+                    "startTime": "13:00",
+                    "endTime": "13:20"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "荒井柊人",
+            "shifts": [
+                {
+                    "task": "国枝列マーチング",
+                    "startTime": "11:20",
+                    "endTime": "11:50"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:50",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "藤本航輝",
+            "shifts": [
+                {
+                    "task": "国枝列楽部",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "佐伯怜奈",
+            "shifts": [
+                {
+                    "task": "国枝列楽部",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "竹田純",
+            "shifts": [
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "国枝列オケ部",
+                    "startTime": "13:00",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "舟本亘佑",
+            "shifts": [
+                {
+                    "task": "食事場所管理",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "羅思哲",
+            "shifts": [
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "国枝列吹部",
+                    "startTime": "14:20",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "榎本怜恩",
+            "shifts": [
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "国枝列吹部",
+                    "startTime": "14:20",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "新井祐依",
+            "shifts": [
+                {
+                    "task": "食品部統括",
+                    "startTime": "08:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "原麟里",
+            "shifts": [
+                {
+                    "task": "自転車誘導",
+                    "startTime": "07:30",
+                    "endTime": "08:30"
+                },
+                {
+                    "task": "キッチンカー誘導",
+                    "startTime": "08:30",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "キッチンカー本部",
+                    "startTime": "10:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "田中杏奈",
+            "shifts": [
+                {
+                    "task": "喫茶展示対応固定",
+                    "startTime": "08:30",
+                    "endTime": "16:00"
+                },
+                {
+                    "task": "喫茶集計",
+                    "startTime": "16:00",
+                    "endTime": "17:00"
+                }
+            ]
+        },
+        {
+            "member": "工藤凛",
+            "shifts": [
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "08:30",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "喫茶集計",
+                    "startTime": "16:00",
+                    "endTime": "17:00"
+                }
+            ]
+        },
+        {
+            "member": "髙見澤佑菜",
+            "shifts": [
+                {
+                    "task": "食事場所管理",
+                    "startTime": "10:00",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "10:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "街歩き景品渡し",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "小林亮太",
+            "shifts": [
+                {
+                    "task": "食事場所管理",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "11:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "袁楽知",
+            "shifts": [
+                {
+                    "task": "キッチンカー本部待機1",
+                    "startTime": "10:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "12:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "姜萌",
+            "shifts": [
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "10:00",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "喫茶展示対応",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "川口晴生",
+            "shifts": [
+                {
+                    "task": "キッチンカー誘導",
+                    "startTime": "08:30",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "キッチンカー列整備",
+                    "startTime": "10:00",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:30",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "キッチンカー本部待機",
+                    "startTime": "12:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "鄧家怡",
+            "shifts": [
+                {
+                    "task": "食品部軟禁",
+                    "startTime": "09:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "食品部軟禁",
+                    "startTime": "15:40",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "小坂井春弥",
+            "shifts": [
+                {
+                    "task": "進路相談展示",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "進路相談展示",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "新藤駿太",
+            "shifts": [
+                {
+                    "task": "販売対応",
+                    "startTime": "09:00",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "進路相談展示",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "岩﨑凛子",
+            "shifts": [
+                {
+                    "task": "販売対応",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "山田佳音",
+            "shifts": [
+                {
+                    "task": "販売対応",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "西澤佳音",
+            "shifts": [
+                {
+                    "task": "食事場所管理",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "14:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "孟慶恩慧",
+            "shifts": []
+        },
+        {
+            "member": "邱優嘉",
+            "shifts": [
+                {
+                    "task": "販売対応",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "13:00",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "大津輝祥",
+            "shifts": []
+        },
+        {
+            "member": "白坂優悟",
+            "shifts": [
+                {
+                    "task": "販売対応",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                },
+                {
+                    "task": "物販宣伝",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "瀬川伊織",
+            "shifts": [
+                {
+                    "task": "物販宣伝",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "食事場所管理",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "販売対応",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "齋藤太一",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "鈴木由理",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "角口育",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "当日受付入場対応",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "辻巻凛",
+            "shifts": []
+        },
+        {
+            "member": "林田未蒼",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                }
+            ]
+        },
+        {
+            "member": "東野禾偉志",
+            "shifts": []
+        },
+        {
+            "member": "星野新",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "当日受付入場対応",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "吉田将",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "李子昂",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "当日受付入場対応",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "平岡七奈",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "当日受付入場対応",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "魏子皓",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "当日受付入場対応",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "大関悠",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "阿部彰",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                }
+            ]
+        },
+        {
+            "member": "竹下康樹",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "原稜真",
+            "shifts": [
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "田窪征音",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "馬霆恩",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:00",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "楊伝宇",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "丹沢夏帆",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "孫晨旭",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "縄奏太",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                }
+            ]
+        },
+        {
+            "member": "村田",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "08:40",
+                    "endTime": "09:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "魚住",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "富塚",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "石本奏太",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "樫原陸翔",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "上條響太",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "川村拓人",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "武晨也",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "千田青",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:00"
+                }
+            ]
+        },
+        {
+            "member": "南齋篤仁",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:10"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "藤森咲南",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "09:30",
+                    "endTime": "10:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "棧原蓮心",
+            "shifts": []
+        },
+        {
+            "member": "島田歩花",
+            "shifts": []
+        },
+        {
+            "member": "髙橋実莉",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "深澤美結",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "江田光希",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "長田航大",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "戸田圭亮",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "東山遥希",
+            "shifts": [
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "釜ヶ澤友梨",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:30",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "将啓衡",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:30",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "新星晴斗",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "11:30",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "矢部琳子",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "10:30",
+                    "endTime": "11:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "15:30",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "李彦澤",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "13:00",
+                    "endTime": "13:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                }
+            ]
+        },
+        {
+            "member": "大内穂佳",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "13:30",
+                    "endTime": "14:30"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "金子聡生",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "鈴木いこい",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "深井麻央",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "宮本玲奈",
+            "shifts": [
+                {
+                    "task": "当日受付入場対応",
+                    "startTime": "08:40",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "スタンプクラT4階",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:30",
+                    "endTime": "13:30"
+                }
+            ]
+        },
+        {
+            "member": "石井陽也",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "スタンプクラT2階北",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                }
+            ]
+        },
+        {
+            "member": "田邊美虹",
+            "shifts": [
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "広瀬駿",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "09:00",
+                    "endTime": "10:00"
+                },
+                {
+                    "task": "当日受付入場対応",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                }
+            ]
+        },
+        {
+            "member": "橋本大誠",
+            "shifts": [
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "10:00",
+                    "endTime": "11:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "宮崎未悠",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "昼休憩",
+                    "startTime": "12:30",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "スタンプクラT3階",
+                    "startTime": "13:00",
+                    "endTime": "14:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "14:30",
+                    "endTime": "15:30"
+                }
+            ]
+        },
+        {
+            "member": "光山紗生",
+            "shifts": [
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "11:30",
+                    "endTime": "12:30"
+                },
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "14:00",
+                    "endTime": "15:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        },
+        {
+            "member": "伊藤健人",
+            "shifts": [
+                {
+                    "task": "スタンプクラT2階南",
+                    "startTime": "11:00",
+                    "endTime": "12:00"
+                },
+                {
+                    "task": "パンフレット配布",
+                    "startTime": "12:00",
+                    "endTime": "13:00"
+                },
+                {
+                    "task": "事前入場受付対応",
+                    "startTime": "15:00",
+                    "endTime": "16:00"
+                }
+            ]
+        }
+    ]
+}
