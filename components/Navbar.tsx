@@ -17,7 +17,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
   // 管理者の場合のみ、ビューモードを読み込む
   useEffect(() => {
     if (profile?.role === 'admin') {
-      const savedMode = typeof window !== 'undefined' 
+      const savedMode = typeof window !== 'undefined'
         ? localStorage.getItem(VIEW_MODE_KEY) as 'admin' | 'user' | null
         : null
       const mode = savedMode || 'admin'
@@ -25,25 +25,44 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
     }
   }, [profile])
 
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false)
+  const [targetMode, setTargetMode] = useState<'admin' | 'user' | null>(null)
+
   // ビューモードを切り替え
   const toggleViewMode = () => {
-    if (profile?.role !== 'admin') return
-    
+    if (profile?.role !== 'admin' || isSwitchingMode) return
+
     const newMode = viewMode === 'admin' ? 'user' : 'admin'
-    setViewMode(newMode)
-    localStorage.setItem(VIEW_MODE_KEY, newMode)
-    
-    // 現在のページに応じて適切なページにリダイレクト
-    if (newMode === 'user') {
-      router.push('/dashboard')
-    } else {
-      router.push('/admin')
-    }
+
+    // 1. アニメーション開始
+    setTargetMode(newMode)
+    setIsSwitchingMode(true)
+
+    // 2. 遅延後に切り替え実行
+    setTimeout(() => {
+      setViewMode(newMode)
+      localStorage.setItem(VIEW_MODE_KEY, newMode)
+
+      // 現在のページに応じて適切なページにリダイレクト
+      if (newMode === 'user') {
+        router.push('/dashboard')
+      } else {
+        router.push('/admin')
+      }
+
+      // 3. アニメーション終了（ページ遷移後に自動的にコンポーネントが再マウントされるか、状態がリセットされるのを待つ）
+      // Note: ページ遷移が発生するため、このコンポーネント自体がアンマウントされる可能性がありますが、
+      // 状態リセットを入れておくことで、同じページ内での切り替えなどにも対応
+      setTimeout(() => {
+        setIsSwitchingMode(false)
+        setTargetMode(null)
+      }, 500)
+    }, 800)
   }
 
   const handleLogout = async () => {
     if (isLoggingOut) return // 二重送信防止
-    
+
     setIsLoggingOut(true)
     try {
       // ログアウト前に、この端末の push_subscriptions レコードとローカルストレージ情報をクリア
@@ -72,7 +91,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
         setIsLoggingOut(false)
         return
       }
-      
+
       // ログアウト成功後、完全なページリロードでログインページにリダイレクト
       // これにより、すべての状態とクッキーが確実にクリアされる
       window.location.href = '/'
@@ -84,145 +103,167 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
   }
 
   return (
-    <nav className="bg-white text-slate-900 shadow-sm border-b border-slate-200">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link href={profile?.role === 'admin' && viewMode === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
-            <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors duration-200 shadow-sm">
-              <CalendarDays size={20} className="text-white" />
-            </div>
-            <div>
-              <span className="font-bold text-lg tracking-tight text-slate-900">文化祭シフト</span>
-              <p className="text-xs text-slate-500 hidden sm:block">管理システム</p>
-            </div>
-          </Link>
-          
-          {user && (
-            <div className="flex items-center gap-3">
-              {profile?.role === 'admin' && (
-                <>
-                  {/* ビューモード切り替えボタン */}
-                  <button
-                    onClick={toggleViewMode}
-                    className={`flex items-center gap-2 text-sm px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 shadow-sm font-semibold ${
-                      viewMode === 'admin'
-                        ? 'bg-purple-600 text-white hover:bg-purple-700'
-                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                    }`}
-                    title={viewMode === 'admin' ? '通常モードに切り替え' : '管理者モードに切り替え'}
-                  >
-                    {viewMode === 'admin' ? (
-                      <>
-                        <Shield size={16} />
-                        <span className="hidden sm:inline">管理者モード</span>
-                      </>
-                    ) : (
-                      <>
-                        <User size={16} />
-                        <span className="hidden sm:inline">通常モード</span>
-                      </>
-                    )}
-                  </button>
-                  {/* 管理者ページへのリンク（管理者モードの時のみ表示） */}
-                  {viewMode === 'admin' && (
-                    <Link 
-                      href="/admin" 
-                      className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm font-semibold"
+    <>
+      <nav className="bg-white text-slate-900 shadow-sm border-b border-slate-200 sticky top-0 z-40">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href={profile?.role === 'admin' && viewMode === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors duration-200 shadow-sm">
+                <CalendarDays size={20} className="text-white" />
+              </div>
+              <div>
+                <span className="font-bold text-lg tracking-tight text-slate-900">文化祭シフト</span>
+                <p className="text-xs text-slate-500 hidden sm:block">管理システム</p>
+              </div>
+            </Link>
+
+            {user && (
+              <div className="flex items-center gap-3">
+                {profile?.role === 'admin' && (
+                  <>
+                    {/* ビューモード切り替えボタン */}
+                    <button
+                      onClick={toggleViewMode}
+                      disabled={isSwitchingMode}
+                      className={`flex items-center gap-2 text-sm px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 shadow-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${viewMode === 'admin'
+                          ? 'bg-purple-600 text-white hover:bg-purple-700'
+                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                      title={viewMode === 'admin' ? '通常モードに切り替え' : '管理者モードに切り替え'}
                     >
-                      <Shield size={16} />
-                      <span className="hidden sm:inline">管理者</span>
-                    </Link>
-                  )}
-                </>
-              )}
-              <button 
-                onClick={() => setIsUserModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors duration-200 cursor-pointer touch-manipulation"
-              >
-                <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User size={14} className="text-blue-600" />
-                </div>
-                <span className="hidden md:block text-sm font-semibold text-slate-900">{profile?.display_name || 'ユーザー'}</span>
-              </button>
-            </div>
-          )}
+                      {viewMode === 'admin' ? (
+                        <>
+                          <Shield size={16} />
+                          <span className="hidden sm:inline">管理者モード</span>
+                        </>
+                      ) : (
+                        <>
+                          <User size={16} />
+                          <span className="hidden sm:inline">通常モード</span>
+                        </>
+                      )}
+                    </button>
+                    {/* 管理者ページへのリンク（管理者モードの時のみ表示） */}
+                    {viewMode === 'admin' && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm font-semibold"
+                      >
+                        <Shield size={16} />
+                        <span className="hidden sm:inline">管理者</span>
+                      </Link>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={() => setIsUserModalOpen(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors duration-200 cursor-pointer touch-manipulation"
+                >
+                  <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
+                    <User size={14} className="text-blue-600" />
+                  </div>
+                  <span className="hidden md:block text-sm font-semibold text-slate-900">{profile?.display_name || 'ユーザー'}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-      
-      {/* ユーザー情報モーダル */}
-      {isUserModalOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
-          onClick={() => setIsUserModalOpen(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 transform animate-in zoom-in-95 duration-300"
-            onClick={(e) => e.stopPropagation()}
+
+        {/* ユーザー情報モーダル */}
+        {isUserModalOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
+            onClick={() => setIsUserModalOpen(false)}
           >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-900">ユーザー情報</h2>
+            <div
+              className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 transform animate-in zoom-in-95 duration-300"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-slate-900">ユーザー情報</h2>
+                <button
+                  onClick={() => setIsUserModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors duration-200 p-1 rounded-lg hover:bg-slate-100"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User size={24} className="text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-600 mb-1">ユーザー名</p>
+                    <p className="text-lg font-semibold text-slate-900 truncate">
+                      {profile?.display_name || 'ユーザー'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${profile?.role === 'admin'
+                      ? 'bg-purple-100'
+                      : 'bg-slate-100'
+                    }`}>
+                    {profile?.role === 'admin' ? (
+                      <Shield size={24} className="text-purple-600" />
+                    ) : (
+                      <User size={24} className="text-slate-600" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-600 mb-1">権限</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {profile?.role === 'admin' ? '管理者' : '一般'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <button
-                onClick={() => setIsUserModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors duration-200 p-1 rounded-lg hover:bg-slate-100"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full flex items-center justify-center gap-2 text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-3 rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
               >
-                <X size={24} />
+                {isLoggingOut ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>ログアウト中...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={16} />
+                    <span>ログアウト</span>
+                  </>
+                )}
               </button>
             </div>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User size={24} className="text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-600 mb-1">ユーザー名</p>
-                  <p className="text-lg font-semibold text-slate-900 truncate">
-                    {profile?.display_name || 'ユーザー'}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  profile?.role === 'admin' 
-                    ? 'bg-purple-100' 
-                    : 'bg-slate-100'
-                }`}>
-                  {profile?.role === 'admin' ? (
-                    <Shield size={24} className="text-purple-600" />
-                  ) : (
-                    <User size={24} className="text-slate-600" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-600 mb-1">権限</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {profile?.role === 'admin' ? '管理者' : '一般'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <button 
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="w-full flex items-center justify-center gap-2 text-sm text-white bg-red-600 hover:bg-red-700 px-4 py-3 rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-            >
-              {isLoggingOut ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  <span>ログアウト中...</span>
-                </>
+          </div>
+        )}
+      </nav>
+
+      {/* モード切り替えトランジションオーバーレイ */}
+      {isSwitchingMode && (
+        <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="animate-icon-pulse flex flex-col items-center gap-4">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg ${targetMode === 'admin'
+                ? 'bg-purple-100 text-purple-600'
+                : 'bg-blue-100 text-blue-600'
+              }`}>
+              {targetMode === 'admin' ? (
+                <Shield size={48} />
               ) : (
-                <>
-                  <LogOut size={16} />
-                  <span>ログアウト</span>
-                </>
+                <User size={48} />
               )}
-            </button>
+            </div>
+            <p className="text-xl font-bold text-slate-800">
+              {targetMode === 'admin' ? '管理者モードへ切り替え中...' : '通常モードへ切り替え中...'}
+            </p>
           </div>
         </div>
       )}
-    </nav>
+    </>
   )
 }
