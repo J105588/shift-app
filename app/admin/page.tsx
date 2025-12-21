@@ -19,7 +19,7 @@ import { ja } from 'date-fns/locale/ja'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { Users, Calendar as CalIcon, Table2, Settings, MessageCircle } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Upload } from 'lucide-react'
 import FcmTokenManager from '@/components/FcmTokenManager'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
@@ -384,12 +384,11 @@ export default function AdminPage() {
           <button
             onClick={() => setActiveTab('auto_assignment')}
             className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'auto_assignment'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
               }`}
           >
-            <RefreshCw size={18} className={activeTab === 'auto_assignment' ? "" : "opacity-0"} />
-            {/* Using a different icon or reusing RefreshCw/Upload if imported. Let's use simple text first or import Upload */}
+            <Upload size={18} />
             <span className="hidden sm:inline">自動振り分け</span>
             <span className="sm:hidden">自動</span>
           </button>
