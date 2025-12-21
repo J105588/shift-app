@@ -140,7 +140,7 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
   }
 
   // タイムテーブルの生成用定数
-  const START_HOUR = 8 // 8時から
+  const START_HOUR = 6 // 6時から
   const END_HOUR = 22  // 22時まで
   const HOUR_HEIGHT = 60 // 1時間あたりの高さ(px)
 
@@ -252,8 +252,8 @@ export default function ScheduleTimetable({ events, currentUserId, onDateChange,
                   {/* 日付ヘッダー */}
                   <div
                     className={`p-3 text-center border-b border-slate-200 cursor-pointer transition-colors ${isDayToday
-                        ? 'bg-blue-100 border-blue-300'
-                        : 'hover:bg-slate-50'
+                      ? 'bg-blue-100 border-blue-300'
+                      : 'hover:bg-slate-50'
                       }`}
                     onClick={() => handleDateClick(day)}
                   >
