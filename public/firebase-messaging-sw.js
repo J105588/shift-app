@@ -10,11 +10,11 @@ importScripts('https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging-comp
 // 注意: この設定はビルド時に環境変数から注入されます
 // 本番環境では、このファイルがビルド時に生成される必要があります
 const firebaseConfig = {
-  apiKey: 'FIREBASE_API_KEY_PLACEHOLDER',
-  authDomain: 'FIREBASE_AUTH_DOMAIN_PLACEHOLDER',
-  projectId: 'FIREBASE_PROJECT_ID_PLACEHOLDER',
-  messagingSenderId: 'FIREBASE_MESSAGING_SENDER_ID_PLACEHOLDER',
-  appId: 'FIREBASE_APP_ID_PLACEHOLDER',
+  apiKey: 'AIzaSyDZzjTjur9RciSWMRIM6q6nVlMIn7AhYoM',
+  authDomain: 'nazuna-fes-shifts.firebaseapp.com',
+  projectId: 'nazuna-fes-shifts',
+  messagingSenderId: '330724605648',
+  appId: '1:330724605648:web:f144f1c51ed295699fe8d5',
 };
 
 // Firebase を初期化

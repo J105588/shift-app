@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 import ShiftModal from '@/components/ShiftModal'
-import UserManagement from '@/components/UserManagement' 
+import UserManagement from '@/components/UserManagement'
 import AdminCalendar from '@/components/AdminCalendar'
 import SpreadsheetView from '@/components/SpreadsheetView'
 import AdminNotifications from '@/components/AdminNotifications'
 import AdminSettings from '@/components/AdminSettings'
 import AdminChatManagement from '@/components/AdminChatManagement'
+import ShiftImportComponent from '@/components/ShiftImportComponent'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import { format } from 'date-fns/format'
 import { parse } from 'date-fns/parse'
@@ -33,9 +34,9 @@ export default function AdminPage() {
   const [events, setEvents] = useState<any[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
   const [users, setUsers] = useState<Profile[]>([])
-  const [activeTab, setActiveTab] = useState<'calendar' | 'users' | 'notifications' | 'chat' | 'settings'>('calendar')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'users' | 'notifications' | 'chat' | 'settings' | 'auto_assignment'>('calendar')
   const [calendarView, setCalendarView] = useState<'calendar' | 'spreadsheet'>('calendar')
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedShift, setSelectedShift] = useState<any>(null)
@@ -49,7 +50,7 @@ export default function AdminPage() {
       const { data: shiftsData } = await supabase
         .from('shifts')
         .select('*, profiles!shifts_user_id_fkey(display_name)')
-      
+
       if (shiftsData) {
         // supervisor情報も取得
         const shiftsWithSupervisor = await Promise.all(
@@ -65,7 +66,7 @@ export default function AdminPage() {
             return shift
           })
         )
-        
+
         // カレンダー用のイベントデータ
         shiftsWithSupervisor.forEach((s: any) => {
           allEvents.push({
@@ -86,7 +87,7 @@ export default function AdminPage() {
         .from('shift_groups')
         .select('*')
         .order('start_time', { ascending: true })
-      
+
       if (shiftGroupsData) {
         // 各shift_groupの参加者を取得
         for (const group of shiftGroupsData) {
@@ -94,13 +95,13 @@ export default function AdminPage() {
             .from('shift_assignments')
             .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
             .eq('shift_group_id', group.id)
-          
+
           if (assignments && assignments.length > 0) {
             // 統括者を取得
             const supervisor = assignments.find((a: any) => a.is_supervisor)
             const supervisorName = supervisor?.profiles?.display_name || null
             const memberCount = assignments.length
-            
+
             // カレンダー用のイベントデータ（団体として表示）
             allEvents.push({
               id: group.id,
@@ -117,7 +118,7 @@ export default function AdminPage() {
               isGroupShift: true,
               color: group.color || '#a855f7'
             })
-            
+
             // シフトデータとして保存（colorを含める）
             allShifts.push({
               ...group,
@@ -150,25 +151,25 @@ export default function AdminPage() {
       if (!user) return window.location.href = '/'
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (data?.role !== 'admin') return window.location.href = '/dashboard'
-      
+
       // ビューモードをチェック（管理者の場合のみ）
-      const viewMode = typeof window !== 'undefined' 
+      const viewMode = typeof window !== 'undefined'
         ? localStorage.getItem('shift-app-view-mode') as 'admin' | 'user' | null
         : null
-      
+
       // 通常モードの場合はダッシュボードにリダイレクト
       if (viewMode === 'user') {
         window.location.href = '/dashboard'
         return
       }
-      
+
       // ビューモードが未設定の場合は管理者モードに設定
       if (!viewMode) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('shift-app-view-mode', 'admin')
         }
       }
-      
+
       setUser(user)
       setProfile(data)
       fetchShifts()
@@ -260,7 +261,7 @@ export default function AdminPage() {
     const checkSession = async () => {
       try {
         const { data: { user: currentUser }, error } = await supabase.auth.getUser()
-        
+
         // セッションが無効になった場合（強制ログアウトされた場合）
         if (error || !currentUser || currentUser.id !== user.id) {
           console.log('セッションが無効になりました。ログアウトします。')
@@ -321,69 +322,76 @@ export default function AdminPage() {
     <div className="flex flex-col min-h-screen bg-slate-50">
       <Navbar user={user} profile={profile} />
       <FcmTokenManager userId={user?.id || ''} />
-      
+
       {/* タブナビゲーション - モバイル対応 */}
       <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-3 shadow-sm sticky top-0 z-10">
         <div className="flex gap-2 sm:gap-3">
-          <button 
+          <button
             onClick={() => setActiveTab('calendar')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
-              activeTab === 'calendar' 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'calendar'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+              }`}
           >
-            <CalIcon size={18} /> 
+            <CalIcon size={18} />
             <span className="hidden sm:inline">シフト管理</span>
             <span className="sm:hidden">シフト</span>
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('users')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
-              activeTab === 'users' 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'users'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+              }`}
           >
-            <Users size={18} /> 
+            <Users size={18} />
             <span className="hidden sm:inline">ユーザー管理</span>
             <span className="sm:hidden">ユーザー</span>
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('notifications')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
-              activeTab === 'notifications' 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'notifications'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+              }`}
           >
-            <RefreshCw size={18} /> 
+            <RefreshCw size={18} />
             <span className="hidden sm:inline">通知</span>
             <span className="sm:hidden">通知</span>
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
-              activeTab === 'chat' 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'chat'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+              }`}
           >
-            <MessageCircle size={18} /> 
+            <MessageCircle size={18} />
             <span className="hidden sm:inline">チャット</span>
             <span className="sm:hidden">チャット</span>
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('settings')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${
-              activeTab === 'settings' 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'settings'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+              }`}
           >
-            <Settings size={18} /> 
+            <Settings size={18} />
             <span className="hidden sm:inline">設定</span>
             <span className="sm:hidden">設定</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('auto_assignment')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'auto_assignment'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+              }`}
+          >
+            <RefreshCw size={18} className={activeTab === 'auto_assignment' ? "" : "opacity-0"} />
+            {/* Using a different icon or reusing RefreshCw/Upload if imported. Let's use simple text first or import Upload */}
+            <span className="hidden sm:inline">自動振り分け</span>
+            <span className="sm:hidden">自動</span>
           </button>
         </div>
       </div>
@@ -399,7 +407,7 @@ export default function AdminPage() {
                     シフト管理
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                    {calendarView === 'calendar' 
+                    {calendarView === 'calendar'
                       ? '日付をクリックして追加、シフトをクリックして編集'
                       : '全ユーザーのシフトを一覧表示'}
                   </p>
@@ -408,22 +416,20 @@ export default function AdminPage() {
                 <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
                   <button
                     onClick={() => setCalendarView('calendar')}
-                    className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded transition-all ${
-                      calendarView === 'calendar'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-600 hover:bg-slate-200'
-                    }`}
+                    className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded transition-all ${calendarView === 'calendar'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-200'
+                      }`}
                   >
                     <CalIcon size={16} className="inline mr-1" />
                     カレンダー
                   </button>
                   <button
                     onClick={() => setCalendarView('spreadsheet')}
-                    className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded transition-all ${
-                      calendarView === 'spreadsheet'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-600 hover:bg-slate-200'
-                    }`}
+                    className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded transition-all ${calendarView === 'spreadsheet'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-200'
+                      }`}
                   >
                     <Table2 size={16} className="inline mr-1" />
                     表形式
@@ -431,7 +437,7 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-            
+
             {calendarView === 'calendar' ? (
               <>
                 {/* デスクトップ: react-big-calendar */}
@@ -495,14 +501,18 @@ export default function AdminPage() {
           <div className="h-full overflow-y-auto">
             <AdminChatManagement />
           </div>
-        ) : (
+        ) : activeTab === 'settings' ? (
           <div className="h-full overflow-y-auto">
             <AdminSettings userId={user?.id || null} />
+          </div>
+        ) : (
+          <div className="h-full overflow-y-auto">
+            <ShiftImportComponent />
           </div>
         )}
       </main>
 
-      <ShiftModal 
+      <ShiftModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSaved={fetchShifts}
