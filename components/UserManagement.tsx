@@ -41,6 +41,7 @@ export default function UserManagement() {
   const [passwordCopied, setPasswordCopied] = useState(false)
   // フィルタリング用
   const [filterGroup, setFilterGroup] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // 一括登録モーダル用
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
@@ -292,6 +293,14 @@ export default function UserManagement() {
 
   // フィルタリングされたユーザー
   const filteredUsers = users.filter(user => {
+    // 検索クエリフィルタ (名前 or メール)
+    const matchesSearch = searchQuery === '' ||
+      (user.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+      (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+
+    if (!matchesSearch) return false
+
+    // グループフィルタ
     if (filterGroup === 'all') return true
     if (filterGroup === 'no_group') return !user.group_name
     return user.group_name === filterGroup
@@ -569,19 +578,31 @@ export default function UserManagement() {
               <h3 className="font-bold text-base sm:text-lg text-slate-900">登録ユーザー一覧</h3>
               <p className="text-xs sm:text-sm text-slate-600 mt-1">{filteredUsers.length}人のユーザーが表示されています</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Filter size={16} className="text-slate-500" />
-              <select
-                value={filterGroup}
-                onChange={(e) => setFilterGroup(e.target.value)}
-                className="text-sm border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
-              >
-                <option value="all">すべてのグループ</option>
-                <option value="no_group">グループなし</option>
-                {uniqueGroups.map(g => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="ユーザー検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 w-full sm:w-48 transition-all"
+                />
+                <Edit2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter size={16} className="text-slate-500" />
+                <select
+                  value={filterGroup}
+                  onChange={(e) => setFilterGroup(e.target.value)}
+                  className="text-sm border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+                >
+                  <option value="all">すべてのグループ</option>
+                  <option value="no_group">グループなし</option>
+                  {uniqueGroups.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
