@@ -48,20 +48,20 @@ export default function ShiftImportComponent() {
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                         対象日付（この日付のデータとして登録されます）
                     </label>
-                    <div className="flex gap-4 items-center">
-                        <div className="relative flex-1 max-w-xs">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+                        <div className="relative flex-1">
                             <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
-                                className="pl-10 w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 border px-3"
+                                className="pl-10 w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-3 sm:py-2 border px-3 text-base sm:text-sm"
                             />
                         </div>
                         <button
                             onClick={handleImport}
                             disabled={isLoading || !date}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-12 sm:h-auto sm:px-6 sm:py-2 rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation"
                         >
                             {isLoading ? (
                                 <>

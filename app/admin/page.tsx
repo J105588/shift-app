@@ -397,7 +397,7 @@ export default function AdminPage() {
 
       <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto pb-20 space-y-4">
         {activeTab === 'calendar' ? (
-          <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-3 sm:p-4 md:p-6 overflow-hidden">
+          <div className="h-full bg-white rounded-lg shadow-sm border border-slate-200 p-2 sm:p-4 md:p-6 overflow-hidden">
             <div className="mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-200">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>

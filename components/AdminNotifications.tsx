@@ -30,19 +30,19 @@ export default function AdminNotifications() {
     // UTC時刻をローカル時刻に変換
     const start = new Date(startTime)
     const end = new Date(endTime)
-    
+
     // 日付: MMDD形式（例: 0921）
     const month = String(start.getMonth() + 1).padStart(2, '0')
     const day = String(start.getDate()).padStart(2, '0')
     const dateStr = `${month}${day}`
-    
+
     // 時間: HHMM-HHMM形式（例: 1100-1230）
     const startHour = String(start.getHours()).padStart(2, '0')
     const startMin = String(start.getMinutes()).padStart(2, '0')
     const endHour = String(end.getHours()).padStart(2, '0')
     const endMin = String(end.getMinutes()).padStart(2, '0')
     const timeStr = `${startHour}${startMin}-${endHour}${endMin}`
-    
+
     // グループ名: 日付-時間-仕事名
     return `${dateStr}-${timeStr}-${title}`
   }
@@ -69,9 +69,9 @@ export default function AdminNotifications() {
               .from('shift_assignments')
               .select('user_id')
               .eq('shift_group_id', group.id)
-            
+
             const groupName = generateGroupName(group.start_time, group.end_time, group.title)
-            
+
             return {
               id: group.id,
               title: group.title,
@@ -89,7 +89,7 @@ export default function AdminNotifications() {
       }
     }
     load()
-    
+
     // リアルタイム更新: shift_groupsとshift_assignmentsの変更を監視
     const channel = supabase
       .channel('admin_notifications_updates')
@@ -118,7 +118,7 @@ export default function AdminNotifications() {
 
     // 定期的に更新（30秒ごと、リアルタイム更新の補完として）
     const interval = setInterval(load, 30000)
-    
+
     return () => {
       supabase.removeChannel(channel)
       clearInterval(interval)
@@ -155,12 +155,12 @@ export default function AdminNotifications() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // 二重送信防止
     if (isSending) {
       return
     }
-    
+
     if (!title || !title.trim()) {
       alert('タイトルを入力してください')
       return
@@ -196,7 +196,7 @@ export default function AdminNotifications() {
             .from('shift_assignments')
             .select('user_id')
             .eq('shift_group_id', groupId)
-          
+
           if (assignments) {
             const userIds = assignments.map(a => a.user_id)
             targetUserIds = [...targetUserIds, ...userIds]
@@ -224,10 +224,10 @@ export default function AdminNotifications() {
       const { error } = await supabase.from('notifications').insert(payloads)
       if (error) throw error
 
-      const recipientText = mode === 'users' 
+      const recipientText = mode === 'users'
         ? `${selectedUserIds.length}人`
         : `${selectedGroupIds.length}グループ（${targetUserIds.length}人）`
-      
+
       alert(`通知ジョブを作成しました（${recipientText}宛、ログイン中の端末に順次配信されます）。`)
       setTitle('')
       setBody('')
@@ -284,18 +284,17 @@ export default function AdminNotifications() {
         {/* モード選択 */}
         <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
           <label className="block text-sm font-semibold text-slate-700 mb-3">配信先選択</label>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => {
                 setMode('users')
                 setSelectedGroupIds([])
               }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
-                mode === 'users'
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg font-semibold transition-all ${mode === 'users'
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <UserCheck size={18} />
               ユーザー選択
@@ -306,11 +305,10 @@ export default function AdminNotifications() {
                 setMode('groups')
                 setSelectedUserIds([])
               }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
-                mode === 'groups'
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg font-semibold transition-all ${mode === 'groups'
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <Users size={18} />
               グループ選択

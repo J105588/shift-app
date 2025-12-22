@@ -56,7 +56,7 @@ export default function AdminSettings({ userId }: Props) {
     const fetchTemplates = async () => {
       try {
         setIsLoadingTemplates(true)
-        
+
         // テンプレート設定を取得
         const { data: templatesData, error: templatesError } = await supabase
           .from('app_settings')
@@ -225,29 +225,27 @@ export default function AdminSettings({ userId }: Props) {
             <p className="text-sm text-slate-600 mb-4">
               メンテナンスモードを有効にすると、一般ユーザー（スタッフ）はシステムにアクセスできなくなります。管理者は引き続きアクセス可能です。
             </p>
-            
+
             {isLoadingMaintenance ? (
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <span className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></span>
                 読み込み中...
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
                   <button
                     onClick={handleToggleMaintenance}
                     disabled={isSavingMaintenance}
-                    className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${
-                      maintenanceMode 
-                        ? 'bg-orange-600' 
+                    className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${maintenanceMode
+                        ? 'bg-orange-600'
                         : 'bg-slate-300'
-                    } ${isSavingMaintenance ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      } ${isSavingMaintenance ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     aria-label={maintenanceMode ? 'メンテナンスモードを無効にする' : 'メンテナンスモードを有効にする'}
                   >
                     <span
-                      className={`inline-block h-5 w-5 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform shadow-sm ${
-                        maintenanceMode ? 'translate-x-6 sm:translate-x-6' : 'translate-x-1'
-                      }`}
+                      className={`inline-block h-5 w-5 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform shadow-sm ${maintenanceMode ? 'translate-x-6 sm:translate-x-6' : 'translate-x-1'
+                        }`}
                     />
                   </button>
                   <span className="text-sm font-semibold text-slate-900 whitespace-nowrap">
@@ -281,7 +279,7 @@ export default function AdminSettings({ userId }: Props) {
             <p className="text-sm text-slate-600 mb-4">
               シフト作成時に使用できるテンプレートと色を設定できます。テンプレートを選択すると自動的に色が適用されます。
             </p>
-            
+
             {isLoadingTemplates ? (
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <span className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></span>
@@ -290,35 +288,38 @@ export default function AdminSettings({ userId }: Props) {
             ) : (
               <div className="space-y-4">
                 {/* テンプレート一覧 */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {templates.map((template, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                       <input
                         type="text"
                         value={template.name}
                         onChange={(e) => handleUpdateTemplate(index, 'name', e.target.value)}
                         placeholder="テンプレート名"
-                        className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                        className="w-full sm:flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
                       />
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={template.color}
-                          onChange={(e) => handleUpdateTemplate(index, 'color', e.target.value)}
-                          className="w-12 h-10 border-2 border-slate-200 rounded-lg cursor-pointer"
-                        />
-                        <div
-                          className="w-10 h-10 rounded-lg border-2 border-slate-200"
-                          style={{ backgroundColor: template.color }}
-                        />
+                      <div className="flex items-center justify-between sm:justify-start gap-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={template.color}
+                            onChange={(e) => handleUpdateTemplate(index, 'color', e.target.value)}
+                            className="w-12 h-10 border-2 border-slate-200 rounded-lg cursor-pointer"
+                          />
+                          <div
+                            className="w-10 h-10 rounded-lg border-2 border-slate-200"
+                            style={{ backgroundColor: template.color }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleRemoveTemplate(index)}
+                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 sm:gap-0"
+                          title="削除"
+                        >
+                          <X size={18} />
+                          <span className="sm:hidden text-sm font-medium">削除</span>
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleRemoveTemplate(index)}
-                        className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                        title="削除"
-                      >
-                        <X size={18} />
-                      </button>
                     </div>
                   ))}
                 </div>

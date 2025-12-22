@@ -32,17 +32,17 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
   // 各日のシフトを整理（ユーザーごと、日ごと）
   const shiftsByDayAndUser = useMemo(() => {
     const map = new Map<string, Map<string, ShiftWithProfile[]>>()
-    
+
     weekDays.forEach(day => {
       const dayKey = format(day, 'yyyy-MM-dd')
       const dayMap = new Map<string, ShiftWithProfile[]>()
-      
+
       users.forEach(user => {
         const userShifts: ShiftWithProfile[] = []
-        
+
         shifts.forEach(shift => {
           const shiftDate = new Date(shift.start_time)
-          
+
           // 個別付与シフトの場合
           if (!shift.isGroupShift && shift.user_id === user.id && isSameDay(shiftDate, day)) {
             userShifts.push(shift)
@@ -62,15 +62,15 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
             }
           }
         })
-        
+
         if (userShifts.length > 0) {
           dayMap.set(user.id, userShifts)
         }
       })
-      
+
       map.set(dayKey, dayMap)
     })
-    
+
     return map
   }, [shifts, users, weekDays])
 
@@ -120,14 +120,14 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
           >
             <ChevronLeft className="text-blue-600" size={20} />
           </button>
-          <div className="text-center flex-1 px-4">
-            <div className="text-sm sm:text-base font-semibold text-slate-900">
-              {format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 {format(weekEnd, 'M月d日', { locale: ja })}
+          <div className="flex-1 px-2 text-center">
+            <div className="text-sm sm:text-base font-semibold text-slate-900 whitespace-nowrap">
+              {format(weekStart, 'M/d(E)', { locale: ja })} 〜 {format(weekEnd, 'M/d(E)', { locale: ja })}
             </div>
           </div>
           <button
             onClick={handleNextWeek}
-            className="p-2 bg-white rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
+            className="p-2 bg-white rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors flex-shrink-0"
             aria-label="次の週"
           >
             <ChevronRight className="text-blue-600" size={20} />
@@ -150,9 +150,8 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                   return (
                     <th
                       key={dayKey}
-                      className={`border border-slate-200 p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] ${
-                        isDayToday ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
-                      }`}
+                      className={`border border-slate-200 p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] ${isDayToday ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+                        }`}
                     >
                       <div className="text-[10px] sm:text-xs">{format(day, 'E', { locale: ja })}</div>
                       <div className={`text-sm sm:text-base font-bold ${isDayToday ? 'text-blue-700' : 'text-slate-900'}`}>
@@ -173,13 +172,12 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                     const dayKey = format(day, 'yyyy-MM-dd')
                     const dayShifts = shiftsByDayAndUser.get(dayKey)?.get(user.id) || []
                     const isDayToday = isToday(day)
-                    
+
                     return (
                       <td
                         key={dayKey}
-                        className={`border border-slate-200 p-1 sm:p-2 align-top ${
-                          isDayToday ? 'bg-blue-50/30' : 'bg-white'
-                        }`}
+                        className={`border border-slate-200 p-1 sm:p-2 align-top ${isDayToday ? 'bg-blue-50/30' : 'bg-white'
+                          }`}
                       >
                         <div className="space-y-1">
                           {dayShifts.length === 0 ? (
@@ -192,14 +190,13 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                               const textColor = getTextColor(shiftColor)
                               const borderColor = shiftColor
                               const bgColor = addOpacity(shiftColor, 0.2) // 20% opacity
-                              
+
                               return (
                                 <div
                                   key={shift.id}
                                   onClick={() => onShiftClick?.(shift)}
-                                  className={`p-1 sm:p-1.5 rounded text-[10px] sm:text-xs cursor-pointer transition-all ${
-                                    onShiftClick ? 'hover:shadow-md active:scale-95' : ''
-                                  }`}
+                                  className={`p-1 sm:p-1.5 rounded text-[10px] sm:text-xs cursor-pointer transition-all ${onShiftClick ? 'hover:shadow-md active:scale-95' : ''
+                                    }`}
                                   style={{
                                     backgroundColor: bgColor,
                                     borderColor: borderColor,
