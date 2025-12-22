@@ -17,7 +17,7 @@ import { startOfWeek } from 'date-fns/startOfWeek'
 import { getDay } from 'date-fns/getDay'
 import { ja } from 'date-fns/locale/ja'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
-import { Users, Calendar as CalIcon, Table2, Settings, MessageCircle } from 'lucide-react'
+import { Users, Calendar as CalIcon, Table2, Settings, MessageCircle, Bell } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
 import { RefreshCw, Upload } from 'lucide-react'
 import FcmTokenManager from '@/components/FcmTokenManager'
@@ -324,73 +324,73 @@ export default function AdminPage() {
       <FcmTokenManager userId={user?.id || ''} />
 
       {/* タブナビゲーション - モバイル対応 */}
-      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-3 shadow-sm sticky top-0 z-10">
-        <div className="flex gap-2 sm:gap-3">
+      <div className="bg-white border-b border-slate-200 px-2 sm:px-6 py-2 sm:py-3 shadow-sm sticky top-0 z-10">
+        <div className="flex gap-1 sm:gap-3 justify-between">
           <button
             onClick={() => setActiveTab('calendar')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'calendar'
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-1 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'calendar'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
               }`}
+            title="シフト管理"
           >
-            <CalIcon size={18} />
+            <CalIcon size={20} />
             <span className="hidden sm:inline">シフト管理</span>
-            <span className="sm:hidden">シフト</span>
           </button>
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'users'
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-1 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'users'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
               }`}
+            title="ユーザー管理"
           >
-            <Users size={18} />
+            <Users size={20} />
             <span className="hidden sm:inline">ユーザー管理</span>
-            <span className="sm:hidden">ユーザー</span>
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'notifications'
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-1 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'notifications'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
               }`}
+            title="通知"
           >
-            <RefreshCw size={18} />
+            <Bell size={20} />
             <span className="hidden sm:inline">通知</span>
-            <span className="sm:hidden">通知</span>
           </button>
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'chat'
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-1 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'chat'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
               }`}
+            title="チャット"
           >
-            <MessageCircle size={18} />
+            <MessageCircle size={20} />
             <span className="hidden sm:inline">チャット</span>
-            <span className="sm:hidden">チャット</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'settings'
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-1 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'settings'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
               }`}
+            title="設定"
           >
-            <Settings size={18} />
+            <Settings size={20} />
             <span className="hidden sm:inline">設定</span>
-            <span className="sm:hidden">設定</span>
           </button>
           <button
             onClick={() => setActiveTab('auto_assignment')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'auto_assignment'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-1 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'auto_assignment'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 bg-slate-50'
               }`}
+            title="自動振り分け"
           >
-            <Upload size={18} />
+            <Upload size={20} />
             <span className="hidden sm:inline">自動振り分け</span>
-            <span className="sm:hidden">自動</span>
           </button>
         </div>
       </div>
