@@ -80,12 +80,22 @@ export async function importShifts(dateStr: string) {
                     // Combine date and time
                     // dateStr is YYYY-MM-DD, startTime is HH:MM
 
-                    const startDateTime = new Date(`${dateStr}T${s.startTime}:00`)
-                    const endDateTime = new Date(`${dateStr}T${s.endTime}:00`)
+                    // dateStr: YYYY-MM-DD
+                    // s.startTime: HH:MM
 
-                    // Handle crossing midnight if needed? Assumed within same day for now based on context, 
-                    // but if end < start, maybe it's next day. Let's assume same day for simplicity unless logic demands otherwise.
-                    // Actually, the example shows "08:30" to "16:00", standard day shifts.
+                    const [year, month, day] = dateStr.split('-').map(Number)
+                    const [startHour, startMinute] = s.startTime.split(':').map(Number)
+                    const [endHour, endMinute] = s.endTime.split(':').map(Number)
+
+                    // Construct UTC date by subtracting 9 hours from JST time
+                    // 8:30 JST -> 23:30 (prev day) UTC
+                    const startDateTime = new Date(Date.UTC(year, month - 1, day, startHour - 9, startMinute))
+                    const endDateTime = new Date(Date.UTC(year, month - 1, day, endHour - 9, endMinute))
+
+                    // Handle crossing midnight (if end time is earlier than start time, assume next day)
+                    if (endDateTime < startDateTime) {
+                        endDateTime.setUTCDate(endDateTime.getUTCDate() + 1)
+                    }
 
                     newShifts.push({
                         user_id: userId,

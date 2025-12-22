@@ -5,8 +5,8 @@ import { importShifts } from '@/app/actions/importShifts'
 import { Upload, AlertCircle, CheckCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
 
 export default function ShiftImportComponent() {
-    // Default to tomorrow for convenience, or today
-    const today = new Date().toISOString().split('T')[0]
+    // Default to today (JST)
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
     const [date, setDate] = useState<string>(today)
     const [isLoading, setIsLoading] = useState(false)
     const [result, setResult] = useState<{ success: boolean, count?: number, errors?: string[] | null } | null>(null)
