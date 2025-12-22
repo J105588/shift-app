@@ -55,6 +55,11 @@ export default function UserManagement() {
   const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false)
   const [isLogoutGroupModalOpen, setIsLogoutGroupModalOpen] = useState(false)
 
+  // 重複処理用
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
+  const [duplicateConflictData, setDuplicateConflictData] = useState<{ email: string; displayName: string } | null>(null)
+  const [bulkDuplicateStrategy, setBulkDuplicateStrategy] = useState<'replace' | 'keep_both'>('replace')
+
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/admin/get-users')
@@ -90,15 +95,15 @@ export default function UserManagement() {
     }
   }, [])
 
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCreateUser = async (e?: React.FormEvent, strategy?: 'replace' | 'keep_both') => {
+    if (e) e.preventDefault()
     setIsSubmitting(true)
 
     try {
       const res = await fetch('/api/admin/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName, role, groupName }),
+        body: JSON.stringify({ email, password, displayName, role, groupName, strategy }),
       })
 
       let data
@@ -114,7 +119,13 @@ export default function UserManagement() {
       if (res.ok || data.success) {
         alert(data.message || 'ユーザーを作成しました！')
         setEmail(''); setPassword(''); setDisplayName(''); setGroupName('');
+        setIsDuplicateModalOpen(false) // モーダルを閉じる
+        setDuplicateConflictData(null)
         fetchUsers() // リスト更新
+      } else if (res.status === 409 && data.duplicate) {
+        // 重複エラーの場合
+        setDuplicateConflictData(data.existingUser)
+        setIsDuplicateModalOpen(true)
       } else {
         // エラー時
         throw new Error(data.error || `ユーザー作成に失敗しました (${res.status})`)
@@ -340,7 +351,7 @@ export default function UserManagement() {
       const res = await fetch('/api/admin/bulk-create-users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ users: parsedUsers }),
+        body: JSON.stringify({ users: parsedUsers, strategy: bulkDuplicateStrategy }),
       })
 
       const data = await res.json()
@@ -1038,6 +1049,34 @@ export default function UserManagement() {
               </div>
 
               <div className="p-6 overflow-y-auto">
+                <div className="mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <h4 className="font-bold text-slate-800 mb-2">重複ユーザーの処理</h4>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="bulkDuplicateStrategy"
+                        value="replace"
+                        checked={bulkDuplicateStrategy === 'replace'}
+                        onChange={() => setBulkDuplicateStrategy('replace')}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-slate-700 text-sm">既存ユーザーを置き換える（情報を更新）</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="bulkDuplicateStrategy"
+                        value="keep_both"
+                        checked={bulkDuplicateStrategy === 'keep_both'}
+                        onChange={() => setBulkDuplicateStrategy('keep_both')}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-slate-700 text-sm">両方残す（新しいユーザーを作成）</span>
+                    </label>
+                  </div>
+                </div>
+
                 {!bulkStatus || bulkStatus === 'idle' || bulkStatus === 'parsing' || bulkStatus === 'error' ? (
                   <div className="space-y-6">
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -1260,6 +1299,60 @@ export default function UserManagement() {
                     className="flex-1 py-2 text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 disabled:opacity-50"
                   >
                     実行
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* 重複解決モーダル */}
+      {
+        isDuplicateModalOpen && duplicateConflictData && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in" onClick={() => setIsDuplicateModalOpen(false)}>
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full zoom-in-95" onClick={e => e.stopPropagation()}>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-orange-100 rounded-full text-orange-600"><Copy size={24} /></div>
+                  <h3 className="text-lg font-bold text-slate-900">ユーザーの重複</h3>
+                </div>
+                <div className="mb-6">
+                  <p className="text-slate-600 mb-2">
+                    ユーザー <span className="font-bold text-slate-900">{duplicateConflictData.displayName}</span> は既に存在します。
+                  </p>
+                  <p className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    Email: {duplicateConflictData.email}
+                  </p>
+                  <p className="text-slate-600 mt-4 font-medium">
+                    どのように処理しますか？
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() => handleCreateUser(undefined, 'replace')}
+                    disabled={isSubmitting}
+                    className="flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw size={18} />
+                    置き換える
+                    <span className="text-xs font-normal opacity-80 block w-full text-center">(情報を更新)</span>
+                  </button>
+                  <button
+                    onClick={() => handleCreateUser(undefined, 'keep_both')}
+                    disabled={isSubmitting}
+                    className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-800 text-white rounded-lg font-semibold hover:bg-slate-900 transition-colors disabled:opacity-50"
+                  >
+                    <UserPlus size={18} />
+                    両方残す
+                    <span className="text-xs font-normal opacity-80 block w-full text-center">(別ユーザー作成)</span>
+                  </button>
+                  <button
+                    onClick={() => setIsDuplicateModalOpen(false)}
+                    className="col-span-1 sm:col-span-2 py-2 text-slate-500 hover:text-slate-700 text-sm font-medium mt-2"
+                  >
+                    キャンセル
                   </button>
                 </div>
               </div>

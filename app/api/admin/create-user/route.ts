@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    let { email, password, displayName, role, groupName } = body
+    let { email, password, displayName, role, groupName, strategy } = body
 
     // バリデーション
     if (!password || !displayName) {
@@ -28,170 +28,146 @@ export async function POST(request: Request) {
       )
     }
 
+    // UUID生成用
+    const { v4: uuidv4 } = require('uuid')
+
     // メールアドレスがない場合はダミーを生成
     if (!email) {
-      const { v4: uuidv4 } = require('uuid')
       email = `no-email-${uuidv4()}@ig-nazuna-fes.com`
     }
 
-    // 2. 既存ユーザーをチェック
+    // 2. 重複チェック (メール OR 名前)
+    // メール重複チェック
     const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+    if (listError) console.error('Error listing users:', listError)
 
-    if (listError) {
-      console.error('Error listing users:', listError)
-      // リスト取得に失敗しても続行（新規ユーザーとして処理）
+    // 全ユーザー取得ループ (前回の修正と同様)
+    let allAuthUsers: any[] = []
+    let page = 1
+    const perPage = 50
+    let hasMore = true
+    while (hasMore) {
+      const { data, error: authError } = await supabaseAdmin.auth.admin.listUsers({ page: page, perPage: perPage })
+      if (authError) break;
+      const users = data.users || []
+      allAuthUsers = [...allAuthUsers, ...users]
+      if (users.length < perPage) hasMore = false; else page++;
     }
 
-    const existingUser = existingUsers?.users?.find(u => u.email === email)
+    let duplicateUser = allAuthUsers.find(u => u.email === email)
 
-    let authData: any
-    let userId: string
-
-    if (existingUser) {
-      // 既存ユーザーの場合
-      userId = existingUser.id
-
-      // プロフィールが既に存在するかチェック
-      const { data: existingProfile } = await supabaseAdmin
+    // 名前重複チェック (メールで重複が見つかっていない場合)
+    if (!duplicateUser) {
+      const { data: nameMatch } = await supabaseAdmin
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('display_name', displayName)
         .single()
 
-      if (existingProfile) {
-        // プロフィールが存在する場合は更新
+      if (nameMatch) {
+        // プロフィールからIDを取得し、Authユーザーを特定
+        duplicateUser = allAuthUsers.find(u => u.id === nameMatch.id)
+      }
+    }
+
+    if (duplicateUser) {
+      // 重複が見つかった場合の処理
+      if (!strategy) {
+        return NextResponse.json(
+          { error: 'ユーザーが既に存在します', duplicate: true, existingUser: { email: duplicateUser.email, displayName } },
+          { status: 409 }
+        )
+      }
+
+      if (strategy === 'replace') {
+        // 既存ユーザーを更新
+        const userId = duplicateUser.id
         const { error: updateError } = await supabaseAdmin
           .from('profiles')
           .update({
             display_name: displayName,
             role: role || 'staff',
-            group_name: groupName || existingProfile.group_name // 更新時、指定がなければ既存のまま
+            group_name: groupName // グループも更新
           })
           .eq('id', userId)
 
-        if (updateError) {
-          console.error('Profile update error:', updateError)
-          throw updateError
-        }
+        if (updateError) throw updateError
 
         return NextResponse.json({
           success: true,
-          user: existingUser,
-          message: '既存ユーザーのプロフィールを更新しました'
+          message: '既存ユーザー情報を更新しました'
         }, { status: 200 })
-      } else {
-        // プロフィールが存在しない場合は作成
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .insert([
-            {
-              id: userId,
-              display_name: displayName,
-              role: role || 'staff'
-            }
-          ])
 
-        if (profileError) {
-          console.error('Profile insert error:', profileError)
-          throw profileError
+      } else if (strategy === 'keep_both') {
+        // 両方残す -> 新規作成 (メール重複ならダミーメール化)
+        if (duplicateUser.email === email) {
+          // メールが被っている場合はダミー化して新規作成
+          email = `no-email-${uuidv4()}@ig-nazuna-fes.com`
         }
-
-        return NextResponse.json({
-          success: true,
-          user: existingUser,
-          message: '既存ユーザーにプロフィールを追加しました'
-        }, { status: 200 })
+        // そのまま下部の新規作成フローへ進む
       }
-    } else {
-      // 新規ユーザーを作成（user_metadataにdisplay_nameを設定）
-      const { data: newAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          display_name: displayName,
-          full_name: displayName
-        }
-      })
-
-      if (authError) {
-        // メールアドレスが既に使用されている場合のエラーハンドリング
-        if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
-          return NextResponse.json(
-            { error: 'このメールアドレスは既に登録されています' },
-            { status: 409 }
-          )
-        }
-        throw authError
-      }
-
-      if (!newAuthData.user) {
-        throw new Error('ユーザー作成に失敗しました')
-      }
-
-      userId = newAuthData.user.id
-
-      // 3. プロフィール情報を作成（upsertを使用して安全に作成）
-      // トリガーで既に作成されている可能性があるため、upsertを使用
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .upsert(
-          {
-            id: userId,
-            display_name: displayName,  // 明示的にdisplay_nameを設定
-            role: role || 'staff',
-            group_name: groupName || null
-          },
-          {
-            onConflict: 'id',
-            ignoreDuplicates: false
-          }
-        )
-
-      if (profileError) {
-        console.error('Profile upsert error:', profileError)
-        // プロフィール作成に失敗した場合、作成したauthユーザーを削除
-        await supabaseAdmin.auth.admin.deleteUser(userId)
-        throw profileError
-      }
-
-      // 4. プロフィールが正しく作成/更新されたことを確認
-      const { data: createdProfile, error: verifyError } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (verifyError || !createdProfile) {
-        console.error('Profile verification error:', verifyError)
-        throw new Error('プロフィールの作成を確認できませんでした')
-      }
-
-      // display_nameが正しく設定されているか確認
-      if (createdProfile.display_name !== displayName) {
-        console.warn('Display name mismatch. Expected:', displayName, 'Got:', createdProfile.display_name)
-        // 再度更新を試みる
-        const { error: retryError } = await supabaseAdmin
-          .from('profiles')
-          .update({ display_name: displayName })
-          .eq('id', userId)
-
-        if (retryError) {
-          console.error('Retry update error:', retryError)
-          throw new Error('display_nameの設定に失敗しました')
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        user: newAuthData.user,
-        message: 'ユーザーを作成しました'
-      }, { status: 200 })
     }
+
+    // --- 以下、新規作成フロー (以前と同じ) ---
+
+    // 新規ユーザーを作成（user_metadataにdisplay_nameを設定）
+    const { data: newAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        display_name: displayName,
+        full_name: displayName
+      }
+    })
+
+    if (authError) {
+      // 万が一ここで重複エラーが出た場合
+      if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
+        return NextResponse.json(
+          { error: 'このメールアドレスは既に登録されています' },
+          { status: 409 }
+        )
+      }
+      throw authError
+    }
+
+    if (!newAuthData.user) {
+      throw new Error('ユーザー作成に失敗しました')
+    }
+
+    const userId = newAuthData.user.id
+
+    // プロフィール情報を作成
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .upsert(
+        {
+          id: userId,
+          display_name: displayName,
+          role: role || 'staff',
+          group_name: groupName || null
+        },
+        {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        }
+      )
+
+    if (profileError) {
+      console.error('Profile upsert error:', profileError)
+      await supabaseAdmin.auth.admin.deleteUser(userId)
+      throw profileError
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: newAuthData.user,
+      message: 'ユーザーを作成しました'
+    }, { status: 200 })
 
   } catch (error: any) {
     console.error('Create user error:', error)
-    // エラーメッセージを安全に取得
     const errorMessage = error?.message || error?.toString() || 'ユーザー作成中にエラーが発生しました'
 
     return NextResponse.json(
@@ -203,3 +179,4 @@ export async function POST(request: Request) {
     )
   }
 }
+

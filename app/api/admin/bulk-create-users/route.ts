@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json()
-        const { users } = body // users: Array<{ email, password, displayName, role, groupName }>
+        const { users, strategy } = body // strategy: 'replace' | 'keep_both' | undefined
 
         if (!users || !Array.isArray(users) || users.length === 0) {
             return NextResponse.json(
@@ -35,27 +35,69 @@ export async function POST(request: Request) {
             errors: [] as string[]
         }
 
-        // 2. 既存ユーザーを一括取得（チェック用）
-        const { data: existingUsersData } = await supabaseAdmin.auth.admin.listUsers()
-        const existingEmails = new Set(existingUsersData?.users.map(u => u.email) || [])
+        // 2. 既存ユーザーを一括取得（全件取得）
+        let allAuthUsers: any[] = []
+        let page = 1
+        const perPage = 50
+        let hasMore = true
+        while (hasMore) {
+            const { data, error: authError } = await supabaseAdmin.auth.admin.listUsers({ page: page, perPage: perPage })
+            if (authError) {
+                console.error('Error listing auth users:', authError)
+                break;
+            }
+            const us = data.users || []
+            allAuthUsers = [...allAuthUsers, ...us]
+            if (us.length < perPage) hasMore = false; else page++;
+        }
 
-        // 3. ループ処理（並列処理しすぎるとレート制限にかかる可能性があるため、一旦直列に近い形で実装推奨だが、Promise.allSettledで並列化）
-        // 大量データの場合はチャンク分割が必要だが、今回は小規模（<100）と想定
+        // 全プロフィール取得
+        const { data: allProfiles, error: profilesError } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
 
+        if (profilesError) console.error('Error fetching profiles:', profilesError)
+
+        const existingEmails = new Set(allAuthUsers.map(u => u.email))
+        const existingNames = new Map(allProfiles?.map((p: any) => [p.display_name, p.id]))
+        const { v4: uuidv4 } = require('uuid')
+
+        // 3. ループ処理
         const processUser = async (user: any) => {
-            const { email, password, displayName, role, groupName } = user
+            let { email, password, displayName, role, groupName } = user
 
-            if (!email || !password || !displayName) {
-                throw new Error(`${email || '不明なメール'}: 必須項目が不足しています`)
+            if (!password || !displayName) {
+                throw new Error(`${email || displayName}: パスワードと表示名は必須です`)
             }
 
-            // 既存チェック
-            if (existingEmails.has(email)) {
-                // 既存ユーザーの場合はグループ名などを更新するロジックを入れても良いが、
-                // 今回は「登録」なので、既存ならスキップまたは更新とする。
-                // ここでは既存ユーザーのグループ名更新を行うことにする。
-                const existingUser = existingUsersData?.users.find(u => u.email === email)
-                if (existingUser) {
+            if (!email) {
+                email = `no-email-${uuidv4()}@ig-nazuna-fes.com`
+            }
+
+            // 重複チェック
+            let duplicateUserId: string | null = null
+            let isEmailConflict = false
+
+            // メール重複
+            const existingAuthUser = allAuthUsers.find(u => u.email === email)
+            if (existingAuthUser) {
+                duplicateUserId = existingAuthUser.id
+                isEmailConflict = true
+            } else {
+                // 名前重複
+                if (existingNames.has(displayName)) {
+                    duplicateUserId = existingNames.get(displayName) || null
+                }
+            }
+
+            if (duplicateUserId) {
+                // 重複時の処理
+                if (!strategy) {
+                    throw new Error(`${displayName} (${email}): ユーザーが既に存在します`)
+                }
+
+                if (strategy === 'replace') {
+                    // 更新処理
                     const { error: updateError } = await supabaseAdmin
                         .from('profiles')
                         .update({
@@ -63,10 +105,16 @@ export async function POST(request: Request) {
                             role: role || 'staff',
                             group_name: groupName || null
                         })
-                        .eq('id', existingUser.id)
+                        .eq('id', duplicateUserId)
 
-                    if (updateError) throw updateError;
-                    return 'updated';
+                    if (updateError) throw updateError
+                    return 'updated'
+
+                } else if (strategy === 'keep_both') {
+                    // 新規作成（メール重複ならダミー化）
+                    if (isEmailConflict) {
+                        email = `no-email-${uuidv4()}@ig-nazuna-fes.com`
+                    }
                 }
             }
 
@@ -97,7 +145,6 @@ export async function POST(request: Request) {
                 })
 
             if (profileError) {
-                // プロフィール作成失敗時はAuthユーザーも消す（ロールバック的処理）
                 await supabaseAdmin.auth.admin.deleteUser(userId)
                 throw profileError
             }
@@ -106,6 +153,7 @@ export async function POST(request: Request) {
         }
 
         // Promise.allSettled で実行
+        // 並列数を制限したほうが安全だが、今回はマップで実行
         const promises = users.map(user =>
             processUser(user)
                 .then(() => ({ status: 'fulfilled' }))
