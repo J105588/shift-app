@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, User } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -27,17 +27,38 @@ export async function GET() {
       throw profilesError
     }
 
-    // 3. 各ユーザーのメールアドレスを取得
-    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers()
-    
-    if (authError) {
-      console.error('Error listing auth users:', authError)
-      // メールアドレス取得に失敗してもプロフィール情報は返す
+    // 3. 各ユーザーのメールアドレスを取得 (全ページ取得)
+    let allAuthUsers: User[] = []
+    let page = 1
+    const perPage = 50
+    let hasMore = true
+
+    while (hasMore) {
+      const { data, error: authError } = await supabaseAdmin.auth.admin.listUsers({
+        page: page,
+        perPage: perPage
+      })
+
+      if (authError) {
+        console.error('Error listing auth users:', authError)
+        // エラーが発生しても、取得できた分だけで続行するか、ここで中断するか
+        // ここではログを出してループを抜ける（取得できた分は使う）
+        break
+      }
+
+      const users = data.users || []
+      allAuthUsers = [...allAuthUsers, ...users]
+
+      if (users.length < perPage) {
+        hasMore = false
+      } else {
+        page++
+      }
     }
 
     // 4. プロフィールとメールアドレスを結合
     const usersWithEmail = profiles?.map(profile => {
-      const authUser = authUsers?.users?.find(u => u.id === profile.id)
+      const authUser = allAuthUsers.find(u => u.id === profile.id)
       return {
         ...profile,
         email: authUser?.email || null
@@ -49,12 +70,12 @@ export async function GET() {
       users: usersWithEmail
     }, { status: 200 })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Get users error:', error)
-    const errorMessage = error?.message || error?.toString() || 'ユーザー一覧の取得中にエラーが発生しました'
-    
+    const errorMessage = (error as Error)?.message || String(error) || 'ユーザー一覧の取得中にエラーが発生しました'
+
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         success: false
       },
