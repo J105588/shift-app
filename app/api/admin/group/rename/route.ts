@@ -16,13 +16,30 @@ export async function POST(request: Request) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
     try {
-        const { oldGroupName, newGroupName } = await request.json()
+        const { oldGroupName, newGroupName, password } = await request.json()
 
         if (!oldGroupName || !newGroupName) {
             return NextResponse.json(
                 { error: '古いグループ名と新しいグループ名は必須です' },
                 { status: 400 }
             )
+        }
+
+        // 新しい名前がSystemの場合、パスワード認証が必要
+        if (newGroupName.toLowerCase() === 'system') {
+            const adminPassword = process.env.ADMIN_FORCE_LOGOUT_PASSWORD
+            if (!adminPassword) {
+                return NextResponse.json(
+                    { error: 'サーバー設定エラー: 管理者パスワードが設定されていません' },
+                    { status: 500 }
+                )
+            }
+            if (password !== adminPassword) {
+                return NextResponse.json(
+                    { error: '管理者パスワードが間違っています' },
+                    { status: 403 }
+                )
+            }
         }
 
         // Systemグループは名前変更不可

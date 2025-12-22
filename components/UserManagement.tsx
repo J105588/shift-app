@@ -52,6 +52,7 @@ export default function UserManagement() {
   // グループ操作用
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
   const [newGroupNameInput, setNewGroupNameInput] = useState('')
+  const [renameGroupPassword, setRenameGroupPassword] = useState('') // Systemグループ変更用パスワード
   const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false)
   const [isLogoutGroupModalOpen, setIsLogoutGroupModalOpen] = useState(false)
 
@@ -374,19 +375,32 @@ export default function UserManagement() {
   // グループ操作ハンドラー
   const handleRenameGroup = async () => {
     if (!newGroupNameInput.trim()) return
-    setIsSubmitting(true)
 
+    // Systemグループへの変更時はパスワード必須
+    if (newGroupNameInput.toLowerCase() === 'system' && !renameGroupPassword) {
+      alert('Systemグループへ変更するには管理者パスワードが必要です')
+      return
+    }
+
+    setIsSubmitting(true)
     try {
       const res = await fetch('/api/admin/group/rename', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldGroupName: filterGroup, newGroupName: newGroupNameInput }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          oldGroupName: filterGroup,
+          newGroupName: newGroupNameInput,
+          password: renameGroupPassword // パスワード送信
+        }),
       })
 
       const data = await res.json()
       if (res.ok) {
         alert(data.message)
         setIsRenameModalOpen(false)
+        setRenameGroupPassword('') // パスワードリセット
         setFilterGroup(newGroupNameInput) // フィルターを新しい名前に更新
         fetchUsers()
       } else {
@@ -1229,6 +1243,22 @@ export default function UserManagement() {
                   placeholder="新しいグループ名"
                   autoFocus
                 />
+
+                {/* Systemへの変更時のみパスワード入力表示 */}
+                {newGroupNameInput.toLowerCase() === 'system' && (
+                  <div className="mb-4 animate-fadeIn">
+                    <label className="block text-xs font-bold text-red-600 mb-1">
+                      管理者パスワードが必要です
+                    </label>
+                    <input
+                      type="password"
+                      value={renameGroupPassword}
+                      onChange={e => setRenameGroupPassword(e.target.value)}
+                      className="w-full border-2 border-red-200 p-3 rounded-lg focus:border-red-500 outline-none bg-red-50"
+                      placeholder="ADMIN_FORCE_LOGOUT_PASSWORD"
+                    />
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <button
                     onClick={() => setIsRenameModalOpen(false)}
