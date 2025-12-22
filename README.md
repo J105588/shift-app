@@ -165,7 +165,8 @@ graph TD
     subgraph "ユーザー機能 (User)"
         UserDash --> Timetable[タイムテーブル表示]
         UserDash --> DetailModal[シフト詳細モーダル]
-        Timetable --> DayView[日別ビュー (縦型)]
+        %% Fix: Added quotes around the text containing parentheses
+        Timetable --> DayView["日別ビュー (縦型)"]
         Timetable --> WeekView[週間ビュー]
     end
 
