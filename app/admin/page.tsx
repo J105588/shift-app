@@ -325,7 +325,7 @@ export default function AdminPage() {
 
       {/* タブナビゲーション - モバイル対応 */}
       <div className="bg-white border-b border-slate-200 px-2 sm:px-6 py-2 sm:py-3 shadow-sm sticky top-0 z-10">
-        <div className="flex gap-1 sm:gap-3 justify-between">
+        <div className="flex gap-2 justify-start overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('calendar')}
             className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-1 sm:px-5 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 touch-manipulation ${activeTab === 'calendar'
