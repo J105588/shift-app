@@ -31,11 +31,11 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
   }
 
   // iOS の検出（簡易版）
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
   // PWAとしてインストールされているか確認（複数の方法で検出）
-  const isStandalone = 
+  const isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as any).standalone === true ||
     // iOS Safariでホーム画面から起動した場合の検出
@@ -45,11 +45,11 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
     // 既に登録されている Service Worker を取得
     // まず、FCM専用スコープで検索
     let registration = await navigator.serviceWorker.getRegistration('/firebase-cloud-messaging-push-scope')
-    
+
     // 見つからない場合は、ルートスコープで検索（iOSの場合）
     if (!registration && isIOS) {
       const registrations = await navigator.serviceWorker.getRegistrations()
-      const found = registrations.find(reg => 
+      const found = registrations.find(reg =>
         reg.active?.scriptURL.includes('firebase-messaging-sw.js') ||
         reg.installing?.scriptURL.includes('firebase-messaging-sw.js') ||
         reg.waiting?.scriptURL.includes('firebase-messaging-sw.js')
@@ -66,9 +66,12 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
         // iOS では PWA としてインストールされていない場合でも、可能であれば登録を試みる
       }
 
+      // 環境変数からFirebase設定を取得してURLパラメータに追加
+      const swUrl = `/firebase-messaging-sw.js?apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}`
+
       try {
         // まず、FCM専用スコープで登録を試みる
-        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        registration = await navigator.serviceWorker.register(swUrl, {
           scope: '/firebase-cloud-messaging-push-scope'
         })
       } catch (registerError) {
@@ -76,7 +79,7 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
         if (isIOS) {
           // iOS ではスコープ指定が原因で失敗する場合があるため、ルートスコープで再試行
           try {
-            registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+            registration = await navigator.serviceWorker.register(swUrl, {
               scope: '/'
             })
           } catch (rootScopeError) {
@@ -93,7 +96,7 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
       await new Promise<void>((resolve) => {
         const installingWorker = registration.installing
         if (installingWorker) {
-          installingWorker.addEventListener('statechange', function() {
+          installingWorker.addEventListener('statechange', function () {
             if (this.state === 'installed' || this.state === 'activated') {
               resolve()
             }
@@ -108,7 +111,7 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
       await new Promise<void>((resolve) => {
         const waitingWorker = registration.waiting
         if (waitingWorker) {
-          waitingWorker.addEventListener('statechange', function() {
+          waitingWorker.addEventListener('statechange', function () {
             if (this.state === 'activated') {
               resolve()
             }
@@ -202,12 +205,12 @@ async function checkProcessedMessage(messageId: string): Promise<boolean> {
     const registration = await navigator.serviceWorker.ready
     return new Promise((resolve) => {
       const messageChannel = new MessageChannel()
-      
+
       messageChannel.port1.onmessage = (event) => {
         const result = event.data
         resolve(result.isProcessed === true)
       }
-      
+
       registration.active?.postMessage(
         {
           type: 'CHECK_PROCESSED_MESSAGE',
@@ -215,7 +218,7 @@ async function checkProcessedMessage(messageId: string): Promise<boolean> {
         },
         [messageChannel.port2]
       )
-      
+
       // タイムアウト（100ms）で false を返す
       setTimeout(() => resolve(false), 100)
     })
@@ -233,7 +236,7 @@ async function markMessageProcessed(messageId: string): Promise<void> {
   try {
     const registration = await navigator.serviceWorker.ready
     const messageChannel = new MessageChannel()
-    
+
     registration.active?.postMessage(
       {
         type: 'MARK_PROCESSED',
@@ -271,13 +274,13 @@ export const subscribeInAppMessages = async () => {
           // これにより、同じ通知IDの通知は同じtagになり、重複を防げる
           const messageId = payload.data?.messageId || payload.messageId
           const tag = messageId || `fcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-          
+
           // 既に同じ tag の通知を表示済みの場合はスキップ（同期的にチェック）
           if (shownNotificationTags.has(tag)) {
             console.log('重複通知をスキップ（クライアント側） (tag: ' + tag + ', title: ' + title + ')');
             return
           }
-          
+
           // Service Workerで既に処理済みか確認（非同期だが、可能な限り早くチェック）
           // 非同期処理はPromiseとして実行し、結果を待たずに続行
           if (messageId) {
@@ -286,17 +289,17 @@ export const subscribeInAppMessages = async () => {
                 console.log('重複通知をスキップ（Service Worker処理済み） (messageId: ' + messageId + ', tag: ' + tag + ')');
                 return
               }
-              
+
               // Service Workerに処理済みとして記録
               markMessageProcessed(messageId)
             }).catch(() => {
               // エラーは無視
             })
           }
-          
+
           // 通知を表示する前に、Setに追加して重複を防ぐ（同期的に実行）
           shownNotificationTags.add(tag)
-          
+
           // Service Workerで既に同じtagの通知が表示されているか確認（非同期）
           // 既存の通知が見つかった場合は閉じる
           try {
@@ -348,24 +351,24 @@ export const subscribeInAppMessages = async () => {
           notification.onclick = (event) => {
             event.preventDefault()
             window.focus()
-            
+
             // 通知の data から URL を取得
             // shift_group_id がある場合はチャットページへ、なければ data.url または '/'
             const shiftGroupId = payload.data?.shiftGroupId
-            const urlToOpen = shiftGroupId 
-              ? '/chat/' + shiftGroupId 
+            const urlToOpen = shiftGroupId
+              ? '/chat/' + shiftGroupId
               : (payload.data?.url || '/')
-            
+
             // 現在のページが同じチャットページの場合は何もしない（既に開いている）
             if (shiftGroupId && window.location.pathname === urlToOpen) {
               notification.close()
               shownNotificationTags.delete(tag)
               return
             }
-            
+
             // ページを開く
             window.location.href = urlToOpen
-            
+
             notification.close()
             shownNotificationTags.delete(tag)
           }
