@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile } from '@/lib/types'
-import { UserPlus, Edit2, X, LogOut, Copy, Check, Upload, Filter, Download } from 'lucide-react'
+import { UserPlus, Edit2, X, LogOut, Copy, Check, Upload, Filter, Download, Settings, Trash2, RefreshCw } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 
 export default function UserManagement() {
@@ -45,9 +45,15 @@ export default function UserManagement() {
   // 一括登録モーダル用
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
   const [csvFile, setCsvFile] = useState<File | null>(null)
-  const [parsedUsers, setParsedUsers] = useState<any[]>([])
+  const [parsedUsers, setParsedUsers] = useState<{ email: string; password: string; displayName: string; role: string; groupName: string }[]>([])
   const [bulkStatus, setBulkStatus] = useState<'idle' | 'parsing' | 'uploading' | 'complete' | 'error'>('idle')
   const [bulkResult, setBulkResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null)
+
+  // グループ操作用
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+  const [newGroupNameInput, setNewGroupNameInput] = useState('')
+  const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false)
+  const [isLogoutGroupModalOpen, setIsLogoutGroupModalOpen] = useState(false)
 
   const fetchUsers = async () => {
     try {
@@ -98,7 +104,7 @@ export default function UserManagement() {
       let data
       try {
         data = await res.json()
-      } catch (parseError) {
+      } catch (_) {
         // JSON解析に失敗した場合
         const text = await res.text()
         throw new Error(`サーバーエラー (${res.status}): ${text || 'レスポンスの解析に失敗しました'}`)
@@ -113,9 +119,9 @@ export default function UserManagement() {
         // エラー時
         throw new Error(data.error || `ユーザー作成に失敗しました (${res.status})`)
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Create user error:', err)
-      alert('エラー: ' + (err.message || 'ユーザー作成中にエラーが発生しました'))
+      alert('エラー: ' + ((err as Error).message || 'ユーザー作成中にエラーが発生しました'))
     } finally {
       setIsSubmitting(false)
     }
@@ -172,9 +178,9 @@ export default function UserManagement() {
       } else {
         throw new Error(data.error || `ユーザー更新に失敗しました (${res.status})`)
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Update user error:', err)
-      alert('エラー: ' + (err.message || 'ユーザー更新中にエラーが発生しました'))
+      alert('エラー: ' + ((err as Error).message || 'ユーザー更新中にエラーが発生しました'))
     } finally {
       setIsSubmitting(false)
     }
@@ -246,7 +252,7 @@ export default function UserManagement() {
       let data
       try {
         data = await res.json()
-      } catch (parseError) {
+      } catch (_) {
         const text = await res.text()
         throw new Error(`サーバーエラー (${res.status}): ${text || 'レスポンスの解析に失敗しました'}`)
       }
@@ -261,9 +267,9 @@ export default function UserManagement() {
       } else {
         throw new Error(data.error || `強制ログアウトに失敗しました (${res.status})`)
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Force logout error:', err)
-      alert('エラー: ' + (err.message || '強制ログアウト中にエラーが発生しました'))
+      alert('エラー: ' + ((err as Error).message || '強制ログアウト中にエラーが発生しました'))
     } finally {
       setIsLoggingOut(false)
     }
@@ -296,7 +302,7 @@ export default function UserManagement() {
         // ヘッダーチェック（簡易的）
         // 想定フォーマット: email,password,display_name,role,group_name
 
-        const parsed: any[] = []
+        const parsed: { email: string; password: string; displayName: string; role: string; groupName: string }[] = []
         // 1行目はヘッダーとしてスキップ、あるいは中身を見る
         // ここでは単純に2行目以降をデータとして扱う
 
@@ -346,9 +352,90 @@ export default function UserManagement() {
       } else {
         throw new Error(data.error)
       }
-    } catch (err: any) {
-      alert('一括登録エラー: ' + err.message)
+    } catch (err) {
+      alert('一括登録エラー: ' + (err as Error).message)
       setBulkStatus('error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // グループ操作ハンドラー
+  const handleRenameGroup = async () => {
+    if (!newGroupNameInput.trim()) return
+    setIsSubmitting(true)
+
+    try {
+      const res = await fetch('/api/admin/group/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldGroupName: filterGroup, newGroupName: newGroupNameInput }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        alert(data.message)
+        setIsRenameModalOpen(false)
+        setFilterGroup(newGroupNameInput) // フィルターを新しい名前に更新
+        fetchUsers()
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (err) {
+      alert('エラー: ' + (err as Error).message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteGroupUsers = async () => {
+    if (!filterGroup || filterGroup === 'all' || filterGroup === 'no_group') return
+    // モーダルで確認済みなのでconfirmは不要
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/group/delete-users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupName: filterGroup }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        alert(data.message)
+        setIsDeleteGroupModalOpen(false)
+        setFilterGroup('all')
+        fetchUsers()
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (err) {
+      alert('エラー: ' + (err as Error).message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleLogoutGroupUsers = async () => {
+    if (!filterGroup || filterGroup === 'all' || filterGroup === 'no_group') return
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/group/logout-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupName: filterGroup }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        alert(data.message)
+        setIsLogoutGroupModalOpen(false)
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (err) {
+      alert('エラー: ' + (err as Error).message)
     } finally {
       setIsSubmitting(false)
     }
@@ -450,25 +537,60 @@ export default function UserManagement() {
 
       {/* ユーザーリスト */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="font-bold text-base sm:text-lg text-slate-900">登録ユーザー一覧</h3>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1">{filteredUsers.length}人のユーザーが表示されています</p>
+        <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-base sm:text-lg text-slate-900">登録ユーザー一覧</h3>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1">{filteredUsers.length}人のユーザーが表示されています</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-slate-500" />
+              <select
+                value={filterGroup}
+                onChange={(e) => setFilterGroup(e.target.value)}
+                className="text-sm border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+              >
+                <option value="all">すべてのグループ</option>
+                <option value="no_group">グループなし</option>
+                {uniqueGroups.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-slate-500" />
-            <select
-              value={filterGroup}
-              onChange={(e) => setFilterGroup(e.target.value)}
-              className="text-sm border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
-            >
-              <option value="all">すべてのグループ</option>
-              <option value="no_group">グループなし</option>
-              {uniqueGroups.map(g => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-          </div>
+
+          {/* グループ操作アクションバー */}
+          {filterGroup !== 'all' && filterGroup !== 'no_group' && (
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
+              <span className="text-xs font-semibold text-slate-500 mr-2">グループ操作:</span>
+              <button
+                onClick={() => {
+                  setNewGroupNameInput(filterGroup)
+                  setIsRenameModalOpen(true)
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-md text-xs font-medium hover:bg-slate-50 transition-colors"
+              >
+                <Edit2 size={14} />
+                名前変更
+              </button>
+              <button
+                onClick={() => setIsLogoutGroupModalOpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-md text-xs font-medium hover:bg-slate-50 transition-colors"
+                title="このグループの全員を強制ログアウト"
+              >
+                <LogOut size={14} />
+                一括ログアウト
+              </button>
+              <button
+                onClick={() => setIsDeleteGroupModalOpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-md text-xs font-medium hover:bg-red-50 transition-colors"
+                title="このグループの全員を削除"
+              >
+                <Trash2 size={14} />
+                一括削除
+              </button>
+            </div>
+          )}
         </div>
 
         {/* デスクトップ: テーブル表示 */}
@@ -525,7 +647,6 @@ export default function UserManagement() {
                       </span>
                     </td>
                     <td className="p-4 text-slate-600 text-sm">
-                      {/* @ts-ignore */}
                       {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '-'}
                     </td>
                     <td className="p-4">
@@ -552,7 +673,6 @@ export default function UserManagement() {
             </tbody>
           </table>
         </div>
-
         {/* モバイル: カード表示 */}
         <div className="md:hidden divide-y divide-slate-200">
           {loading ? (
@@ -583,7 +703,6 @@ export default function UserManagement() {
                       {user.email || '-'}
                     </div>
                     <div className="text-xs text-slate-500 mb-3">
-                      {/* @ts-ignore */}
                       登録日: {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '-'}
                     </div>
                   </div>
@@ -599,14 +718,14 @@ export default function UserManagement() {
                         onClick={() => handleEditUser(user)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
                       >
-                        <Edit2 size={14} />
+                        <Edit2 size={16} />
                         編集
                       </button>
                       <button
                         onClick={() => handleForceLogout(user)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
                       >
-                        <LogOut size={14} />
+                        <LogOut size={16} />
                         強制ログアウト
                       </button>
                     </div>
@@ -616,7 +735,7 @@ export default function UserManagement() {
             ))
           )}
         </div>
-      </div >
+      </div>
 
       {/* 編集モーダル */}
       {
@@ -1045,6 +1164,111 @@ export default function UserManagement() {
           </div>
         )
       }
-    </div>
+      {/* グループ名変更モーダル */}
+      {
+        isRenameModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in" onClick={() => setIsRenameModalOpen(false)}>
+            <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full zoom-in-95" onClick={e => e.stopPropagation()}>
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">グループ名の変更</h3>
+                <input
+                  type="text"
+                  value={newGroupNameInput}
+                  onChange={e => setNewGroupNameInput(e.target.value)}
+                  className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 outline-none mb-4"
+                  placeholder="新しいグループ名"
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsRenameModalOpen(false)}
+                    className="flex-1 py-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleRenameGroup}
+                    disabled={isSubmitting || !newGroupNameInput.trim()}
+                    className="flex-1 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    変更
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* グループ削除確認モーダル */}
+      {
+        isDeleteGroupModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in" onClick={() => setIsDeleteGroupModalOpen(false)}>
+            <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full zoom-in-95" onClick={e => e.stopPropagation()}>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-100 rounded-full text-red-600"><Trash2 size={24} /></div>
+                  <h3 className="text-lg font-bold text-slate-900">グループ一括削除</h3>
+                </div>
+                <p className="text-slate-600 mb-4">
+                  グループ「<span className="font-bold">{filterGroup}</span>」に所属するすべてのユーザーを削除しますか？<br />
+                  <span className="text-red-600 text-sm font-bold mt-2 block">⚠️ この操作は取り消せません。</span>
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsDeleteGroupModalOpen(false)}
+                    className="flex-1 py-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleDeleteGroupUsers}
+                    disabled={isSubmitting}
+                    className="flex-1 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  >
+                    削除実行
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* グループ一括ログアウト確認モーダル */}
+      {
+        isLogoutGroupModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in" onClick={() => setIsLogoutGroupModalOpen(false)}>
+            <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full zoom-in-95" onClick={e => e.stopPropagation()}>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-yellow-100 rounded-full text-yellow-600"><LogOut size={24} /></div>
+                  <h3 className="text-lg font-bold text-slate-900">一括ログアウト</h3>
+                </div>
+                <p className="text-slate-600 mb-4">
+                  グループ「<span className="font-bold">{filterGroup}</span>」の全ユーザーを強制的にログアウトさせますか？
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsLogoutGroupModalOpen(false)}
+                    className="flex-1 py-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleLogoutGroupUsers}
+                    disabled={isSubmitting}
+                    className="flex-1 py-2 text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                  >
+                    実行
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   )
 }

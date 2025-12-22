@@ -4,6 +4,7 @@ export type Profile = {
   role: 'admin' | 'staff'
   email?: string | null
   group_name?: string | null
+  created_at?: string | null
 }
 
 // 旧構造（後方互換性のため保持）
