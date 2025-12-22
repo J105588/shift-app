@@ -498,14 +498,15 @@ export default function UserManagement() {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">ログインID（メール）</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              メールアドレス <span className="text-slate-400 text-xs font-normal ml-1">（省略可）</span>
+            </label>
             <input
               type="email"
-              placeholder="staff@festival.com"
-              required
+              placeholder="email@example.com"
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div>

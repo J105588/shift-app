@@ -18,14 +18,20 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { email, password, displayName, role, groupName } = body
+    let { email, password, displayName, role, groupName } = body
 
     // バリデーション
-    if (!email || !password || !displayName) {
+    if (!password || !displayName) {
       return NextResponse.json(
-        { error: 'メールアドレス、パスワード、表示名は必須です' },
+        { error: 'パスワードと表示名は必須です' },
         { status: 400 }
       )
+    }
+
+    // メールアドレスがない場合はダミーを生成
+    if (!email) {
+      const { v4: uuidv4 } = require('uuid')
+      email = `no-email-${uuidv4()}@ig-nazuna-fes.com`
     }
 
     // 2. 既存ユーザーをチェック
