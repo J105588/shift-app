@@ -600,8 +600,6 @@ export default function UserManagement() {
               <tr>
                 <th className="p-4 text-sm font-semibold text-slate-700">名前</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">メールアドレス</th>
-                <th className="p-4 text-sm font-semibold text-slate-700">名前</th>
-                <th className="p-4 text-sm font-semibold text-slate-700">メールアドレス</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">グループ</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">権限</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">登録日</th>

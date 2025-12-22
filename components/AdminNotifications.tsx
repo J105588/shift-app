@@ -14,13 +14,20 @@ type ShiftGroup = {
   memberCount: number
 }
 
+type UserGroup = {
+  name: string
+  memberCount: number
+}
+
 export default function AdminNotifications() {
   const supabase = createClient()
   const [users, setUsers] = useState<Profile[]>([])
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
   const [shiftGroups, setShiftGroups] = useState<ShiftGroup[]>([])
-  const [mode, setMode] = useState<'users' | 'groups'>('users')
+  const [userGroups, setUserGroups] = useState<UserGroup[]>([])
+  const [selectedUserGroupNames, setSelectedUserGroupNames] = useState<string[]>([])
+  const [mode, setMode] = useState<'users' | 'groups' | 'user_groups'>('users')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -51,7 +58,22 @@ export default function AdminNotifications() {
     const load = async () => {
       // ユーザー一覧を取得
       const { data: usersData } = await supabase.from('profiles').select('*').order('display_name')
-      if (usersData) setUsers(usersData as Profile[])
+      if (usersData) {
+        setUsers(usersData as Profile[])
+
+        // ユーザーグループを集計
+        const groupCounts = new Map<string, number>()
+        usersData.forEach((u: Profile) => {
+          if (u.group_name) {
+            groupCounts.set(u.group_name, (groupCounts.get(u.group_name) || 0) + 1)
+          }
+        })
+        const groups: UserGroup[] = Array.from(groupCounts.entries()).map(([name, count]) => ({
+          name,
+          memberCount: count
+        })).sort((a, b) => a.name.localeCompare(b.name))
+        setUserGroups(groups)
+      }
 
       // 団体シフト（未終了）を取得
       const now = new Date().toISOString()
@@ -137,12 +159,24 @@ export default function AdminNotifications() {
     )
   }
 
+  const toggleUserGroup = (name: string) => {
+    setSelectedUserGroupNames((prev) =>
+      prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]
+    )
+  }
+
   const handleSelectAll = () => {
     if (mode === 'users') {
       if (selectedUserIds.length === users.length) {
         setSelectedUserIds([])
       } else {
         setSelectedUserIds(users.map((u) => u.id))
+      }
+    } else if (mode === 'user_groups') {
+      if (selectedUserGroupNames.length === userGroups.length) {
+        setSelectedUserGroupNames([])
+      } else {
+        setSelectedUserGroupNames(userGroups.map((g) => g.name))
       }
     } else {
       if (selectedGroupIds.length === shiftGroups.length) {
@@ -182,6 +216,23 @@ export default function AdminNotifications() {
           return
         }
         targetUserIds = selectedUserIds
+      } else if (mode === 'user_groups') {
+        // ユーザーグループ選択モード
+        if (selectedUserGroupNames.length === 0) {
+          alert('少なくとも1つ等のグループを選択してください')
+          setIsSending(false)
+          return
+        }
+
+        targetUserIds = users
+          .filter(u => u.group_name && selectedUserGroupNames.includes(u.group_name))
+          .map(u => u.id)
+
+        if (targetUserIds.length === 0) {
+          alert('選択したグループに参加者がいません')
+          setIsSending(false)
+          return
+        }
       } else {
         // グループ選択モード
         if (selectedGroupIds.length === 0) {
@@ -233,9 +284,10 @@ export default function AdminNotifications() {
       setBody('')
       setSelectedUserIds([]) // 選択をリセット
       setSelectedGroupIds([]) // 選択をリセット
-    } catch (err: any) {
+      setSelectedUserGroupNames([]) // 選択をリセット
+    } catch (err) {
       console.error('通知作成エラー:', err)
-      alert('通知の作成に失敗しました: ' + (err.message || '詳細不明'))
+      alert('通知の作成に失敗しました: ' + ((err as Error).message || '詳細不明'))
     } finally {
       setIsSending(false)
     }
@@ -290,10 +342,11 @@ export default function AdminNotifications() {
               onClick={() => {
                 setMode('users')
                 setSelectedGroupIds([])
+                setSelectedUserGroupNames([])
               }}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg font-semibold transition-all ${mode === 'users'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
                 }`}
             >
               <UserCheck size={18} />
@@ -302,16 +355,32 @@ export default function AdminNotifications() {
             <button
               type="button"
               onClick={() => {
-                setMode('groups')
+                setMode('user_groups')
                 setSelectedUserIds([])
+                setSelectedGroupIds([])
               }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg font-semibold transition-all ${mode === 'groups'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg font-semibold transition-all ${mode === 'user_groups'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
                 }`}
             >
               <Users size={18} />
               グループ選択
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('groups')
+                setSelectedUserIds([])
+                setSelectedUserGroupNames([])
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg font-semibold transition-all ${mode === 'groups'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
+                }`}
+            >
+              <Users size={18} />
+              シフト選択
             </button>
           </div>
         </div>
@@ -355,12 +424,66 @@ export default function AdminNotifications() {
           </div>
         )}
 
+        {/* ユーザーグループ選択モード */}
+        {mode === 'user_groups' && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                宛先グループ（ユーザー属性）
+              </label>
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                {selectedUserGroupNames.length === userGroups.length ? 'すべて解除' : 'すべて選択'}
+              </button>
+            </div>
+            {userGroups.length === 0 ? (
+              <div className="border-2 border-slate-200 rounded-lg p-4 bg-slate-50 text-center">
+                <p className="text-sm text-slate-500">
+                  現在、所属グループが設定されているユーザーがいません
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="border-2 border-slate-200 rounded-lg max-h-64 overflow-y-auto bg-slate-50 p-2 space-y-1">
+                  {userGroups.map((group) => (
+                    <label
+                      key={group.name}
+                      className="flex items-center gap-2 p-2 rounded-lg hover:bg-white cursor-pointer text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-blue-600 border-2 border-slate-300 rounded"
+                        checked={selectedUserGroupNames.includes(group.name)}
+                        onChange={() => toggleUserGroup(group.name)}
+                      />
+                      <div className="flex-1">
+                        <span className="text-slate-900 font-medium">{group.name}</span>
+                        <span className="text-xs text-slate-500 ml-2">
+                          （{group.memberCount}名）
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {selectedUserGroupNames.length > 0 && (
+                  <p className="text-xs text-slate-600 mt-1">
+                    {selectedUserGroupNames.length}グループを選択中
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* グループ選択モード */}
         {mode === 'groups' && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold text-slate-700">
-                宛先グループ（シフト終了前のもののみ表示）
+                宛先シフト（シフト終了前のもののみ表示）
               </label>
               <button
                 type="button"
