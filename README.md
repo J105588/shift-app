@@ -376,4 +376,4 @@ Vercel などのプラットフォームにデプロイする際は、環境変�
 
 ---
 
-© 2025 市川学園なずな祭実行委員会 All rights reserved.
+© 2025 Junxiang Jin & 市川学園なずな祭実行委員会. All rights reserved.
