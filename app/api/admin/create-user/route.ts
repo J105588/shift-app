@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { email, password, displayName, role } = body
+    const { email, password, displayName, role, groupName } = body
 
     // バリデーション
     if (!email || !password || !displayName) {
@@ -30,12 +30,12 @@ export async function POST(request: Request) {
 
     // 2. 既存ユーザーをチェック
     const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-    
+
     if (listError) {
       console.error('Error listing users:', listError)
       // リスト取得に失敗しても続行（新規ユーザーとして処理）
     }
-    
+
     const existingUser = existingUsers?.users?.find(u => u.email === email)
 
     let authData: any
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     if (existingUser) {
       // 既存ユーザーの場合
       userId = existingUser.id
-      
+
       // プロフィールが既に存在するかチェック
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
@@ -58,7 +58,8 @@ export async function POST(request: Request) {
           .from('profiles')
           .update({
             display_name: displayName,
-            role: role || 'staff'
+            role: role || 'staff',
+            group_name: groupName || existingProfile.group_name // 更新時、指定がなければ既存のまま
           })
           .eq('id', userId)
 
@@ -132,7 +133,8 @@ export async function POST(request: Request) {
           {
             id: userId,
             display_name: displayName,  // 明示的にdisplay_nameを設定
-            role: role || 'staff'
+            role: role || 'staff',
+            group_name: groupName || null
           },
           {
             onConflict: 'id',
@@ -167,7 +169,7 @@ export async function POST(request: Request) {
           .from('profiles')
           .update({ display_name: displayName })
           .eq('id', userId)
-        
+
         if (retryError) {
           console.error('Retry update error:', retryError)
           throw new Error('display_nameの設定に失敗しました')
@@ -185,9 +187,9 @@ export async function POST(request: Request) {
     console.error('Create user error:', error)
     // エラーメッセージを安全に取得
     const errorMessage = error?.message || error?.toString() || 'ユーザー作成中にエラーが発生しました'
-    
+
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         success: false
       },

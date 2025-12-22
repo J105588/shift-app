@@ -18,7 +18,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json()
-    const { userId, email, displayName, role } = body
+    const { userId, email, displayName, role, groupName } = body
 
     // バリデーション
     if (!userId) {
@@ -30,7 +30,7 @@ export async function PUT(request: Request) {
 
     // 2. ユーザーが存在するか確認
     const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId)
-    
+
     if (getUserError || !userData?.user) {
       return NextResponse.json(
         { error: 'ユーザーが見つかりません' },
@@ -42,7 +42,7 @@ export async function PUT(request: Request) {
     if (email && email !== userData.user.email) {
       const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
       const emailExists = existingUsers?.users?.some(u => u.email === email && u.id !== userId)
-      
+
       if (emailExists) {
         return NextResponse.json(
           { error: 'このメールアドレスは既に使用されています' },
@@ -83,12 +83,16 @@ export async function PUT(request: Request) {
     }
 
     // 4. プロフィール情報の更新
-    const updateData: { display_name?: string; role?: string } = {}
-    
+    const updateData: { display_name?: string; role?: string; group_name?: string } = {}
+
     if (displayName !== undefined) {
       updateData.display_name = displayName
     }
-    
+
+    if (groupName !== undefined) {
+      updateData.group_name = groupName
+    }
+
     if (role !== undefined) {
       // roleのバリデーション
       if (role !== 'admin' && role !== 'staff') {
@@ -129,7 +133,8 @@ export async function PUT(request: Request) {
         id: updatedUser?.user?.id,
         email: updatedUser?.user?.email,
         display_name: updatedProfile?.display_name,
-        role: updatedProfile?.role
+        role: updatedProfile?.role,
+        group_name: updatedProfile?.group_name
       },
       message: 'ユーザー情報を更新しました'
     }, { status: 200 })
@@ -137,9 +142,9 @@ export async function PUT(request: Request) {
   } catch (error: any) {
     console.error('Update user error:', error)
     const errorMessage = error?.message || error?.toString() || 'ユーザー更新中にエラーが発生しました'
-    
+
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         success: false
       },

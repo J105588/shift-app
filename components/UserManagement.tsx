@@ -2,18 +2,20 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile } from '@/lib/types'
-import { UserPlus, Edit2, X, LogOut, Copy, Check } from 'lucide-react'
+import { UserPlus, Edit2, X, LogOut, Copy, Check, Upload, Filter, Download } from 'lucide-react'
+import { v4 as uuidv4 } from 'uuid'
 
 export default function UserManagement() {
   const supabase = createClient()
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
-  
+
   // フォーム用
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [role, setRole] = useState('staff')
+  const [groupName, setGroupName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // 編集モーダル用
@@ -21,6 +23,7 @@ export default function UserManagement() {
   const [editEmail, setEditEmail] = useState('')
   const [editDisplayName, setEditDisplayName] = useState('')
   const [editRole, setEditRole] = useState<'admin' | 'staff'>('staff')
+  const [editGroupName, setEditGroupName] = useState('')
   const [isEditing, setIsEditing] = useState(false)
 
   // 強制ログアウトモーダル用
@@ -29,13 +32,22 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  
+
   // パスワード表示モーダル用
   // パスワード表示モーダル用
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [displayedPassword, setDisplayedPassword] = useState('')
   const [passwordTargetUser, setPasswordTargetUser] = useState<Profile | null>(null)
   const [passwordCopied, setPasswordCopied] = useState(false)
+  // フィルタリング用
+  const [filterGroup, setFilterGroup] = useState<string>('all')
+
+  // 一括登録モーダル用
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [parsedUsers, setParsedUsers] = useState<any[]>([])
+  const [bulkStatus, setBulkStatus] = useState<'idle' | 'parsing' | 'uploading' | 'complete' | 'error'>('idle')
+  const [bulkResult, setBulkResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null)
 
   const fetchUsers = async () => {
     try {
@@ -80,7 +92,7 @@ export default function UserManagement() {
       const res = await fetch('/api/admin/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName, role }),
+        body: JSON.stringify({ email, password, displayName, role, groupName }),
       })
 
       let data
@@ -91,11 +103,11 @@ export default function UserManagement() {
         const text = await res.text()
         throw new Error(`サーバーエラー (${res.status}): ${text || 'レスポンスの解析に失敗しました'}`)
       }
-      
+
       // 成功時（200-299）またはデータが書き込まれている場合
       if (res.ok || data.success) {
         alert(data.message || 'ユーザーを作成しました！')
-        setEmail(''); setPassword(''); setDisplayName('');
+        setEmail(''); setPassword(''); setDisplayName(''); setGroupName('');
         fetchUsers() // リスト更新
       } else {
         // エラー時
@@ -114,6 +126,7 @@ export default function UserManagement() {
     setEditEmail(user.email || '')
     setEditDisplayName(user.display_name || '')
     setEditRole(user.role)
+    setEditGroupName(user.group_name || '')
     setIsEditing(true)
   }
 
@@ -139,7 +152,8 @@ export default function UserManagement() {
           userId: editingUser.id,
           email: editEmail,
           displayName: editDisplayName,
-          role: editRole
+          role: editRole,
+          groupName: editGroupName
         }),
       })
 
@@ -150,7 +164,7 @@ export default function UserManagement() {
         const text = await res.text()
         throw new Error(`サーバーエラー (${res.status}): ${text || 'レスポンスの解析に失敗しました'}`)
       }
-      
+
       if (res.ok && data.success) {
         alert(data.message || 'ユーザー情報を更新しました！')
         handleCloseEditModal()
@@ -236,7 +250,7 @@ export default function UserManagement() {
         const text = await res.text()
         throw new Error(`サーバーエラー (${res.status}): ${text || 'レスポンスの解析に失敗しました'}`)
       }
-      
+
       if (res.ok && data.success) {
         // パスワードを表示するモーダルを開く
         setPasswordTargetUser(logoutTargetUser)
@@ -255,36 +269,131 @@ export default function UserManagement() {
     }
   }
 
+  // グループ一覧を抽出
+  const uniqueGroups = Array.from(new Set(users.map(u => u.group_name).filter(Boolean))) as string[]
+
+  // フィルタリングされたユーザー
+  const filteredUsers = users.filter(user => {
+    if (filterGroup === 'all') return true
+    if (filterGroup === 'no_group') return !user.group_name
+    return user.group_name === filterGroup
+  })
+
+  // CSV解析機能
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setCsvFile(file)
+    setBulkStatus('parsing')
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim())
+
+        // ヘッダーチェック（簡易的）
+        // 想定フォーマット: email,password,display_name,role,group_name
+
+        const parsed: any[] = []
+        // 1行目はヘッダーとしてスキップ、あるいは中身を見る
+        // ここでは単純に2行目以降をデータとして扱う
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.trim())
+          if (cols.length < 3) continue // 最低限 email, pass, name は必要
+
+          // カンマ区切りの簡易パース。引用符などは考慮しない簡易実装。
+          parsed.push({
+            email: cols[0],
+            password: cols[1],
+            displayName: cols[2],
+            role: cols[3] || 'staff',
+            groupName: cols[4] || ''
+          })
+        }
+
+        setParsedUsers(parsed)
+        setBulkStatus('idle')
+      } catch (err) {
+        console.error('CSV Parse Error:', err)
+        alert('CSVの解析に失敗しました')
+        setBulkStatus('error')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleBulkUpload = async () => {
+    if (parsedUsers.length === 0) return
+    setIsSubmitting(true)
+    setBulkStatus('uploading')
+
+    try {
+      const res = await fetch('/api/admin/bulk-create-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: parsedUsers }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setBulkResult(data.results)
+        setBulkStatus('complete')
+        fetchUsers()
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (err: any) {
+      alert('一括登録エラー: ' + err.message)
+      setBulkStatus('error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 overflow-y-auto h-full pb-20">
       {/* 登録フォーム */}
       <div className="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3 mb-4 sm:mb-6">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <UserPlus className="text-blue-600" size={20} />
+
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <UserPlus className="text-blue-600" size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg sm:text-xl text-slate-900">新規ユーザー登録</h3>
+              <p className="text-xs sm:text-sm text-slate-600">新しいユーザーのアカウントを作成します</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-lg sm:text-xl text-slate-900">新規ユーザー登録</h3>
-            <p className="text-xs sm:text-sm text-slate-600">新しいユーザーのアカウントを作成します</p>
-          </div>
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+          >
+            <Upload size={16} />
+            <span className="hidden sm:inline">CSV一括登録</span>
+          </button>
         </div>
-        <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">表示名</label>
-            <input 
-              type="text" 
-              placeholder="例: 佐藤" 
+            <input
+              type="text"
+              placeholder="例: 佐藤"
               required
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
-              value={displayName} 
+              value={displayName}
               onChange={e => setDisplayName(e.target.value)}
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">権限</label>
-            <select 
+            <select
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
-              value={role} 
+              value={role}
               onChange={e => setRole(e.target.value)}
             >
               <option value="staff">一般ユーザー</option>
@@ -292,30 +401,40 @@ export default function UserManagement() {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">グループ（任意）</label>
+            <input
+              type="text"
+              placeholder="例: 受付班"
+              className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+              value={groupName}
+              onChange={e => setGroupName(e.target.value)}
+            />
+          </div>
+          <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">ログインID（メール）</label>
-            <input 
-              type="email" 
-              placeholder="staff@festival.com" 
+            <input
+              type="email"
+              placeholder="staff@festival.com"
               required
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-              value={email} 
+              value={email}
               onChange={e => setEmail(e.target.value)}
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">初期パスワード</label>
-            <input 
-              type="text" 
-              placeholder="初期パスワードを設定" 
+            <input
+              type="text"
+              placeholder="初期パスワードを設定"
               required
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-              value={password} 
+              value={password}
               onChange={e => setPassword(e.target.value)}
             />
           </div>
-          <button 
+          <button
             disabled={isSubmitting}
-            className="md:col-span-2 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg mt-2 touch-manipulation min-h-[48px]"
+            className="md:col-span-2 lg:col-span-3 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg mt-2 touch-manipulation min-h-[48px]"
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
@@ -331,11 +450,27 @@ export default function UserManagement() {
 
       {/* ユーザーリスト */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50">
-          <h3 className="font-bold text-base sm:text-lg text-slate-900">登録ユーザー一覧</h3>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">{users.length}人のユーザーが登録されています</p>
+        <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-base sm:text-lg text-slate-900">登録ユーザー一覧</h3>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">{filteredUsers.length}人のユーザーが表示されています</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-slate-500" />
+            <select
+              value={filterGroup}
+              onChange={(e) => setFilterGroup(e.target.value)}
+              className="text-sm border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+            >
+              <option value="all">すべてのグループ</option>
+              <option value="no_group">グループなし</option>
+              {uniqueGroups.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        
+
         {/* デスクトップ: テーブル表示 */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
@@ -343,6 +478,9 @@ export default function UserManagement() {
               <tr>
                 <th className="p-4 text-sm font-semibold text-slate-700">名前</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">メールアドレス</th>
+                <th className="p-4 text-sm font-semibold text-slate-700">名前</th>
+                <th className="p-4 text-sm font-semibold text-slate-700">メールアドレス</th>
+                <th className="p-4 text-sm font-semibold text-slate-700">グループ</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">権限</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">登録日</th>
                 <th className="p-4 text-sm font-semibold text-slate-700">操作</th>
@@ -358,23 +496,31 @@ export default function UserManagement() {
                     </span>
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
-                    ユーザーが登録されていません
+                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                    該当するユーザーがいません
                   </td>
                 </tr>
               ) : (
-                users.map(user => (
+                filteredUsers.map(user => (
                   <tr key={user.id} className="hover:bg-slate-50 transition-colors duration-150">
                     <td className="p-4 font-semibold text-slate-900">{user.display_name || '-'}</td>
                     <td className="p-4 text-slate-600 text-sm">{user.email || '-'}</td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        user.role === 'admin' 
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                          : 'bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}>
+                      {user.group_name ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                          {user.group_name}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
                         {user.role === 'admin' ? '管理者' : '一般ユーザー'}
                       </span>
                     </td>
@@ -416,17 +562,22 @@ export default function UserManagement() {
                 読み込み中...
               </span>
             </div>
-          ) : users.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="p-8 text-center text-slate-500">
-              ユーザーが登録されていません
+              該当するユーザーがいません
             </div>
           ) : (
-            users.map(user => (
+            filteredUsers.map(user => (
               <div key={user.id} className="p-4 hover:bg-slate-50 transition-colors duration-150">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <div className="font-semibold text-slate-900 text-base mb-1">
+                    <div className="font-semibold text-slate-900 text-base mb-1 flex items-center gap-2">
                       {user.display_name || '-'}
+                      {user.group_name && (
+                        <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                          {user.group_name}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-600 mb-1">
                       {user.email || '-'}
@@ -437,11 +588,10 @@ export default function UserManagement() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 ${
-                      user.role === 'admin' 
-                        ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                        : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}>
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 ${user.role === 'admin'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}>
                       {user.role === 'admin' ? '管理者' : '一般ユーザー'}
                     </span>
                     <div className="flex flex-col gap-2">
@@ -466,270 +616,435 @@ export default function UserManagement() {
             ))
           )}
         </div>
-      </div>
+      </div >
 
       {/* 編集モーダル */}
-      {isEditing && editingUser && (
-        <div 
-          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
-          onClick={handleCloseEditModal}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
+      {
+        isEditing && editingUser && (
+          <div
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
+            onClick={handleCloseEditModal}
           >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-slate-900">ユーザー情報を編集</h3>
-                <button
-                  onClick={handleCloseEditModal}
-                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <form onSubmit={handleUpdateUser} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">表示名</label>
-                  <input 
-                    type="text" 
-                    placeholder="例: 佐藤" 
-                    required
-                    className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-                    value={editDisplayName} 
-                    onChange={e => setEditDisplayName(e.target.value)}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">メールアドレス</label>
-                  <input 
-                    type="email" 
-                    placeholder="staff@festival.com" 
-                    required
-                    className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-                    value={editEmail} 
-                    onChange={e => setEditEmail(e.target.value)}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">権限</label>
-                  <select 
-                    className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
-                    value={editRole} 
-                    onChange={e => setEditRole(e.target.value as 'admin' | 'staff')}
-                  >
-                    <option value="staff">一般ユーザー</option>
-                    <option value="admin">管理者</option>
-                  </select>
-                </div>
-                
-                <div className="flex gap-3 pt-4">
+            <div
+              className="bg-white rounded-lg shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-slate-900">ユーザー情報を編集</h3>
                   <button
-                    type="button"
                     onClick={handleCloseEditModal}
-                    className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold hover:bg-slate-200 active:bg-slate-300 transition-all duration-200"
+                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
                   >
-                    キャンセル
-                  </button>
-                  <button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        更新中...
-                      </span>
-                    ) : (
-                      '更新する'
-                    )}
+                    <X size={24} />
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* 強制ログアウト確認モーダル */}
-      {showLogoutModal && logoutTargetUser && (
-        <div 
-          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
-          onClick={handleCloseLogoutModal}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-red-100 rounded-lg">
-                    <LogOut className="text-red-600" size={20} />
+                <form onSubmit={handleUpdateUser} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">表示名</label>
+                    <input
+                      type="text"
+                      placeholder="例: 佐藤"
+                      required
+                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                      value={editDisplayName}
+                      onChange={e => setEditDisplayName(e.target.value)}
+                    />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">強制ログアウト</h3>
-                </div>
-                <button
-                  onClick={handleCloseLogoutModal}
-                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="mb-6">
-                <p className="text-sm text-slate-700 mb-4">
-                  <span className="font-semibold">{logoutTargetUser.display_name || logoutTargetUser.email}</span> を強制的にログアウトさせますか？
-                </p>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-red-700 font-semibold mb-1">注意事項</p>
-                  <ul className="text-xs text-red-600 space-y-1 list-disc list-inside">
-                    <li>対象ユーザーはすべてのデバイスからログアウトされます</li>
-                    <li>対象ユーザーのパスワードが指定したパスワードに変更されます</li>
-                    <li>この操作を実行するには、認証パスワードが必要です</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <form onSubmit={handleConfirmForceLogout} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    新しいパスワード <span className="text-red-600">*</span>
-                  </label>
-                  <input 
-                    type="password" 
-                    placeholder="対象ユーザーの新しいパスワードを入力（6文字以上）" 
-                    required
-                    minLength={6}
-                    className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
-                    value={newPassword} 
-                    onChange={e => setNewPassword(e.target.value)}
-                    autoFocus
-                  />
-                  <p className="text-xs text-slate-500 mt-1">対象ユーザーはこのパスワードで次回ログインします</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    認証パスワード <span className="text-red-600">*</span>
-                  </label>
-                  <input 
-                    type="password" 
-                    placeholder="認証パスワードを入力" 
-                    required
-                    className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
-                    value={adminPassword} 
-                    onChange={e => setAdminPassword(e.target.value)}
-                  />
-                  <p className="text-xs text-slate-500 mt-1">この操作を実行するための認証パスワード</p>
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={handleCloseLogoutModal}
-                    className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold hover:bg-slate-200 active:bg-slate-300 transition-all duration-200"
-                  >
-                    キャンセル
-                  </button>
-                  <button 
-                    type="submit"
-                    disabled={isLoggingOut}
-                    className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    {isLoggingOut ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        実行中...
-                      </span>
-                    ) : (
-                      '強制ログアウト'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* パスワード表示モーダル */}
-      {showPasswordModal && passwordTargetUser && (
-        <div 
-          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
-          onClick={handleClosePasswordModal}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Check className="text-green-600" size={20} />
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">メールアドレス</label>
+                    <input
+                      type="email"
+                      placeholder="staff@festival.com"
+                      required
+                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                      value={editEmail}
+                      onChange={e => setEditEmail(e.target.value)}
+                    />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">パスワード設定完了</h3>
-                </div>
-                <button
-                  onClick={handleClosePasswordModal}
-                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="mb-6">
-                <p className="text-sm text-slate-700 mb-4">
-                  <span className="font-semibold">{passwordTargetUser.display_name || passwordTargetUser.email}</span> のパスワードが変更されました。
-                </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <p className="text-xs text-blue-700 font-semibold mb-2">新しいパスワード</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-white border-2 border-blue-200 rounded-lg p-3 text-base font-mono text-slate-900 break-all">
-                      {displayedPassword}
-                    </code>
-                    <button
-                      onClick={handleCopyPassword}
-                      className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 flex items-center justify-center min-w-[48px]"
-                      title="パスワードをコピー"
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">グループ（任意）</label>
+                    <input
+                      type="text"
+                      placeholder="例: 受付班"
+                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                      value={editGroupName}
+                      onChange={e => setEditGroupName(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">権限</label>
+                    <select
+                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                      value={editRole}
+                      onChange={e => setEditRole(e.target.value as 'admin' | 'staff')}
                     >
-                      {passwordCopied ? (
-                        <Check size={20} />
+                      <option value="staff">一般ユーザー</option>
+                      <option value="admin">管理者</option>
+                    </select>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={handleCloseEditModal}
+                      className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold hover:bg-slate-200 active:bg-slate-300 transition-all duration-200"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                          更新中...
+                        </span>
                       ) : (
-                        <Copy size={20} />
+                        '更新する'
                       )}
                     </button>
                   </div>
-                  {passwordCopied && (
-                    <p className="text-xs text-green-600 mt-2 font-semibold">コピーしました！</p>
-                  )}
-                </div>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-xs text-yellow-700 font-semibold mb-1">重要</p>
-                  <ul className="text-xs text-yellow-600 space-y-1 list-disc list-inside">
-                    <li>このパスワードは今だけ表示されます</li>
-                    <li>対象ユーザーに安全に共有してください</li>
-                    <li>対象ユーザーはこのパスワードで次回ログインできます</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleClosePasswordModal}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 transition-all duration-200"
-                >
-                  閉じる
-                </button>
+                </form>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* 強制ログアウト確認モーダル */}
+      {
+        showLogoutModal && logoutTargetUser && (
+          <div
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
+            onClick={handleCloseLogoutModal}
+          >
+            <div
+              className="bg-white rounded-lg shadow-2xl max-w-md w-full zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <LogOut className="text-red-600" size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">強制ログアウト</h3>
+                  </div>
+                  <button
+                    onClick={handleCloseLogoutModal}
+                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-sm text-slate-700 mb-4">
+                    <span className="font-semibold">{logoutTargetUser?.display_name || logoutTargetUser?.email}</span> を強制的にログアウトさせますか？
+                  </p>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-xs text-red-700 font-semibold mb-1">注意事項</p>
+                    <ul className="text-xs text-red-600 space-y-1 list-disc list-inside">
+                      <li>対象ユーザーはすべてのデバイスからログアウトされます</li>
+                      <li>対象ユーザーのパスワードが指定したパスワードに変更されます</li>
+                      <li>この操作を実行するには、認証パスワードが必要です</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmForceLogout} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      新しいパスワード <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="対象ユーザーの新しいパスワードを入力（6文字以上）"
+                      required
+                      minLength={6}
+                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      autoFocus
+                    />
+                    <p className="text-xs text-slate-500 mt-1">対象ユーザーはこのパスワードで次回ログインします</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      認証パスワード <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="認証パスワードを入力"
+                      required
+                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
+                      value={adminPassword}
+                      onChange={e => setAdminPassword(e.target.value)}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">この操作を実行するための認証パスワード</p>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={handleCloseLogoutModal}
+                      className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold hover:bg-slate-200 active:bg-slate-300 transition-all duration-200"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoggingOut}
+                      className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      {isLoggingOut ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                          実行中...
+                        </span>
+                      ) : (
+                        '強制ログアウト'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* パスワード表示モーダル */}
+      {
+        showPasswordModal && passwordTargetUser && (
+          <div
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
+            onClick={handleClosePasswordModal}
+          >
+            <div
+              className="bg-white rounded-lg shadow-2xl max-w-md w-full zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Check className="text-green-600" size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">パスワード設定完了</h3>
+                  </div>
+                  <button
+                    onClick={handleClosePasswordModal}
+                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-sm text-slate-700 mb-4">
+                    <span className="font-semibold">{passwordTargetUser?.display_name || passwordTargetUser?.email}</span> のパスワードが変更されました。
+                  </p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-xs text-blue-700 font-semibold mb-2">新しいパスワード</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-white border-2 border-blue-200 rounded-lg p-3 text-base font-mono text-slate-900 break-all">
+                        {displayedPassword}
+                      </code>
+                      <button
+                        onClick={handleCopyPassword}
+                        className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 flex items-center justify-center min-w-[48px]"
+                        title="パスワードをコピー"
+                      >
+                        {passwordCopied ? (
+                          <Check size={20} />
+                        ) : (
+                          <Copy size={20} />
+                        )}
+                      </button>
+                    </div>
+                    {passwordCopied && (
+                      <p className="text-xs text-green-600 mt-2 font-semibold">コピーしました！</p>
+                    )}
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-xs text-yellow-700 font-semibold mb-1">重要</p>
+                    <ul className="text-xs text-yellow-600 space-y-1 list-disc list-inside">
+                      <li>このパスワードは今だけ表示されます</li>
+                      <li>対象ユーザーに安全に共有してください</li>
+                      <li>対象ユーザーはこのパスワードで次回ログインできます</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={handleClosePasswordModal}
+                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:bg-blue-800 transition-all duration-200"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* 一括登録モーダル */}
+      {
+        isBulkModalOpen && (
+          <div
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in"
+            onClick={() => setIsBulkModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto zoom-in-95 flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-slate-900">CSV一括登録</h3>
+                <button
+                  onClick={() => setIsBulkModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto">
+                {!bulkStatus || bulkStatus === 'idle' || bulkStatus === 'parsing' || bulkStatus === 'error' ? (
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800 font-semibold mb-2">CSVフォーマットについて</p>
+                      <p className="text-xs text-blue-700 mb-2">以下のヘッダーを持つCSVファイルをアップロードしてください（1行目はヘッダーとして無視されます）。</p>
+                      <code className="block bg-white p-2 rounded border border-blue-200 text-xs font-mono text-slate-700 mb-2">
+                        email,password,display_name,role,group_name
+                      </code>
+                      <p className="text-xs text-blue-700">例: user1@example.com,pass123,受付太郎,staff,受付班</p>
+                    </div>
+
+                    <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors">
+                      <input
+                        type="file"
+                        id="csv-upload"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                      <label htmlFor="csv-upload" className="cursor-pointer flex flex-col items-center">
+                        <Upload className="text-slate-400 mb-4" size={48} />
+                        <span className="text-slate-900 font-semibold text-lg mb-1">CSVファイルを選択</span>
+                        <span className="text-slate-500 text-sm">クリックしてアップロード</span>
+                      </label>
+                    </div>
+
+                    {parsedUsers.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="font-bold text-slate-900 mb-3">プレビュー ({parsedUsers.length}件)</h4>
+                        <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-lg">
+                          <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 sticky top-0">
+                              <tr>
+                                <th className="p-2 border-b">名前</th>
+                                <th className="p-2 border-b">Email</th>
+                                <th className="p-2 border-b">グループ</th>
+                                <th className="p-2 border-b">権限</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {parsedUsers.slice(0, 50).map((u, i) => (
+                                <tr key={i}>
+                                  <td className="p-2 text-slate-700">{u.displayName}</td>
+                                  <td className="p-2 text-slate-500">{u.email}</td>
+                                  <td className="p-2 text-slate-500">{u.groupName || '-'}</td>
+                                  <td className="p-2 text-slate-500">{u.role}</td>
+                                </tr>
+                              ))}
+                              {parsedUsers.length > 50 && (
+                                <tr>
+                                  <td colSpan={4} className="p-2 text-center text-slate-400">他 {parsedUsers.length - 50} 件...</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : bulkStatus === 'uploading' ? (
+                  <div className="py-12 text-center">
+                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <h3 className="text-lg font-bold text-slate-900">登録処理中...</h3>
+                    <p className="text-slate-500">画面を閉じないでください</p>
+                  </div>
+                ) : bulkStatus === 'complete' && bulkResult ? (
+                  <div className="py-8 text-center space-y-6">
+                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                      <Check size={32} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-2">完了しました</h3>
+                      <p className="text-slate-600">
+                        成功: <span className="font-bold text-green-600">{bulkResult.success}</span>件 /
+                        失敗: <span className="font-bold text-red-600">{bulkResult.failed}</span>件
+                      </p>
+                    </div>
+
+                    {bulkResult.errors.length > 0 && (
+                      <div className="text-left bg-red-50 p-4 rounded-lg border border-red-100 max-h-40 overflow-y-auto">
+                        <p className="text-xs font-bold text-red-800 mb-2">エラー詳細:</p>
+                        <ul className="text-xs text-red-700 list-disc list-inside space-y-1">
+                          {bulkResult.errors.map((err, i) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setIsBulkModalOpen(false)
+                        setBulkStatus('idle')
+                        setParsedUsers([])
+                        setBulkResult(null)
+                      }}
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {(bulkStatus === 'idle' || bulkStatus === 'parsing') && (
+                <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+                  <button
+                    onClick={() => setIsBulkModalOpen(false)}
+                    className="px-4 py-2 text-slate-600 font-semibold hover:bg-slate-200 rounded-lg transition-colors"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleBulkUpload}
+                    disabled={parsedUsers.length === 0}
+                    className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {parsedUsers.length}件を登録
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      }
     </div>
   )
 }
