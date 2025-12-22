@@ -25,6 +25,14 @@ export async function POST(request: Request) {
             )
         }
 
+        // Systemグループは名前変更不可
+        if (oldGroupName.toLowerCase() === 'system') {
+            return NextResponse.json(
+                { error: 'Systemグループの名前は変更できません' },
+                { status: 403 }
+            )
+        }
+
         const { error } = await supabaseAdmin
             .from('profiles')
             .update({ group_name: newGroupName })

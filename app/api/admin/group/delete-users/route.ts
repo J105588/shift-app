@@ -25,6 +25,14 @@ export async function DELETE(request: Request) {
             )
         }
 
+        // Systemグループは削除不可
+        if (groupName.toLowerCase() === 'system') {
+            return NextResponse.json(
+                { error: 'Systemグループのユーザーは一括削除できません' },
+                { status: 403 }
+            )
+        }
+
         // 1. グループに所属するユーザーのIDを取得
         const { data: profiles, error: fetchError } = await supabaseAdmin
             .from('profiles')

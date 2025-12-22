@@ -101,6 +101,22 @@ export async function PUT(request: Request) {
           { status: 400 }
         )
       }
+
+      // Systemグループの権限変更チェック(大文字小文字区別なし)
+      // 現在のプロフィールを取得
+      const { data: currentProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('group_name')
+        .eq('id', userId)
+        .single()
+
+      if (currentProfile?.group_name && currentProfile.group_name.toLowerCase() === 'system') {
+        return NextResponse.json(
+          { error: 'Systemグループのユーザーの権限は変更できません' },
+          { status: 403 }
+        )
+      }
+
       updateData.role = role
     }
 

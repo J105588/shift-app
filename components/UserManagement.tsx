@@ -580,7 +580,11 @@ export default function UserManagement() {
                   setNewGroupNameInput(filterGroup)
                   setIsRenameModalOpen(true)
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-md text-xs font-medium hover:bg-slate-50 transition-colors"
+                disabled={filterGroup.toLowerCase() === 'system'}
+                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system'
+                  ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
               >
                 <Edit2 size={14} />
                 名前変更
@@ -595,8 +599,12 @@ export default function UserManagement() {
               </button>
               <button
                 onClick={() => setIsDeleteGroupModalOpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-md text-xs font-medium hover:bg-red-50 transition-colors"
-                title="このグループの全員を削除"
+                disabled={filterGroup.toLowerCase() === 'system'}
+                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system'
+                  ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-white border-red-200 text-red-600 hover:bg-red-50'
+                  }`}
+                title={filterGroup.toLowerCase() === 'system' ? 'Systemグループは削除できません' : 'このグループの全員を削除'}
               >
                 <Trash2 size={14} />
                 一括削除
@@ -808,13 +816,17 @@ export default function UserManagement() {
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">権限</label>
                     <select
-                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base"
+                      className={`w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base ${editingUser.group_name?.toLowerCase() === 'system' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
                       value={editRole}
+                      disabled={editingUser.group_name?.toLowerCase() === 'system'}
                       onChange={e => setEditRole(e.target.value as 'admin' | 'staff')}
                     >
                       <option value="staff">一般ユーザー</option>
                       <option value="admin">管理者</option>
                     </select>
+                    {editingUser.group_name?.toLowerCase() === 'system' && (
+                      <p className="text-xs text-red-500 mt-1">※ Systemグループユーザーの権限は変更できません</p>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-4">
