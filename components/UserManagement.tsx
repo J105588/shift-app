@@ -55,7 +55,6 @@ export default function UserManagement() {
   const [newGroupNameInput, setNewGroupNameInput] = useState('')
   const [renameGroupPassword, setRenameGroupPassword] = useState('') // Systemグループ変更用パスワード
   const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false)
-  const [isLogoutGroupModalOpen, setIsLogoutGroupModalOpen] = useState(false)
 
   // 重複処理用
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
@@ -464,30 +463,7 @@ export default function UserManagement() {
     }
   }
 
-  const handleLogoutGroupUsers = async () => {
-    if (!filterGroup || filterGroup === 'all' || filterGroup === 'no_group') return
 
-    setIsSubmitting(true)
-    try {
-      const res = await fetch('/api/admin/group/logout-users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupName: filterGroup }),
-      })
-
-      const data = await res.json()
-      if (res.ok) {
-        alert(data.message)
-        setIsLogoutGroupModalOpen(false)
-      } else {
-        throw new Error(data.error)
-      }
-    } catch (err) {
-      alert('エラー: ' + (err as Error).message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 overflow-y-auto h-full pb-20">
@@ -638,14 +614,7 @@ export default function UserManagement() {
                 <Edit2 size={14} />
                 名前変更
               </button>
-              <button
-                onClick={() => setIsLogoutGroupModalOpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-md text-xs font-medium hover:bg-slate-50 transition-colors"
-                title="このグループの全員を強制ログアウト"
-              >
-                <LogOut size={14} />
-                一括ログアウト
-              </button>
+
               <button
                 onClick={() => setIsDeleteGroupModalOpen(true)}
                 disabled={filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'}
@@ -1365,39 +1334,7 @@ export default function UserManagement() {
         )
       }
 
-      {/* グループ一括ログアウト確認モーダル */}
-      {
-        isLogoutGroupModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in" onClick={() => setIsLogoutGroupModalOpen(false)}>
-            <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full zoom-in-95" onClick={e => e.stopPropagation()}>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-yellow-100 rounded-full text-yellow-600"><LogOut size={24} /></div>
-                  <h3 className="text-lg font-bold text-slate-900">一括ログアウト</h3>
-                </div>
-                <p className="text-slate-600 mb-4">
-                  グループ「<span className="font-bold">{filterGroup}</span>」の全ユーザーを強制的にログアウトさせますか？
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setIsLogoutGroupModalOpen(false)}
-                    className="flex-1 py-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
-                  >
-                    キャンセル
-                  </button>
-                  <button
-                    onClick={handleLogoutGroupUsers}
-                    disabled={isSubmitting}
-                    className="flex-1 py-2 text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-                  >
-                    実行
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      }
+
 
       {/* 重複解決モーダル */}
       {
