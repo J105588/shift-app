@@ -16,7 +16,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
 
   // 管理者の場合のみ、ビューモードを読み込む
   useEffect(() => {
-    if (profile?.role === 'admin') {
+    if (profile?.role === 'admin' || profile?.role === 'super_admin') {
       const savedMode = typeof window !== 'undefined'
         ? localStorage.getItem(VIEW_MODE_KEY) as 'admin' | 'user' | null
         : null
@@ -30,7 +30,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
 
   // ビューモードを切り替え
   const toggleViewMode = () => {
-    if (profile?.role !== 'admin' || isSwitchingMode) return
+    if ((profile?.role !== 'admin' && profile?.role !== 'super_admin') || isSwitchingMode) return
 
     const newMode = viewMode === 'admin' ? 'user' : 'admin'
 
@@ -107,7 +107,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
       <nav className="bg-white text-slate-900 shadow-sm border-b border-slate-200 sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href={profile?.role === 'admin' && viewMode === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
+            <Link href={(profile?.role === 'admin' || profile?.role === 'super_admin') && viewMode === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
               <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors duration-200 shadow-sm">
                 <CalendarDays size={20} className="text-white" />
               </div>
@@ -119,15 +119,15 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
 
             {user && (
               <div className="flex items-center gap-3">
-                {profile?.role === 'admin' && (
+                {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
                   <>
                     {/* ビューモード切り替えボタン */}
                     <button
                       onClick={toggleViewMode}
                       disabled={isSwitchingMode}
                       className={`flex items-center gap-2 text-sm px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 shadow-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${viewMode === 'admin'
-                          ? 'bg-purple-600 text-white hover:bg-purple-700'
-                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                         }`}
                       title={viewMode === 'admin' ? '通常モードに切り替え' : '管理者モードに切り替え'}
                     >
@@ -203,12 +203,12 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
                 </div>
 
                 <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${profile?.role === 'admin'
-                      ? 'bg-purple-100'
-                      : 'bg-slate-100'
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${(profile?.role === 'admin' || profile?.role === 'super_admin')
+                    ? 'bg-purple-100'
+                    : 'bg-slate-100'
                     }`}>
-                    {profile?.role === 'admin' ? (
-                      <Shield size={24} className="text-purple-600" />
+                    {profile?.role === 'admin' || profile?.role === 'super_admin' ? (
+                      <Shield size={24} className={(profile?.role === 'super_admin') ? "text-amber-600" : "text-purple-600"} />
                     ) : (
                       <User size={24} className="text-slate-600" />
                     )}
@@ -216,7 +216,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-600 mb-1">権限</p>
                     <p className="text-lg font-semibold text-slate-900">
-                      {profile?.role === 'admin' ? '管理者' : '一般'}
+                      {profile?.role === 'admin' ? '管理者' : profile?.role === 'super_admin' ? '最高管理者' : '一般'}
                     </p>
                   </div>
                 </div>
@@ -249,8 +249,8 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
         <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
           <div className="animate-icon-pulse flex flex-col items-center gap-4">
             <div className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg ${targetMode === 'admin'
-                ? 'bg-purple-100 text-purple-600'
-                : 'bg-blue-100 text-blue-600'
+              ? 'bg-purple-100 text-purple-600'
+              : 'bg-blue-100 text-blue-600'
               }`}>
               {targetMode === 'admin' ? (
                 <Shield size={48} />

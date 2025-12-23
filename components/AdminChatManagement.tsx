@@ -39,7 +39,7 @@ export default function AdminChatManagement() {
   const fetchChatGroups = async () => {
     try {
       setIsLoading(true)
-      
+
       // チャットメッセージがあるシフトグループを取得
       const { data: groupsWithMessages, error: groupsError } = await supabase
         .from('shift_groups')
@@ -67,10 +67,10 @@ export default function AdminChatManagement() {
         .filter((group: any) => group.shift_group_chat_messages && group.shift_group_chat_messages.length > 0)
         .map((group: any) => {
           const messages = group.shift_group_chat_messages || []
-          const sortedMessages = messages.sort((a: any, b: any) => 
+          const sortedMessages = messages.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
-          
+
           return {
             id: group.id,
             title: group.title,
@@ -102,7 +102,7 @@ export default function AdminChatManagement() {
   const fetchMessages = async (groupId: string) => {
     try {
       setIsLoadingMessages(true)
-      
+
       // まず基本のメッセージを取得
       const { data, error } = await supabase
         .from('shift_group_chat_messages')
@@ -193,10 +193,10 @@ export default function AdminChatManagement() {
       if (selectedGroupId) {
         await fetchMessages(selectedGroupId)
       }
-      
+
       // チャットグループ一覧も更新
       await fetchChatGroups()
-      
+
       alert('メッセージを削除しました')
     } catch (error) {
       console.error('メッセージ削除エラー:', error)
@@ -232,7 +232,7 @@ export default function AdminChatManagement() {
 
       // チャットグループ一覧を更新
       await fetchChatGroups()
-      
+
       alert('チャットを削除しました')
     } catch (error) {
       console.error('チャットグループ削除エラー:', error)
@@ -295,7 +295,7 @@ export default function AdminChatManagement() {
   // メッセージ送信
   const handleSendMessage = async (e: React.FormEvent, groupId: string) => {
     e.preventDefault()
-    
+
     const hasContent = newMessage.trim().length > 0 || selectedFile !== null
     if (!hasContent || isSending || !currentUser) return
 
@@ -345,7 +345,7 @@ export default function AdminChatManagement() {
 
         uploadedImageUrl = publicUrlData?.publicUrl || null
       }
-      
+
       const { error } = await supabase
         .from('shift_group_chat_messages')
         .insert({
@@ -363,10 +363,10 @@ export default function AdminChatManagement() {
         return
       }
 
-      
+
       // 送信後すぐにDBと同期するため、メッセージ一覧を再取得
       await fetchMessages(groupId)
-      
+
       // チャットグループ一覧も更新
       await fetchChatGroups()
 
@@ -457,8 +457,8 @@ export default function AdminChatManagement() {
       })
 
       // 管理者の場合はshift_assignmentsのチェックをスキップ
-      const isAdmin = currentProfile?.role === 'admin'
-      
+      const isAdmin = currentProfile?.role === 'admin' || currentProfile?.role === 'super_admin'
+
       if (!isAdmin) {
         // 一般ユーザーの場合のみshift_assignmentsの確認
         const { data: assignmentCheck, error: assignmentError } = await supabase
@@ -466,7 +466,7 @@ export default function AdminChatManagement() {
           .select('id, user_id, shift_group_id')
           .eq('shift_group_id', groupId)
           .eq('user_id', currentUser.id)
-        
+
         console.log('shift_assignments確認:', {
           assignmentCheck,
           assignmentError,
@@ -494,7 +494,7 @@ export default function AdminChatManagement() {
             created_by: p.created_by
           }))
         })
-      
+
       if (insertError) {
         console.error('通知作成エラー:', {
           error: insertError,
@@ -512,7 +512,7 @@ export default function AdminChatManagement() {
       }
 
       // 通知IDを取得（配列として返される）
-      const notificationIds: string[] = Array.isArray(insertedNotifications) 
+      const notificationIds: string[] = Array.isArray(insertedNotifications)
         ? insertedNotifications.map((n: { id: string }) => n.id)
         : []
 
@@ -531,7 +531,7 @@ export default function AdminChatManagement() {
 
       // GASのWebhookエンドポイントを呼び出して即座に送信
       const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL
-      
+
       console.log('GAS Webhook URL:', gasWebhookUrl ? '設定されています' : '未設定')
       console.log('通知ID:', notificationIds)
 
@@ -542,7 +542,7 @@ export default function AdminChatManagement() {
 
       try {
         console.log('GAS Webhookにリクエストを送信中...', gasWebhookUrl)
-        
+
         const response = await fetch(gasWebhookUrl, {
           method: 'POST',
           headers: {
@@ -775,20 +775,18 @@ export default function AdminChatManagement() {
                                     </button>
                                   )}
                                   <div
-                                    className={`max-w-[80%] rounded-lg px-3 py-2 relative ${
-                                      isOwnMessage
+                                    className={`max-w-[80%] rounded-lg px-3 py-2 relative ${isOwnMessage
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-slate-100 text-slate-900'
-                                    }`}
+                                      }`}
                                   >
                                     {/* リプライ先のメッセージ表示 */}
                                     {replyToMessage && (
                                       <div
-                                        className={`text-xs mb-2 pb-2 border-b ${
-                                          isOwnMessage
+                                        className={`text-xs mb-2 pb-2 border-b ${isOwnMessage
                                             ? 'border-white/30 text-white/80'
                                             : 'border-slate-300 text-slate-600'
-                                        }`}
+                                          }`}
                                       >
                                         <div className="flex items-center gap-1">
                                           <Reply size={12} />
@@ -797,7 +795,7 @@ export default function AdminChatManagement() {
                                         <div className="truncate mt-0.5">{replyToMessage.message}</div>
                                       </div>
                                     )}
-                                    
+
                                     {!isOwnMessage && (
                                       <div className="text-xs font-semibold mb-1 opacity-90">
                                         {senderName}
@@ -811,17 +809,15 @@ export default function AdminChatManagement() {
                                         <img
                                           src={msg.image_url}
                                           alt="共有された画像"
-                                          className={`rounded border ${
-                                            isOwnMessage ? 'border-white/40' : 'border-slate-200'
-                                          } max-h-64 object-contain`}
+                                          className={`rounded border ${isOwnMessage ? 'border-white/40' : 'border-slate-200'
+                                            } max-h-64 object-contain`}
                                         />
                                       </div>
                                     )}
                                     <div className="flex items-center justify-between mt-1">
                                       <div
-                                        className={`text-xs ${
-                                          isOwnMessage ? 'text-white/70' : 'text-slate-500'
-                                        }`}
+                                        className={`text-xs ${isOwnMessage ? 'text-white/70' : 'text-slate-500'
+                                          }`}
                                       >
                                         {messageTime}
                                       </div>
@@ -829,11 +825,10 @@ export default function AdminChatManagement() {
                                         {/* リプライボタン */}
                                         <button
                                           onClick={() => setReplyingTo(msg)}
-                                          className={`p-1 rounded hover:bg-opacity-20 transition-colors opacity-0 group-hover:opacity-100 ${
-                                            isOwnMessage
+                                          className={`p-1 rounded hover:bg-opacity-20 transition-colors opacity-0 group-hover:opacity-100 ${isOwnMessage
                                               ? 'hover:bg-white text-white/70 hover:text-white'
                                               : 'hover:bg-slate-200 text-slate-500 hover:text-slate-700'
-                                          }`}
+                                            }`}
                                           title="リプライ"
                                         >
                                           <Reply size={12} />

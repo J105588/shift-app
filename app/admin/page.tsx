@@ -150,7 +150,7 @@ export default function AdminPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return window.location.href = '/'
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (data?.role !== 'admin') return window.location.href = '/dashboard'
+      if (data?.role !== 'admin' && data?.role !== 'super_admin') return window.location.href = '/dashboard'
 
       // ビューモードをチェック（管理者の場合のみ）
       const viewMode = typeof window !== 'undefined'
@@ -180,7 +180,7 @@ export default function AdminPage() {
 
   // 定期的にメンテナンスモードをチェック（管理者はメンテナンス中でもアクセス可能だが、チェックは必要）
   useEffect(() => {
-    if (!user || !profile || profile?.role !== 'admin') return
+    if (!user || !profile || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) return
 
     const checkMaintenanceMode = async () => {
       try {
@@ -288,7 +288,7 @@ export default function AdminPage() {
 
   // 定期的に最新データを取得（30秒ごと、Realtimeの補完として）
   useEffect(() => {
-    if (!user || !profile || profile?.role !== 'admin') return
+    if (!user || !profile || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) return
 
     const interval = setInterval(() => {
       fetchShifts()
