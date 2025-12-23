@@ -150,7 +150,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
                         className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm font-semibold"
                       >
                         <Shield size={16} />
-                        <span className="hidden sm:inline">管理者</span>
+                        <span className="hidden sm:inline">{profile?.role === 'super_admin' ? '最高管理者' : '管理者'}</span>
                       </Link>
                     )}
                   </>

@@ -258,7 +258,7 @@ export default function UserManagement() {
       return
     }
 
-    if (!adminPassword) {
+    if (!adminPassword && currentUserProfile?.role !== 'super_admin') {
       alert('認証パスワードを入力してください')
       return
     }
@@ -399,8 +399,8 @@ export default function UserManagement() {
   const handleRenameGroup = async () => {
     if (!newGroupNameInput.trim()) return
 
-    // Systemグループへの変更時はパスワード必須
-    if (newGroupNameInput.toLowerCase() === 'system' && !renameGroupPassword) {
+    // Systemグループへの変更時はパスワード必須 (Super Adminは除外)
+    if (newGroupNameInput.toLowerCase() === 'system' && !renameGroupPassword && currentUserProfile?.role !== 'super_admin') {
       alert('Systemグループへ変更するには管理者パスワードが必要です')
       return
     }
@@ -629,8 +629,8 @@ export default function UserManagement() {
                   setNewGroupNameInput(filterGroup)
                   setIsRenameModalOpen(true)
                 }}
-                disabled={filterGroup.toLowerCase() === 'system'}
-                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system'
+                disabled={filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'}
+                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                   }`}
@@ -648,8 +648,8 @@ export default function UserManagement() {
               </button>
               <button
                 onClick={() => setIsDeleteGroupModalOpen(true)}
-                disabled={filterGroup.toLowerCase() === 'system'}
-                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system'
+                disabled={filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'}
+                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-white border-red-200 text-red-600 hover:bg-red-50'
                   }`}
@@ -879,14 +879,14 @@ export default function UserManagement() {
                     <select
                       className={`w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base ${editingUser.group_name?.toLowerCase() === 'system' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
                       value={editRole}
-                      disabled={editingUser.group_name?.toLowerCase() === 'system'}
+                      disabled={editingUser.group_name?.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'}
                       onChange={e => setEditRole(e.target.value as 'admin' | 'staff' | 'super_admin')}
                     >
                       <option value="staff">一般ユーザー</option>
                       <option value="admin">管理者</option>
                       {editingUser.role === 'super_admin' && <option value="super_admin">最高管理者</option>}
                     </select>
-                    {editingUser.group_name?.toLowerCase() === 'system' && (
+                    {editingUser.group_name?.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin' && (
                       <p className="text-xs text-red-500 mt-1">※ Systemグループユーザーの権限は変更できません</p>
                     )}
                   </div>
@@ -979,20 +979,22 @@ export default function UserManagement() {
                     />
                     <p className="text-xs text-slate-500 mt-1">対象ユーザーはこのパスワードで次回ログインします</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      認証パスワード <span className="text-red-600">*</span>
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="認証パスワードを入力"
-                      required
-                      className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
-                      value={adminPassword}
-                      onChange={e => setAdminPassword(e.target.value)}
-                    />
-                    <p className="text-xs text-slate-500 mt-1">この操作を実行するための認証パスワード</p>
-                  </div>
+                  {currentUserProfile?.role !== 'super_admin' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        認証パスワード <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="認証パスワードを入力"
+                        required
+                        className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all duration-200 bg-white text-base"
+                        value={adminPassword}
+                        onChange={e => setAdminPassword(e.target.value)}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">この操作を実行するための認証パスワード</p>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-4">
                     <button
@@ -1293,7 +1295,7 @@ export default function UserManagement() {
                 />
 
                 {/* Systemへの変更時のみパスワード入力表示 */}
-                {newGroupNameInput.toLowerCase() === 'system' && (
+                {newGroupNameInput.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin' && (
                   <div className="mb-4 animate-fadeIn">
                     <label className="block text-xs font-bold text-red-600 mb-1">
                       管理者パスワードが必要です

@@ -1,6 +1,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function POST(request: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -15,6 +17,42 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
+    // Check Requester Role
+    const cookieStore = await cookies()
+    const supabaseRequest = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() {
+                    return cookieStore.getAll()
+                },
+                setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+                    try {
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            cookieStore.set(name, value, options)
+                        )
+                    } catch {
+                        // ignored
+                    }
+                },
+            },
+        }
+    )
+
+    const { data: { user: requesterUser } } = await supabaseRequest.auth.getUser()
+    let isRequesterSuperAdmin = false
+
+    if (requesterUser) {
+        const { data: requesterProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('role')
+            .eq('id', requesterUser.id)
+            .single()
+
+        isRequesterSuperAdmin = requesterProfile?.role === 'super_admin'
+    }
+
     try {
         const { oldGroupName, newGroupName, password } = await request.json()
 
@@ -25,8 +63,8 @@ export async function POST(request: Request) {
             )
         }
 
-        // 新しい名前がSystemの場合、パスワード認証が必要
-        if (newGroupName.toLowerCase() === 'system') {
+        // 新しい名前がSystemの場合、パスワード認証が必要 (Super Adminは除外)
+        if (newGroupName.toLowerCase() === 'system' && !isRequesterSuperAdmin) {
             const adminPassword = process.env.ADMIN_FORCE_LOGOUT_PASSWORD
             if (!adminPassword) {
                 return NextResponse.json(
@@ -42,8 +80,8 @@ export async function POST(request: Request) {
             }
         }
 
-        // Systemグループは名前変更不可
-        if (oldGroupName.toLowerCase() === 'system') {
+        // Systemグループは名前変更不可 (Super Adminは除外)
+        if (oldGroupName.toLowerCase() === 'system' && !isRequesterSuperAdmin) {
             return NextResponse.json(
                 { error: 'Systemグループの名前は変更できません' },
                 { status: 403 }

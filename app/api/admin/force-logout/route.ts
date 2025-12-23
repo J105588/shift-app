@@ -99,19 +99,21 @@ export async function POST(request: Request) {
     // 2. 環境変数の特殊パスワードを確認
     const requiredPassword = process.env.ADMIN_FORCE_LOGOUT_PASSWORD
 
-    if (!requiredPassword) {
-      console.error('ADMIN_FORCE_LOGOUT_PASSWORD environment variable is not set')
-      return NextResponse.json(
-        { error: 'サーバー設定エラー: 認証パスワードが設定されていません' },
-        { status: 500 }
-      )
-    }
+    if (!isRequesterSuperAdmin) {
+      if (!requiredPassword) {
+        console.error('ADMIN_FORCE_LOGOUT_PASSWORD environment variable is not set')
+        return NextResponse.json(
+          { error: 'サーバー設定エラー: 認証パスワードが設定されていません' },
+          { status: 500 }
+        )
+      }
 
-    if (adminPassword !== requiredPassword) {
-      return NextResponse.json(
-        { error: '認証パスワードが正しくありません' },
-        { status: 401 }
-      )
+      if (adminPassword !== requiredPassword) {
+        return NextResponse.json(
+          { error: '認証パスワードが正しくありません' },
+          { status: 401 }
+        )
+      }
     }
 
     // 4. 対象ユーザーが存在するか確認

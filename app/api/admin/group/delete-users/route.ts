@@ -1,6 +1,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function DELETE(request: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -15,6 +17,42 @@ export async function DELETE(request: Request) {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
+    // Check Requester Role
+    const cookieStore = await cookies()
+    const supabaseRequest = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() {
+                    return cookieStore.getAll()
+                },
+                setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+                    try {
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            cookieStore.set(name, value, options)
+                        )
+                    } catch {
+                        // ignored
+                    }
+                },
+            },
+        }
+    )
+
+    const { data: { user: requesterUser } } = await supabaseRequest.auth.getUser()
+    let isRequesterSuperAdmin = false
+
+    if (requesterUser) {
+        const { data: requesterProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('role')
+            .eq('id', requesterUser.id)
+            .single()
+
+        isRequesterSuperAdmin = requesterProfile?.role === 'super_admin'
+    }
+
     try {
         const { groupName } = await request.json()
 
@@ -25,8 +63,8 @@ export async function DELETE(request: Request) {
             )
         }
 
-        // Systemグループは削除不可
-        if (groupName.toLowerCase() === 'system') {
+        // Systemグループは削除不可 (Super Adminは除外)
+        if (groupName.toLowerCase() === 'system' && !isRequesterSuperAdmin) {
             return NextResponse.json(
                 { error: 'Systemグループのユーザーは一括削除できません' },
                 { status: 403 }
@@ -47,9 +85,9 @@ export async function DELETE(request: Request) {
             })
         }
 
-        // PROTECTION: Block deletion if group contains a Super Admin
+        // PROTECTION: Block deletion if group contains a Super Admin (unless requester is Super Admin)
         const hasSuperAdmin = profiles.some((p: any) => p.role === 'super_admin')
-        if (hasSuperAdmin) {
+        if (hasSuperAdmin && !isRequesterSuperAdmin) {
             return NextResponse.json(
                 { error: 'Super Adminユーザーが含まれているため、このグループは一括削除できません' },
                 { status: 403 }
