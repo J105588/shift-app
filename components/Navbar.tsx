@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { LogOut, Shield, CalendarDays, User, X } from 'lucide-react'
+import { LogOut, Shield, CalendarDays, User, X, Crown } from 'lucide-react'
 
 const VIEW_MODE_KEY = 'shift-app-view-mode' // 'admin' or 'user'
 
@@ -149,7 +149,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
                         href="/admin"
                         className="flex items-center gap-2 text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm font-semibold"
                       >
-                        <Shield size={16} />
+                        {profile?.role === 'super_admin' ? <Crown size={16} /> : <Shield size={16} />}
                         <span className="hidden sm:inline">{profile?.role === 'super_admin' ? '最高管理者' : '管理者'}</span>
                       </Link>
                     )}
@@ -208,7 +208,11 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
                     : 'bg-slate-100'
                     }`}>
                     {profile?.role === 'admin' || profile?.role === 'super_admin' ? (
-                      <Shield size={24} className={(profile?.role === 'super_admin') ? "text-amber-600" : "text-purple-600"} />
+                      profile?.role === 'super_admin' ? (
+                        <Crown size={24} className="text-amber-600" />
+                      ) : (
+                        <Shield size={24} className="text-purple-600" />
+                      )
                     ) : (
                       <User size={24} className="text-slate-600" />
                     )}
@@ -253,7 +257,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
               : 'bg-blue-100 text-blue-600'
               }`}>
               {targetMode === 'admin' ? (
-                <Shield size={48} />
+                profile?.role === 'super_admin' ? <Crown size={48} /> : <Shield size={48} />
               ) : (
                 <User size={48} />
               )}
