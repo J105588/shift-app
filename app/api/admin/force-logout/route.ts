@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function POST(request: Request) {
   // 1. 特権モードでSupabaseに接続
@@ -42,9 +44,61 @@ export async function POST(request: Request) {
       )
     }
 
+    // Requester Check for Super Admin Protection
+    // ------------------------------------------------
+    const cookieStore = await cookies()
+    const supabaseRequest = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // ignored
+            }
+          },
+        },
+      }
+    )
+
+    const { data: { user: requesterUser } } = await supabaseRequest.auth.getUser()
+    let isRequesterSuperAdmin = false
+
+    if (requesterUser) {
+      const { data: requesterProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', requesterUser.id)
+        .single()
+
+      isRequesterSuperAdmin = requesterProfile?.role === 'super_admin'
+    }
+
+    // Check Target Role
+    const { data: targetProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', targetUserId)
+      .single()
+
+    if (targetProfile?.role === 'super_admin' && !isRequesterSuperAdmin) {
+      return NextResponse.json(
+        { error: '権限エラー: Super Adminユーザーは強制ログアウトできません' },
+        { status: 403 }
+      )
+    }
+
+
     // 2. 環境変数の特殊パスワードを確認
     const requiredPassword = process.env.ADMIN_FORCE_LOGOUT_PASSWORD
-    
+
     if (!requiredPassword) {
       console.error('ADMIN_FORCE_LOGOUT_PASSWORD environment variable is not set')
       return NextResponse.json(
@@ -62,7 +116,7 @@ export async function POST(request: Request) {
 
     // 4. 対象ユーザーが存在するか確認
     const { data: targetUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(targetUserId)
-    
+
     if (getUserError || !targetUser?.user) {
       return NextResponse.json(
         { error: '対象ユーザーが見つかりません' },
@@ -76,7 +130,7 @@ export async function POST(request: Request) {
     // 代わりにすべてのセッショントークンを削除する方法を使用
     // 実際には、Supabaseでは直接セッションを無効化するAPIがないため、
     // push_subscriptionsからトークンを削除することで、実質的にログアウト状態にする
-    
+
     // 6. push_subscriptionsから対象ユーザーのトークンをすべて削除
     const { error: deleteTokensError } = await supabaseAdmin
       .from('push_subscriptions')
@@ -116,9 +170,9 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Force logout error:', error)
     const errorMessage = error?.message || error?.toString() || '強制ログアウト中にエラーが発生しました'
-    
+
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         success: false
       },

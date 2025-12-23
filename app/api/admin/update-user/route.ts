@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function PUT(request: Request) {
   // 1. 特権モードでSupabaseに接続
@@ -85,6 +87,58 @@ export async function PUT(request: Request) {
     // 4. プロフィール情報の更新
     const updateData: { display_name?: string; role?: string; group_name?: string } = {}
 
+    // Requester Check for Super Admin Protection
+    // ------------------------------------------------
+    const cookieStore = await cookies()
+    const supabaseRequest = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // ignored
+            }
+          },
+        },
+      }
+    )
+
+    const { data: { user: requesterUser } } = await supabaseRequest.auth.getUser()
+    let isRequesterSuperAdmin = false
+
+    if (requesterUser) {
+      const { data: requesterProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', requesterUser.id)
+        .single()
+
+      isRequesterSuperAdmin = requesterProfile?.role === 'super_admin'
+    }
+
+    // Get current target profile to check if they are Super Admin
+    const { data: currentTargetProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    // PROTECTION 1: Cannot modify a Super Admin unless you are a Super Admin
+    if (currentTargetProfile?.role === 'super_admin' && !isRequesterSuperAdmin) {
+      return NextResponse.json(
+        { error: '権限エラー: Super Adminユーザーは変更できません' },
+        { status: 403 }
+      )
+    }
+
     if (displayName !== undefined) {
       updateData.display_name = displayName
     }
@@ -95,6 +149,14 @@ export async function PUT(request: Request) {
 
     if (role !== undefined) {
       // roleのバリデーション
+      // PROTECTION 2: Cannot set role to Super Admin via API (DB only)
+      if (role === 'super_admin') {
+        return NextResponse.json(
+          { error: '権限エラー: Super Admin権限は画面からは付与できません' },
+          { status: 403 }
+        )
+      }
+
       if (role !== 'admin' && role !== 'staff') {
         return NextResponse.json(
           { error: '権限は「admin」または「staff」である必要があります' },
@@ -103,14 +165,8 @@ export async function PUT(request: Request) {
       }
 
       // Systemグループの権限変更チェック(大文字小文字区別なし)
-      // 現在のプロフィールを取得
-      const { data: currentProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('group_name')
-        .eq('id', userId)
-        .single()
-
-      if (currentProfile?.group_name && currentProfile.group_name.toLowerCase() === 'system') {
+      // Super Adminはこれをバイパス可能
+      if (!isRequesterSuperAdmin && currentTargetProfile?.group_name && currentTargetProfile.group_name.toLowerCase() === 'system') {
         return NextResponse.json(
           { error: 'Systemグループのユーザーの権限は変更できません' },
           { status: 403 }

@@ -36,7 +36,7 @@ export async function DELETE(request: Request) {
         // 1. グループに所属するユーザーのIDを取得
         const { data: profiles, error: fetchError } = await supabaseAdmin
             .from('profiles')
-            .select('id')
+            .select('id, role')
             .eq('group_name', groupName)
 
         if (fetchError) throw fetchError
@@ -45,6 +45,15 @@ export async function DELETE(request: Request) {
                 success: true,
                 message: '削除対象のユーザーはいませんでした'
             })
+        }
+
+        // PROTECTION: Block deletion if group contains a Super Admin
+        const hasSuperAdmin = profiles.some((p: any) => p.role === 'super_admin')
+        if (hasSuperAdmin) {
+            return NextResponse.json(
+                { error: 'Super Adminユーザーが含まれているため、このグループは一括削除できません' },
+                { status: 403 }
+            )
         }
 
         // 2. Authユーザーを削除（これによりprofilesはCASCADEで削除されるはずだが、念のため）

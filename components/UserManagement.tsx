@@ -14,7 +14,7 @@ export default function UserManagement() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [role, setRole] = useState('staff')
+  const [role, setRole] = useState<'admin' | 'staff' | 'super_admin'>('staff')
   const [groupName, setGroupName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -22,7 +22,7 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<Profile | null>(null)
   const [editEmail, setEditEmail] = useState('')
   const [editDisplayName, setEditDisplayName] = useState('')
-  const [editRole, setEditRole] = useState<'admin' | 'staff'>('staff')
+  const [editRole, setEditRole] = useState<'admin' | 'staff' | 'super_admin'>('staff')
   const [editGroupName, setEditGroupName] = useState('')
   const [isEditing, setIsEditing] = useState(false)
 
@@ -61,6 +61,20 @@ export default function UserManagement() {
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
   const [duplicateConflictData, setDuplicateConflictData] = useState<{ email: string; displayName: string } | null>(null)
   const [bulkDuplicateStrategy, setBulkDuplicateStrategy] = useState<'replace' | 'keep_both'>('replace')
+
+  // Current User for Permission Checks
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null)
+
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        if (data) setCurrentUserProfile(data as Profile)
+      }
+    }
+    loadCurrentUser()
+  }, [])
 
   const fetchUsers = async () => {
     try {
@@ -515,7 +529,7 @@ export default function UserManagement() {
             <select
               className="w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base touch-manipulation"
               value={role}
-              onChange={e => setRole(e.target.value)}
+              onChange={e => setRole(e.target.value as 'admin' | 'staff' | 'super_admin')}
             >
               <option value="staff">一般ユーザー</option>
               <option value="admin">管理者</option>
@@ -694,9 +708,11 @@ export default function UserManagement() {
                     <td className="p-4">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
                         ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        : user.role === 'super_admin'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}>
-                        {user.role === 'admin' ? '管理者' : '一般ユーザー'}
+                        {user.role === 'admin' ? '管理者' : user.role === 'super_admin' ? '最高管理者' : '一般ユーザー'}
                       </span>
                     </td>
                     <td className="p-4 text-slate-600 text-sm">
@@ -704,20 +720,24 @@ export default function UserManagement() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditUser(user)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
-                        >
-                          <Edit2 size={16} />
-                          編集
-                        </button>
-                        <button
-                          onClick={() => handleForceLogout(user)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
-                        >
-                          <LogOut size={16} />
-                          強制ログアウト
-                        </button>
+                        {!(user.role === 'super_admin' && currentUserProfile?.role !== 'super_admin') && (
+                          <>
+                            <button
+                              onClick={() => handleEditUser(user)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
+                            >
+                              <Edit2 size={16} />
+                              編集
+                            </button>
+                            <button
+                              onClick={() => handleForceLogout(user)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                            >
+                              <LogOut size={16} />
+                              強制ログアウト
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -762,25 +782,31 @@ export default function UserManagement() {
                   <div className="flex flex-col items-end gap-2">
                     <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 ${user.role === 'admin'
                       ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      : user.role === 'super_admin'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
                       }`}>
-                      {user.role === 'admin' ? '管理者' : '一般ユーザー'}
+                      {user.role === 'admin' ? '管理者' : user.role === 'super_admin' ? '最高管理者' : '一般ユーザー'}
                     </span>
                     <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => handleEditUser(user)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
-                      >
-                        <Edit2 size={16} />
-                        編集
-                      </button>
-                      <button
-                        onClick={() => handleForceLogout(user)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
-                      >
-                        <LogOut size={16} />
-                        強制ログアウト
-                      </button>
+                      {!(user.role === 'super_admin' && currentUserProfile?.role !== 'super_admin') && (
+                        <>
+                          <button
+                            onClick={() => handleEditUser(user)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
+                          >
+                            <Edit2 size={16} />
+                            編集
+                          </button>
+                          <button
+                            onClick={() => handleForceLogout(user)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                          >
+                            <LogOut size={16} />
+                            強制ログアウト
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -854,10 +880,11 @@ export default function UserManagement() {
                       className={`w-full border-2 border-slate-200 p-3 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-base ${editingUser.group_name?.toLowerCase() === 'system' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
                       value={editRole}
                       disabled={editingUser.group_name?.toLowerCase() === 'system'}
-                      onChange={e => setEditRole(e.target.value as 'admin' | 'staff')}
+                      onChange={e => setEditRole(e.target.value as 'admin' | 'staff' | 'super_admin')}
                     >
                       <option value="staff">一般ユーザー</option>
                       <option value="admin">管理者</option>
+                      {editingUser.role === 'super_admin' && <option value="super_admin">最高管理者</option>}
                     </select>
                     {editingUser.group_name?.toLowerCase() === 'system' && (
                       <p className="text-xs text-red-500 mt-1">※ Systemグループユーザーの権限は変更できません</p>
