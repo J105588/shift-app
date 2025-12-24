@@ -8,6 +8,7 @@
 - [主な機能](#-主な機能)
 - [画面・機能一覧](#-画面機能一覧)
 - [操作方法](#-操作方法)
+- [システムの動作の仕組み（技術解説）](#-システムの動作の仕組み技術解説)
 - [API エンドポイント](#-api-エンドポイント)
 - [データベース・ドキュメント](#-データベースドキュメント)
 - [システム構成図](#-システム構成図)
@@ -81,6 +82,8 @@
   - 無効トークンのクリーンアップ
 - **Webhook 対応**: `doPost` エンドポイントで、任意の通知 ID リストを即時送信する API を提供。
 
+---
+
 ## 🧭 画面・機能一覧
 
 ### 主要画面
@@ -90,7 +93,7 @@
 | ログイン | `/` | 全員 | メールアドレス・パスワードによるログイン、メンテナンス中の案内表示、Push 通知の初期登録。 |
 | メンテナンス画面 | `/maintenance` | 一般ユーザー | システムメンテナンス中の案内表示。ログインセッションは維持されるが利用不可。 |
 | スタッフダッシュボード | `/dashboard` | staff / admin（ユーザービュー） | 当日〜今後の自分のシフト表示、進行中/次シフトカード、シフト詳細表示。 |
-| 管理画面トップ | `/admin` | admin | シフト管理・ユーザー管理・通知・チャット・各種設定・自動振り分けのハブ画面。 |
+| 管理画面トップ | `/admin` | admin / super_admin | シフト管理・ユーザー管理・通知・チャット・各種設定・自動振り分けのハブ画面。 |
 
 ### 管理画面タブ構成
 
@@ -163,6 +166,168 @@
 
 ---
 
+## 🔧 システムの動作の仕組み
+
+### 認証・セッション管理
+
+#### Supabase Auth の統合
+- **認証フロー**: `app/page.tsx`（ログインページ）で `supabase.auth.signInWithPassword()` を呼び出し、Supabase Auth が JWT トークンを発行。
+- **セッション永続化**: `@supabase/ssr` パッケージを使用し、HTTP-only Cookie にセッション情報を保存。これにより、ページリロード後も認証状態が維持される。
+- **ログイン状態の検証**: 各ページ（`/dashboard`, `/admin` など）で `supabase.auth.getUser()` を呼び出し、有効なセッションを確認。無効な場合は `/` にリダイレクト。
+- **強制ログアウト**: `/api/admin/force-logout` エンドポイントが、対象ユーザーのパスワードを変更することで全セッションを無効化。クライアント側では 5 秒間隔でセッション有効性をチェックし、無効化を即座に検知。
+
+#### ロールベースアクセス制御（RBAC）
+- **プロフィールテーブル**: `profiles` テーブルに `role` カラム（`staff` / `admin` / `super_admin`）を保持。
+- **RLS（Row Level Security）**: Supabase の RLS ポリシーにより、データベースレベルでアクセス制御を実現。
+  - `staff`: 自分のシフト・通知のみ閲覧可能。
+  - `admin`: 全シフト・全ユーザーの閲覧・編集が可能（`super_admin` を除く）。
+  - `super_admin`: システム全体の管理権限を持つ。
+- **API エンドポイントでの権限チェック**: `/api/admin/*` では、リクエスト元のユーザー ID を取得し、`profiles` テーブルからロールを確認してから処理を実行。
+
+### PWA・Service Worker の動作
+
+#### Service Worker の登録と管理
+- **登録タイミング**: `lib/firebaseClient.ts` の `waitForServiceWorker()` 関数が、Firebase Messaging 用の Service Worker（`/firebase-messaging-sw.js`）を登録。
+- **iOS 対応**: iOS 16.4 以降では PWA としてインストールされている場合のみ Service Worker が動作。`lib/firebaseClient.ts` で iOS 検出と PWA インストール状態の確認を行い、適切なスコープで登録。
+- **Service Worker の生成**: `scripts/generate-firebase-sw.js` が、環境変数を注入して `public/firebase-messaging-sw.js` を生成。ビルド時に `npm run generate-firebase-sw` を実行。
+
+#### PWA 更新の検知と適用
+- **更新検知**: `components/PwaUpdateListener.tsx` が、`app_updates` テーブルから最新バージョンを 30 秒間隔でポーリング。新しいバージョンが検出されると、ユーザーに更新を促すトーストを表示。
+- **強制リロード**: `lib/pwa.ts` の `forceReloadPwa()` 関数が、すべての Service Worker を unregister し、Cache API のキャッシュをクリアしてからページをリロード。これにより、古いキャッシュが残らず最新版が確実に読み込まれる。
+
+#### オフライン対応
+- **next-pwa**: `next.config.ts` で `withPWA()` を適用し、自動的に Service Worker とマニフェストを生成。ただし、開発環境（`NODE_ENV === 'development'`）では無効化。
+- **キャッシュ戦略**: 静的アセット（CSS、JS、画像）は Cache First、API リクエストは Network First の戦略を採用（next-pwa のデフォルト）。
+
+### プッシュ通知システム
+
+#### FCM トークンの取得と登録
+- **トークン取得フロー**:
+  1. ログインボタン押下時に `components/PushNotificationManager.tsx` の `setupPushNotificationsForUser()` が呼び出される（ユーザー操作に紐づくため、ブラウザが通知権限を要求可能）。
+  2. `Notification.requestPermission()` で通知権限を要求。
+  3. `lib/firebaseClient.ts` の `getFcmToken()` が、Firebase SDK の `getToken()` を呼び出して FCM トークンを取得（最大 3 回再試行、2 秒・5 秒・10 秒間隔）。
+  4. 取得したトークンを `push_subscriptions` テーブルに保存。同じ `user_id` で複数のトークンがある場合、最新の 1 つだけを残して古いものを削除。
+
+#### 通知の送信フロー（GAS + FCM）
+- **通知キュー**: 管理者が通知を作成すると、`notifications` テーブルに `scheduled_at`（送信予定時刻）と `sent_at`（送信済み時刻、初期値は NULL）を保存。
+- **バッチ処理**: `backend/Code.gs` の `processNotifications()` 関数が、1 分間隔の時間トリガーで実行される。
+  1. `notifications` テーブルから `scheduled_at <= 現在時刻` かつ `sent_at IS NULL` の通知を取得（最大 50 件、`BATCH_SIZE`）。
+  2. 各通知について、`mark_notification_sent_atomic` RPC 関数を呼び出して `sent_at` を更新（アトミックな更新により、重複処理を防止）。
+  3. 対象ユーザーの `push_subscriptions` から FCM トークンを取得（最新の 1 つだけ）。
+  4. FCM HTTP v1 API を使用して通知を送信。通知 ID から一意の `messageId` を生成し、重複防止に利用。
+  5. 無効トークン（404/410/UNREGISTERED）が返された場合、`push_subscriptions` から自動削除。
+
+#### 通知の重複防止
+- **messageId ベースの重複防止**: GAS 側で通知 ID から `messageId` を生成し、FCM の `data.messageId` と WebPush の `headers.Tag` に設定。クライアント側（`lib/firebaseClient.ts`）と Service Worker 側（`firebase-messaging-sw.js`）で、同じ `messageId` の通知が既に処理済みかチェックし、重複表示を防止。
+- **フォアグラウンド/バックグラウンドの両対応**: 
+  - フォアグラウンド時: `onMessage()` コールバックで通知を表示。Service Worker に処理済みか確認し、重複を防止。
+  - バックグラウンド時: Service Worker の `onBackgroundMessage()` で通知を表示。同じ `messageId` チェックを実施。
+
+#### Webhook による即時送信
+- **doPost エンドポイント**: `backend/Code.gs` の `doPost()` 関数が、Web アプリとして公開され、POST リクエストで `notification_ids` の配列を受け取る。
+- **即時処理**: 指定された通知 ID に対応する通知を取得し、`processSingleNotification()` を呼び出して即座に送信。管理者が手動で通知を送信する際に利用。
+
+### リアルタイム同期
+
+#### Supabase Realtime の利用
+- **チャネル購読**: `/dashboard` と `/admin` で、Supabase Realtime のチャネルを購読。
+  ```typescript
+  const channel = supabase
+    .channel('public:shifts_dashboard')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, () => {
+      loadShiftsForUser(user)
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_groups' }, () => {
+      loadShiftsForUser(user)
+    })
+  channel.subscribe()
+  ```
+- **監視対象テーブル**: `shifts`, `shift_groups`, `shift_assignments`, `profiles` の変更を監視し、変更が検出されると自動的にデータを再取得して画面を更新。
+- **補完的なポーリング**: Realtime の接続が切れた場合に備え、30 秒間隔でデータを再取得（`setInterval`）。
+
+#### セッション監視
+- **定期的なセッションチェック**: `/dashboard` と `/admin` で、5 秒間隔で `supabase.auth.getUser()` を呼び出し、セッションの有効性を確認。無効な場合（強制ログアウトなど）は即座にログアウト処理を実行。
+
+### シフト管理のデータ構造
+
+#### 個別付与シフト（`shifts` テーブル）
+- **構造**: `user_id`（担当者）、`title`（シフト名）、`start_time` / `end_time`（時間帯）、`supervisor_id`（統括者、オプション）、`description`（備考）、`color`（表示色）を保持。
+- **用途**: 特定のスタッフに個別に割り当てるシフト。後方互換性のため保持。
+
+#### 団体付与シフト（`shift_groups` + `shift_assignments`）
+- **`shift_groups` テーブル**: シフトの「枠」を定義。`title`、`start_time` / `end_time`、`description`、`color` を保持。
+- **`shift_assignments` テーブル**: シフトグループとユーザーの紐づけ。`shift_group_id`、`user_id`、`is_supervisor`（統括者フラグ）を保持。
+- **利点**: 複数人に同じシフトを一括で割り当て可能。参加者の追加・削除が容易。
+
+#### シフトの取得ロジック
+- **ユーザーダッシュボード**: 
+  1. `shifts` テーブルから `user_id = 現在のユーザーID` のシフトを取得。
+  2. `shift_assignments` から `user_id = 現在のユーザーID` の割り当てを取得し、対応する `shift_groups` を結合。
+  3. 統括者として設定されているシフト（`supervisor_id = 現在のユーザーID`）も取得。
+  4. すべてを統合してタイムテーブルに表示。
+
+### チャット機能
+
+#### チャットルームの生成
+- **シフトグループ単位**: 各 `shift_groups` に対応するチャットルームが自動的に生成される（`shift_group_chat_messages` テーブルで `shift_group_id` をキーに管理）。
+- **参加権限**: `shift_assignments` に登録されているユーザーのみがチャットに参加可能。管理者は全チャットにアクセス可能。
+
+#### メッセージ送信と画像アップロード
+- **メッセージ送信**: `components/GroupChat.tsx` が、`shift_group_chat_messages` テーブルにメッセージを INSERT。
+- **画像アップロード**: Supabase Storage の `shift-chat-images` バケットに画像をアップロードし、`image_url` をメッセージに紐づけ。ファイルサイズ上限は 5MB。
+- **リプライ機能**: `reply_to` カラムに元メッセージの ID を保存し、UI でリプライ先を表示。
+
+#### 既読管理
+- **既読レコード**: `shift_group_chat_read_receipts` テーブルに、`message_id` と `user_id` の組み合わせで既読情報を保存。
+- **既読の記録**: メッセージ一覧を取得した際、自分の既読レコードがないメッセージに対して自動的に既読レコードを作成（`upsert`）。
+
+#### チャット通知
+- **通知作成**: メッセージ送信時に、同じシフトグループの参加者（送信者を除く）に対して通知を作成。`create_chat_notification` RPC 関数（`security definer`）を使用し、RLS をバイパスして通知を作成。
+- **通知ポリシー**: `database/README_CHAT_NOTIFICATION_FIX.md` に詳細な修正手順が記載されている。RLS ポリシーにより、シフトグループの参加者のみが通知を作成可能。
+
+### メンテナンスモード
+
+#### 実装の仕組み
+- **設定の保存**: `app_settings` テーブルの `key = 'maintenance_mode'`、`value = 'true' / 'false'` で状態を管理。
+- **アクセス制御**: 各ページ（`/dashboard`, `/admin` など）で、メンテナンスモードが有効かつユーザーが `admin` / `super_admin` でない場合、`/maintenance` にリダイレクト。
+- **自動復帰**: `/maintenance` ページが 5 秒間隔でメンテナンスモードをチェックし、解除されると自動的に `/dashboard` にリダイレクト。
+
+### データフロー図
+
+#### シフト作成フロー
+```
+管理者がシフトを作成
+  ↓
+ShiftModal.tsx でフォーム送信
+  ↓
+Supabase に INSERT（shifts または shift_groups + shift_assignments）
+  ↓
+Supabase Realtime が変更を検知
+  ↓
+全クライアントの画面が自動更新
+```
+
+#### 通知送信フロー
+```
+管理者が通知を作成
+  ↓
+notifications テーブルに INSERT（scheduled_at を設定）
+  ↓
+GAS の processNotifications() が 1 分間隔で実行
+  ↓
+scheduled_at <= 現在時刻 かつ sent_at IS NULL の通知を取得
+  ↓
+mark_notification_sent_atomic() で sent_at を更新（ロック）
+  ↓
+push_subscriptions から FCM トークンを取得
+  ↓
+FCM HTTP v1 API で通知を送信
+  ↓
+クライアント側（Service Worker または onMessage）で通知を表示
+```
+
+---
+
 ## 🛰 API エンドポイント
 
 Next.js App Router の API ルートと GAS Webhook による **管理系 API** の概要。
@@ -174,11 +339,11 @@ Next.js App Router の API ルートと GAS Webhook による **管理系 API** 
 | `/api/admin/get-users` | GET | ユーザー一覧取得 | Supabase の `profiles` からユーザー一覧を取得し、管理画面ユーザータブで利用。 |
 | `/api/admin/create-user` | POST | 単体ユーザー作成 | メール・表示名・ロールを受け取り、Supabase Auth と `profiles` にユーザーを作成。 |
 | `/api/admin/bulk-create-users` | POST | 一括ユーザー作成 | CSV/JSON を元に複数ユーザーを一括作成。 |
-| `/api/admin/update-user` | POST/PUT | ユーザー更新 | ロール変更や表示名の更新など、ユーザー情報を更新。 |
+| `/api/admin/update-user` | POST/PUT | ユーザー更新 | ロール変更や表示名の更新など、ユーザー情報を更新。`super_admin` の保護ロジックを含む。 |
 | `/api/admin/group/logout-users` | POST | 複数ユーザー強制ログアウト | 対象ユーザーのセッションを失効させ、`force-logout` と連携。 |
 | `/api/admin/group/delete-users` | POST | 複数ユーザー削除 | 指定グループ内ユーザーを一括削除するユーティリティ。 |
 | `/api/admin/group/rename` | POST | グループ名変更 | グループチャットやシフトグループ名の更新に利用。 |
-| `/api/admin/force-logout` | POST | 単体強制ログアウト | 特定ユーザーを即時ログアウトさせる（ダッシュボード・管理画面のセッション監視と連携）。 |
+| `/api/admin/force-logout` | POST | 単体強制ログアウト | 特定ユーザーを即時ログアウトさせる（パスワード変更により全セッションを無効化）。ダッシュボード・管理画面のセッション監視と連携。 |
 
 > 詳細なリクエストボディやレスポンス形式は各 `route.ts` を参照。
 
@@ -186,7 +351,7 @@ Next.js App Router の API ルートと GAS Webhook による **管理系 API** 
 
 | 関数 | エンドポイント種別 | 用途 |
 |------|-------------------|------|
-| `processNotifications` | 時間トリガー | `notifications` テーブルの未送信通知を定期的に処理し、FCM 経由で配信。 |
+| `processNotifications` | 時間トリガー | `notifications` テーブルの未送信通知を定期的に処理し、FCM 経由で配信。1 分間隔で実行。 |
 | `doGet` | Web アプリ GET | 動作確認用の簡易ステータスエンドポイント。 |
 | `doPost` | Web アプリ POST | `notification_ids` の配列を受け取り、対象通知を即時送信する Webhook。 |
 
@@ -205,7 +370,9 @@ Supabase/PostgreSQL 上のテーブル群と、その運用に関するドキュ
 - **`notifications`**: プッシュ通知キュー。`scheduled_at` / `sent_at` により未送信・済みを管理。
 - **`push_subscriptions`**: 端末ごとの FCM トークン。GAS によるクリーンアップ・無効トークン削除対象。
 - **`app_settings`**: メンテナンスモードなどシステム設定キー。
-- **チャット関連テーブル**: シフトグループチャットメッセージ・既読管理用のテーブル群（詳細は SQL を参照）。
+- **`app_updates`**: PWA 更新検知用。`version` と `created_at` を保持。
+- **`shift_group_chat_messages`**: シフトグループチャットのメッセージ。`shift_group_id`、`user_id`、`message`、`image_url`、`reply_to` を保持。
+- **`shift_group_chat_read_receipts`**: チャットメッセージの既読情報。`message_id` と `user_id` の組み合わせで管理。
 
 ### 運用・トラブルシュート用ドキュメント
 
@@ -230,7 +397,7 @@ Supabase/PostgreSQL 上のテーブル群と、その運用に関するドキュ
 graph TD
     User[ユーザー] --> Login[ログインページ]
     Login --> Auth{認証チェック}
-    Auth -->|Admin| AdminDash[管理者ダッシュボード]
+    Auth -->|Admin/Super Admin| AdminDash[管理者ダッシュボード]
     Auth -->|Staff| UserDash[ユーザーダッシュボード]
 
     subgraph "管理者機能 (Admin)"
@@ -248,7 +415,6 @@ graph TD
     subgraph "ユーザー機能 (User)"
         UserDash --> Timetable[タイムテーブル表示]
         UserDash --> DetailModal[シフト詳細モーダル]
-        %% Fix: Added quotes around the text containing parentheses
         Timetable --> DayView["日別ビュー (縦型)"]
         Timetable --> WeekView[週間ビュー]
     end
@@ -260,6 +426,8 @@ graph TD
         GAS --> Supabase
         Supabase -->|Realtime| AdminDash
         Supabase -->|Realtime| UserDash
+        GAS --> FCM[Firebase Cloud Messaging]
+        FCM --> User[プッシュ通知]
     end
 ```
 
@@ -316,7 +484,7 @@ graph LR
 
 ### フロントエンド
 
-- **Next.js 16**: App Routerを使用した最新のReactフレームワーク。
+- **Next.js 16**: App Routerを使用した最新のReactフレームワーク。Server Components と Client Components を適切に使い分け。
 - **React 19**: 最新機能を使用したUI構築。
 - **TypeScript**: 型安全性による堅牢なコード。
 - **Tailwind CSS 4**: ユーティリティファーストなスタイリング。
@@ -325,8 +493,10 @@ graph LR
 ### バックエンド・インフラ
 
 - **Supabase**: 認証、データベース、リアルタイム配信、RLS（行レベルセキュリティ）。
-- **Firebase Cloud Messaging (FCM)**: プッシュ通知基盤。
+- **Firebase Cloud Messaging (FCM)**: プッシュ通知基盤。HTTP v1 API を使用。
 - **Google Apps Script (GAS)**: 通知のバッチ処理および外部データ連携。
+
+---
 
 ## 🚀 セットアップ
 
@@ -353,6 +523,9 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_FIREBASE_VAPID_KEY=your_vapid_key
+
+# オプション: 強制ログアウト時の認証パスワード（super_admin 以外の場合）
+ADMIN_FORCE_LOGOUT_PASSWORD=your_secure_password
 ```
 
 ### 3. Service Workerの生成
@@ -369,6 +542,8 @@ npm run dev
 
 http://localhost:3000 でアプリケーションにアクセス可能となる。
 
+---
+
 ## 🧩 コンポーネント一覧
 
 主要なコンポーネントとその役割は以下の通り（抜粋）。
@@ -377,27 +552,27 @@ http://localhost:3000 でアプリケーションにアクセス可能となる�
 
 | コンポーネント名 | 説明 |
 |------------------|------|
-| `Navbar.tsx` | 画面上部のナビゲーションバー。モード切り替え（admin/user）、ログアウトなどを提供。 |
-| `ScheduleTimetable.tsx` | ユーザーダッシュボードのタイムテーブル表示。縦型（日）とリスト型（週）を切り替え可能。 |
-| `ShiftDetailModal.tsx` | シフト詳細表示モーダル。参加メンバー一覧、統括者名、説明などを表示。 |
-| `ShiftModal.tsx` | 管理者向けシフト作成・編集モーダル。個別／団体シフト、統括者・色設定などを行う。 |
+| `Navbar.tsx` | 画面上部のナビゲーションバー。モード切り替え（admin/user）、ログアウトなどを提供。ビューモードは `localStorage` で永続化。 |
+| `ScheduleTimetable.tsx` | ユーザーダッシュボードのタイムテーブル表示。縦型（日）とリスト型（週）を切り替え可能。CSS の絶対配置で時間軸に沿ってシフトを配置。 |
+| `ShiftDetailModal.tsx` | シフト詳細表示モーダル。参加メンバー一覧、統括者名、説明などを表示。統括者はシフト説明を編集可能。 |
+| `ShiftModal.tsx` | 管理者向けシフト作成・編集モーダル。個別／団体シフト、統括者・色設定などを行う。テンプレート機能も提供。 |
 | `AdminCalendar.tsx` | 管理者用のモバイル向けカレンダーコンポーネント。日付タップでシフト作成。 |
 | `SpreadsheetView.tsx` | シフトの表形式ビュー。ユーザー×時間帯のマトリクスでシフトを俯瞰。 |
-| `UserManagement.tsx` | ユーザーのアカウント作成・編集・ロール管理。 |
-| `AdminNotifications.tsx` | 管理者による Push 通知の作成・送信 UI。 |
-| `AdminSettings.tsx` | メンテナンスモードを含むシステム設定管理。 |
+| `UserManagement.tsx` | ユーザーのアカウント作成・編集・ロール管理。`super_admin` の保護ロジックを含む。 |
+| `AdminNotifications.tsx` | 管理者による Push 通知の作成・送信 UI。特定ユーザーまたはシフトグループ単位で送信可能。 |
+| `AdminSettings.tsx` | メンテナンスモード切り替え、システム設定（`app_settings` テーブル）管理。 |
 | `AdminChatManagement.tsx` | 管理者用チャット管理画面。グループチャットや通知トラブルの状況確認。 |
-| `GroupChat.tsx` | シフトグループチャット画面。メッセージ送受信と簡易 UI を提供。 |
+| `GroupChat.tsx` | シフトグループチャット画面。メッセージ送受信と簡易 UI を提供。画像アップロード、リプライ機能を含む。 |
 
 ### PWA / 通知・インフラ系
 
 | コンポーネント名 | 説明 |
 |------------------|------|
 | `ClientProviders.tsx` | 全ページをラップし、PWA 更新監視・インストール促進・Toast を提供。 |
-| `PwaUpdateListener.tsx` | 新しい Service Worker が検出された際に更新トーストを表示し、`forceReloadPwa` を呼び出す。 |
+| `PwaUpdateListener.tsx` | `app_updates` テーブルから最新バージョンを 30 秒間隔でポーリングし、新しいバージョンが検出されると更新を促すトーストを表示。 |
 | `PwaInstallPrompt.tsx` | PWA インストールが可能な環境で、ユーザーにホーム画面追加を促す。 |
-| `FcmTokenManager.tsx` | ログイン済みユーザーの FCM トークン登録・更新を管理。 |
-| `PushNotificationManager.tsx` | ログイン時に通知権限を要求し、トークンとユーザー ID を Supabase に登録。 |
+| `FcmTokenManager.tsx` | ログイン済みユーザーの FCM トークン登録・更新を管理。定期的にトークンの有効性を確認。 |
+| `PushNotificationManager.tsx` | ログイン時に通知権限を要求し、トークンとユーザー ID を Supabase に登録。最大 3 回の再試行ロジックを含む。 |
 | `NotificationToast.tsx` | 画面内のステータスやエラーなどをトースト表示。 |
 | `ToastProvider.tsx` | 全体のトーストコンテキストを提供。 |
 
@@ -405,11 +580,13 @@ http://localhost:3000 でアプリケーションにアクセス可能となる�
 
 | ファイル名 | 説明 |
 |-----------|------|
-| `lib/supabase.ts` | クライアントサイド用 Supabase クライアント生成。環境変数が未設定の場合はビルド時エラーを抑止するダミークライアントも提供。 |
-| `lib/firebaseClient.ts` | Firebase / FCM の初期化、Service Worker 登録待ち、トークン取得、In-App 通知ハンドリング。 |
+| `lib/supabase.ts` | クライアントサイド用 Supabase クライアント生成。`@supabase/ssr` の `createBrowserClient` を使用。環境変数が未設定の場合はビルド時エラーを抑止するダミークライアントも提供。 |
+| `lib/firebaseClient.ts` | Firebase / FCM の初期化、Service Worker 登録待ち、トークン取得、In-App 通知ハンドリング。iOS 対応と重複防止ロジックを含む。 |
 | `lib/pwa.ts` | Service Worker の unregister と Cache クリアを行い、PWA を強制リロード。 |
-| `lib/colorUtils.ts` | シフトカラーとテキストカラーのコントラスト計算、透過度付与などのユーティリティ。 |
-| `lib/types.ts` | `Profile`, `Shift` など、主要エンティティの TypeScript 型定義。 |
+| `lib/colorUtils.ts` | シフトカラーとテキストカラーのコントラスト計算（WCAG 2.0 基準）、透過度付与などのユーティリティ。 |
+| `lib/types.ts` | `Profile`, `Shift`, `ShiftGroup`, `ShiftAssignment`, `ShiftGroupChatMessage` など、主要エンティティの TypeScript 型定義。 |
+
+---
 
 ## 🧑‍💻 開発
 
@@ -430,6 +607,8 @@ http://localhost:3000 でアプリケーションにアクセス可能となる�
   npm run generate-icons
   ```
 
+---
+
 ## 🏗 ビルドとデプロイ
 
 本番環境向けにビルドするには以下のコマンドを実行する。
@@ -446,13 +625,15 @@ npm start
 
 Vercel などのプラットフォームにデプロイする際は、環境変数をダッシュボード設定にコピーすること。
 
+---
+
 ## 🏛 アーキテクチャメモ
 
 ### タイムテーブル表示ロジック
 ユーザーダッシュボードでは、当日のシフトを視覚的に把握しやすくするため、縦軸に時間をとったタイムテーブルレイアウトを採用している。CSS の絶対配置を利用して、開始時刻と終了時刻に基づいた高さと位置を計算し、ブロックを描画する。
 
 ### モード切り替えアニメーション
-`Navbar` コンポーネント内で状態管理を行い、切り替え時に全画面のオーバーレイを表示することで、アプリのようなスムーズな遷移体験を提供している。
+`Navbar` コンポーネント内で状態管理を行い、切り替え時に全画面のオーバーレイを表示することで、アプリのようなスムーズな遷移体験を提供している。`localStorage` にビューモードを保存し、ページリロード後も状態を維持。
 
 ### 通知・チャットポリシー
 通知・チャットに関する RLS・ポリシー・トラブルシュートは、`database` ディレクトリ以下の SQL とドキュメントに詳細がある。
@@ -462,6 +643,16 @@ Vercel などのプラットフォームにデプロイする際は、環境変�
 ### Realtime・強制ログアウト
 - `/dashboard` と `/admin` は Supabase Realtime のチャネルを利用し、`shifts` / `shift_groups` / `shift_assignments` / `profiles` の変更を即時反映する。
 - セッションチェックを 5 秒間隔で行い、管理画面からの強制ログアウト（`/api/admin/force-logout` など）をほぼリアルタイムに適用する。
+
+### パフォーマンス最適化
+- **データ取得の最適化**: 必要なデータのみを取得し、JOIN を最小限に抑える。
+- **キャッシュ戦略**: next-pwa による静的アセットのキャッシュ、Service Worker によるオフライン対応。
+- **リアルタイム更新の補完**: Realtime の接続が切れた場合に備え、30 秒間隔のポーリングを実施。
+
+### セキュリティ
+- **RLS（Row Level Security）**: Supabase の RLS ポリシーにより、データベースレベルでアクセス制御を実現。ユーザーは自分のデータのみアクセス可能。
+- **API エンドポイントの権限チェック**: すべての管理系 API で、リクエスト元のユーザー ID とロールを確認。
+- **`super_admin` の保護**: 通常の `admin` からは `super_admin` を削除・強制ログアウト・ロールダウンできないよう、API レベルでガード。
 
 ---
 
