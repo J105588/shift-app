@@ -655,5 +655,7 @@ Vercel などのプラットフォームにデプロイする際は、環境変�
 - **`super_admin` の保護**: 通常の `admin` からは `super_admin` を削除・強制ログアウト・ロールダウンできないよう、API レベルでガード。
 
 ---
+最終更新:2025/12/25
+---
 
 © 2025 Junxiang Jin & 市川学園なずな祭実行委員会. All rights reserved.
