@@ -66,6 +66,7 @@ with check (
 );
 
 -- 5. Notifications Table
+drop policy if exists "Admins manage notifications" on notifications; -- Safety drop for old monolith policy
 drop policy if exists "Admins can view all notifications" on notifications;
 create policy "Admins can view all notifications"
 on notifications for select
