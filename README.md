@@ -636,9 +636,9 @@ Vercel などのプラットフォームにデプロイする際は、環境変�
 `Navbar` コンポーネント内で状態管理を行い、切り替え時に全画面のオーバーレイを表示することで、アプリのようなスムーズな遷移体験を提供している。`localStorage` にビューモードを保存し、ページリロード後も状態を維持。
 
 ### 通知・チャットポリシー
-通知・チャットに関する RLS・ポリシー・トラブルシュートは、`database` ディレクトリ以下の SQL とドキュメントに詳細がある。
-- `database/README_CHAT_NOTIFICATION_FIX.md`: チャット通知周りの最終的な修正内容のまとめ。
-- `database/TROUBLESHOOTING_NOTIFICATIONS.md`: 通知が届かない場合の確認手順と典型的な修正 SQL。
+通知・チャットに関する RLS・ポリシー・トラブルシュートは、`docs` ディレクトリ以下の SQL とドキュメントに詳細がある。
+- `docs/README_CHAT_NOTIFICATION_FIX.md`: チャット通知周りの最終的な修正内容のまとめ。
+- `docs/TROUBLESHOOTING_NOTIFICATIONS.md`: 通知が届かない場合の確認手順と典型的な修正 SQL。
 
 ### Realtime・強制ログアウト
 - `/dashboard` と `/admin` は Supabase Realtime のチャネルを利用し、`shifts` / `shift_groups` / `shift_assignments` / `profiles` の変更を即時反映する。
