@@ -222,7 +222,7 @@ export default function AdminSettings({ userId }: Props) {
             <h3 className="text-lg font-bold text-slate-900 mb-1">
               システムメンテナンスモード
             </h3>
-            <p className="text-sm text-slate-600 mb-4">
+            <p className="text-sm text-slate-700 mb-4">
               メンテナンスモードを有効にすると、一般ユーザー（スタッフ）はシステムにアクセスできなくなります。管理者は引き続きアクセス可能です。
             </p>
 
@@ -238,8 +238,8 @@ export default function AdminSettings({ userId }: Props) {
                     onClick={handleToggleMaintenance}
                     disabled={isSavingMaintenance}
                     className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${maintenanceMode
-                        ? 'bg-orange-600'
-                        : 'bg-slate-300'
+                      ? 'bg-orange-600'
+                      : 'bg-slate-300'
                       } ${isSavingMaintenance ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     aria-label={maintenanceMode ? 'メンテナンスモードを無効にする' : 'メンテナンスモードを有効にする'}
                   >
@@ -254,7 +254,7 @@ export default function AdminSettings({ userId }: Props) {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {isSavingMaintenance && (
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <span className="text-sm text-slate-600 flex items-center gap-1">
                       <span className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></span>
                       保存中...
                     </span>
@@ -276,7 +276,7 @@ export default function AdminSettings({ userId }: Props) {
             <h3 className="text-lg font-bold text-slate-900 mb-1">
               シフトテンプレート設定
             </h3>
-            <p className="text-sm text-slate-600 mb-4">
+            <p className="text-sm text-slate-700 mb-4">
               シフト作成時に使用できるテンプレートと色を設定できます。テンプレートを選択すると自動的に色が適用されます。
             </p>
 
@@ -349,7 +349,7 @@ export default function AdminSettings({ userId }: Props) {
                       className="w-10 h-10 rounded-lg border-2 border-slate-200"
                       style={{ backgroundColor: customColor }}
                     />
-                    <span className="text-sm text-slate-600">{customColor}</span>
+                    <span className="text-base text-slate-700">{customColor}</span>
                   </div>
                 </div>
 
@@ -384,7 +384,7 @@ export default function AdminSettings({ userId }: Props) {
             <RefreshCw size={18} className="text-blue-600" />
             PWAアップデート
           </h3>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-700">
             既存のキャッシュを削除し、最新のアプリに強制更新します。インストール済み端末で不具合が出た際に実行してください。
           </p>
         </div>

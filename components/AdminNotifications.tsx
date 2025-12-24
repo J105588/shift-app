@@ -301,7 +301,7 @@ export default function AdminNotifications() {
         </div>
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-900">プッシュ通知</h2>
-          <p className="text-xs sm:text-sm text-slate-600">
+          <p className="text-sm text-slate-700">
             タイトルと内容を指定して、選択したユーザーのログイン中の端末に通知を送ります。
           </p>
         </div>
@@ -395,7 +395,7 @@ export default function AdminNotifications() {
               <button
                 type="button"
                 onClick={handleSelectAll}
-                className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+                className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
               >
                 {selectedUserIds.length === users.length ? 'すべて解除' : 'すべて選択'}
               </button>
@@ -417,7 +417,7 @@ export default function AdminNotifications() {
               ))}
             </div>
             {selectedUserIds.length > 0 && (
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-sm text-slate-700 mt-1">
                 {selectedUserIds.length}人を選択中
               </p>
             )}
@@ -434,7 +434,7 @@ export default function AdminNotifications() {
               <button
                 type="button"
                 onClick={handleSelectAll}
-                className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+                className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
               >
                 {selectedUserGroupNames.length === userGroups.length ? 'すべて解除' : 'すべて選択'}
               </button>
@@ -461,7 +461,7 @@ export default function AdminNotifications() {
                       />
                       <div className="flex-1">
                         <span className="text-slate-900 font-medium">{group.name}</span>
-                        <span className="text-xs text-slate-500 ml-2">
+                        <span className="text-sm text-slate-600 ml-2">
                           （{group.memberCount}名）
                         </span>
                       </div>
@@ -469,7 +469,7 @@ export default function AdminNotifications() {
                   ))}
                 </div>
                 {selectedUserGroupNames.length > 0 && (
-                  <p className="text-xs text-slate-600 mt-1">
+                  <p className="text-sm text-slate-700 mt-1">
                     {selectedUserGroupNames.length}グループを選択中
                   </p>
                 )}
@@ -488,7 +488,7 @@ export default function AdminNotifications() {
               <button
                 type="button"
                 onClick={handleSelectAll}
-                className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+                className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
               >
                 {selectedGroupIds.length === shiftGroups.length ? 'すべて解除' : 'すべて選択'}
               </button>
@@ -515,7 +515,7 @@ export default function AdminNotifications() {
                       />
                       <div className="flex-1">
                         <span className="text-slate-900 font-medium">{group.groupName}</span>
-                        <span className="text-xs text-slate-500 ml-2">
+                        <span className="text-sm text-slate-600 ml-2">
                           （{group.memberCount}名）
                         </span>
                       </div>
@@ -523,7 +523,7 @@ export default function AdminNotifications() {
                   ))}
                 </div>
                 {selectedGroupIds.length > 0 && (
-                  <p className="text-xs text-slate-600 mt-1">
+                  <p className="text-sm text-slate-700 mt-1">
                     {selectedGroupIds.length}グループを選択中
                   </p>
                 )}

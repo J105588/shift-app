@@ -477,7 +477,7 @@ export default function UserManagement() {
             </div>
             <div>
               <h3 className="font-bold text-lg sm:text-xl text-slate-900">新規ユーザー登録</h3>
-              <p className="text-xs sm:text-sm text-slate-600">新しいユーザーのアカウントを作成します</p>
+              <p className="text-sm text-slate-700">新しいユーザーのアカウントを作成します</p>
             </div>
           </div>
           <button
@@ -566,7 +566,7 @@ export default function UserManagement() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="font-bold text-base sm:text-lg text-slate-900">登録ユーザー一覧</h3>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1">{filteredUsers.length}人のユーザーが表示されています</p>
+              <p className="text-sm text-slate-700 mt-1">{filteredUsers.length}人のユーザーが表示されています</p>
             </div>
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
               <div className="relative">
@@ -599,14 +599,14 @@ export default function UserManagement() {
           {/* グループ操作アクションバー */}
           {filterGroup !== 'all' && filterGroup !== 'no_group' && (
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
-              <span className="text-xs font-semibold text-slate-500 mr-2">グループ操作:</span>
+              <span className="text-sm font-semibold text-slate-600 mr-2">グループ操作:</span>
               <button
                 onClick={() => {
                   setNewGroupNameInput(filterGroup)
                   setIsRenameModalOpen(true)
                 }}
                 disabled={filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'}
-                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'
+                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-sm font-medium transition-colors ${filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                   }`}
@@ -618,7 +618,7 @@ export default function UserManagement() {
               <button
                 onClick={() => setIsDeleteGroupModalOpen(true)}
                 disabled={filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'}
-                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-xs font-medium transition-colors ${filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'
+                className={`flex items-center gap-1 px-3 py-1.5 border rounded-md text-sm font-medium transition-colors ${filterGroup.toLowerCase() === 'system' && currentUserProfile?.role !== 'super_admin'
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-white border-red-200 text-red-600 hover:bg-red-50'
                   }`}
@@ -664,7 +664,7 @@ export default function UserManagement() {
                 filteredUsers.map(user => (
                   <tr key={user.id} className="hover:bg-slate-50 transition-colors duration-150">
                     <td className="p-4 font-semibold text-slate-900">{user.display_name || '-'}</td>
-                    <td className="p-4 text-slate-600 text-sm">{user.email || '-'}</td>
+                    <td className="p-4 text-slate-700 text-sm">{user.email || '-'}</td>
                     <td className="p-4">
                       {user.group_name ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
@@ -684,7 +684,7 @@ export default function UserManagement() {
                         {user.role === 'admin' ? '管理者' : user.role === 'super_admin' ? '最高管理者' : '一般ユーザー'}
                       </span>
                     </td>
-                    <td className="p-4 text-slate-600 text-sm">
+                    <td className="p-4 text-slate-700 text-sm">
                       {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '-'}
                     </td>
                     <td className="p-4">
@@ -741,10 +741,10 @@ export default function UserManagement() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-600 mb-1">
+                    <div className="text-sm text-slate-700 mb-1">
                       {user.email || '-'}
                     </div>
-                    <div className="text-xs text-slate-500 mb-3">
+                    <div className="text-sm text-slate-600 mb-3">
                       登録日: {user.created_at ? new Date(user.created_at).toLocaleDateString('ja-JP') : '-'}
                     </div>
                   </div>

@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, isToday, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale/ja'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Clock } from 'lucide-react'
-import { getTextColor, addOpacity } from '@/lib/colorUtils'
+import { getTextColor, getLegibleTextColor, addOpacity } from '@/lib/colorUtils'
 
 type CalendarEvent = {
   id: string
@@ -153,7 +153,7 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
               <ChevronLeft className="text-blue-600" size={18} />
             </button>
             <div className="text-center flex-1 px-4">
-              <div className="text-xs sm:text-sm font-semibold text-slate-900">
+              <div className="text-sm sm:text-base font-semibold text-slate-900">
                 {format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 {format(weekEnd, 'M月d日', { locale: ja })}
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
         </div>
 
         {/* 週カレンダー */}
-        <div 
+        <div
           className="bg-white rounded-b-lg overflow-hidden"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -180,25 +180,22 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
               const dayKey = format(day, 'yyyy-MM-dd')
               const eventsForDay = dayEvents.get(dayKey) || []
               const isDayToday = isToday(day)
-              
+
               return (
                 <div
                   key={dayKey}
-                  className={`border-2 rounded-lg overflow-hidden ${
-                    isDayToday ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
-                  }`}
+                  className={`border-2 rounded-lg overflow-hidden ${isDayToday ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
+                    }`}
                 >
                   {/* 日付ヘッダー */}
                   <div
-                    className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${
-                      isDayToday ? 'bg-blue-100' : 'bg-slate-50 hover:bg-slate-100'
-                    }`}
+                    className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${isDayToday ? 'bg-blue-100' : 'bg-slate-50 hover:bg-slate-100'
+                      }`}
                     onClick={() => handleDateClick(day)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex flex-col items-center justify-center ${
-                        isDayToday ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
-                      }`}>
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex flex-col items-center justify-center ${isDayToday ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
+                        }`}>
                         <div className="text-xs font-semibold">
                           {format(day, 'E', { locale: ja })}
                         </div>
@@ -210,7 +207,7 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
                         <div className="font-semibold text-slate-900 text-sm sm:text-base">
                           {formatDateFull(day)}
                         </div>
-                        <div className="text-xs text-slate-600">
+                        <div className="text-sm text-slate-700">
                           {eventsForDay.length}件のシフト
                         </div>
                       </div>
@@ -235,8 +232,8 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
                     <div className="px-3 pb-3 space-y-2">
                       {eventsForDay.map((event) => {
                         const eventColor = (event as any).color || '#3b82f6'
-                        const textColor = getTextColor(eventColor)
-                        
+                        const textColor = getLegibleTextColor(eventColor)
+
                         return (
                           <div
                             key={event.id}
@@ -302,7 +299,7 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
             <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
               {formatDateFull(selectedDate)}
             </h3>
-            <div className="text-xs sm:text-sm text-slate-600">
+            <div className="text-sm text-slate-700">
               {selectedDateEvents.length}件のシフト
             </div>
           </div>
@@ -323,7 +320,7 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
           {selectedDateEvents.length === 0 ? (
             <div className="text-center py-12">
               <CalendarIcon className="mx-auto text-slate-300 mb-4" size={48} />
-              <p className="text-slate-500 font-medium">この日はシフトがありません</p>
+              <p className="text-slate-600 font-medium">この日はシフトがありません</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -342,13 +339,13 @@ export default function AdminCalendar({ events, onSelectSlot, onSelectEvent, cur
                         <div className="font-bold text-base sm:text-lg text-slate-900">
                           {formatTime(event.start)} - {formatTime(event.end)}
                         </div>
-                        <div className="text-xs sm:text-sm text-slate-600 mt-1">
+                        <div className="text-sm text-slate-700 mt-1">
                           {format(selectedDate, 'M/d(E)', { locale: ja })}
                         </div>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-sm sm:text-base font-semibold text-slate-900">
                     {event.title}
                   </div>

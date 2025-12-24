@@ -663,13 +663,13 @@ export default function AdminChatManagement() {
           <MessageCircle className="text-blue-600" size={24} />
           チャット管理
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-700">
           団体シフトのチャットを一覧で確認し、メッセージやチャットグループを削除できます
         </p>
       </div>
 
       {chatGroups.length === 0 ? (
-        <div className="text-center py-12 text-slate-500">
+        <div className="text-center py-12 text-slate-600">
           <MessageCircle size={48} className="mx-auto mb-4 text-slate-300" />
           <p>チャットがまだありません</p>
         </div>
@@ -694,11 +694,11 @@ export default function AdminChatManagement() {
                         <h3 className="font-semibold text-slate-900 truncate">
                           {group.title}
                         </h3>
-                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+                        <span className="text-sm px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
                           {group.message_count}件
                         </span>
                       </div>
-                      <div className="text-xs text-slate-600 space-y-1">
+                      <div className="text-sm text-slate-700 space-y-1">
                         <div>
                           {format(startTime, 'M/d (E) HH:mm', { locale: ja })} 〜{' '}
                           {format(endTime, 'HH:mm', { locale: ja })}
@@ -776,16 +776,16 @@ export default function AdminChatManagement() {
                                   )}
                                   <div
                                     className={`max-w-[80%] rounded-lg px-3 py-2 relative ${isOwnMessage
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-slate-100 text-slate-900'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-slate-100 text-slate-900'
                                       }`}
                                   >
                                     {/* リプライ先のメッセージ表示 */}
                                     {replyToMessage && (
                                       <div
                                         className={`text-xs mb-2 pb-2 border-b ${isOwnMessage
-                                            ? 'border-white/30 text-white/80'
-                                            : 'border-slate-300 text-slate-600'
+                                          ? 'border-white/30 text-white/80'
+                                          : 'border-slate-300 text-slate-600'
                                           }`}
                                       >
                                         <div className="flex items-center gap-1">
@@ -826,8 +826,8 @@ export default function AdminChatManagement() {
                                         <button
                                           onClick={() => setReplyingTo(msg)}
                                           className={`p-1 rounded hover:bg-opacity-20 transition-colors opacity-0 group-hover:opacity-100 ${isOwnMessage
-                                              ? 'hover:bg-white text-white/70 hover:text-white'
-                                              : 'hover:bg-slate-200 text-slate-500 hover:text-slate-700'
+                                            ? 'hover:bg-white text-white/70 hover:text-white'
+                                            : 'hover:bg-slate-200 text-slate-500 hover:text-slate-700'
                                             }`}
                                           title="リプライ"
                                         >
@@ -948,7 +948,7 @@ export default function AdminChatManagement() {
                               )}
                             </div>
                           )}
-                          <p className="text-xs text-slate-500 mt-2">
+                          <p className="text-sm text-slate-600 mt-2">
                             {newMessage.length}/500文字
                           </p>
                         </form>

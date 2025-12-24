@@ -4,7 +4,7 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks,
 import { ja } from 'date-fns/locale/ja'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, UserCog } from 'lucide-react'
 import { Profile, Shift } from '@/lib/types'
-import { getShiftColor, getTextColor, addOpacity } from '@/lib/colorUtils'
+import { getShiftColor, getLegibleTextColor, addOpacity } from '@/lib/colorUtils'
 
 type ShiftWithProfile = Shift & {
   profiles?: Profile
@@ -141,7 +141,7 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
           <table className="w-full border-collapse min-w-[600px]">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
-                <th className="border border-slate-200 p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold text-slate-700 min-w-[100px] sm:min-w-[120px] bg-slate-50 sticky left-0 z-20">
+                <th className="border border-slate-200 p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold text-slate-800 min-w-[100px] sm:min-w-[120px] bg-slate-50 sticky left-0 z-20">
                   ユーザー
                 </th>
                 {weekDays.map((day) => {
@@ -153,7 +153,7 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                       className={`border border-slate-200 p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] ${isDayToday ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
                         }`}
                     >
-                      <div className="text-[10px] sm:text-xs">{format(day, 'E', { locale: ja })}</div>
+                      <div className="text-xs sm:text-sm">{format(day, 'E', { locale: ja })}</div>
                       <div className={`text-sm sm:text-base font-bold ${isDayToday ? 'text-blue-700' : 'text-slate-900'}`}>
                         {format(day, 'd')}
                       </div>
@@ -181,13 +181,13 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
                       >
                         <div className="space-y-1">
                           {dayShifts.length === 0 ? (
-                            <div className="text-[10px] text-slate-400 text-center py-1 sm:py-2">-</div>
+                            <div className="text-xs text-slate-500 text-center py-1 sm:py-2">-</div>
                           ) : (
                             dayShifts.map((shift) => {
                               const isGroupShift = shift.isGroupShift || false
                               const isSupervisor = shift.isGroupShift && shift.assignments?.find((a: any) => a.user_id === user.id && a.is_supervisor)
                               const shiftColor = getShiftColor(shift)
-                              const textColor = getTextColor(shiftColor)
+                              const textColor = getLegibleTextColor(shiftColor)
                               const borderColor = shiftColor
                               const bgColor = addOpacity(shiftColor, 0.2) // 20% opacity
 
@@ -247,7 +247,7 @@ export default function SpreadsheetView({ shifts, users, onShiftClick }: Props) 
 
       {/* 凡例 */}
       <div className="bg-slate-50 p-2 sm:p-3 border-t border-slate-200">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-600">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-700">
           <div className="flex items-center gap-1 sm:gap-2">
             <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-100 border border-blue-200 rounded"></div>
             <span>個別シフト</span>
