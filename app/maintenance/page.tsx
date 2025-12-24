@@ -19,7 +19,7 @@ export default function MaintenancePage() {
     const checkMaintenanceMode = async () => {
       try {
         setIsChecking(true)
-        
+
         // ユーザー認証を確認
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
@@ -41,7 +41,7 @@ export default function MaintenancePage() {
         }
 
         // 管理者の場合は管理画面へ
-        if (profile.role === 'admin') {
+        if (profile.role === 'admin' || profile.role === 'super_admin') {
           router.replace('/admin')
           return
         }
@@ -92,7 +92,7 @@ export default function MaintenancePage() {
             <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">システムメンテナンス中</h1>
             <p className="text-orange-100 text-xs sm:text-sm">現在、システムメンテナンスを実施しています</p>
           </div>
-          
+
           <div className="p-6 sm:p-8 space-y-5 sm:space-y-6 bg-white">
             <div className="space-y-4">
               <div className="flex items-start gap-3 sm:gap-4">

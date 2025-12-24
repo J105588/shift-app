@@ -62,24 +62,24 @@ export default function Dashboard() {
       .from('shift_assignments')
       .select('*, shift_groups!shift_assignments_shift_group_id_fkey(*)')
       .eq('user_id', currentUser.id)
-    
+
     if (myAssignments) {
       for (const assignment of myAssignments) {
         const group = assignment.shift_groups
         if (!group) continue
-        
+
         // 同じshift_groupの全参加者を取得
         const { data: allAssignments } = await supabase
           .from('shift_assignments')
           .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
           .eq('shift_group_id', group.id)
-        
+
         if (allAssignments) {
           // 統括者を取得
           const supervisor = allAssignments.find((a: any) => a.is_supervisor)
           const isSupervisor = assignment.is_supervisor
           const memberCount = allAssignments.length
-          
+
           // rawShiftsに追加（詳細表示用）
           allRawShifts.push({
             ...group,
@@ -88,7 +88,7 @@ export default function Dashboard() {
             supervisor_id: supervisor?.user_id || null,
             user_id: currentUser.id // 自分が参加している
           })
-          
+
           // カレンダー用のイベントデータ
           allFormatted.push({
             id: group.id,
@@ -112,21 +112,21 @@ export default function Dashboard() {
     }
 
     setRawShifts(allRawShifts)
-    
+
     // 自分のシフトを取得（個別付与）
-    const myOwnEvents = allFormatted.filter((e: any) => 
+    const myOwnEvents = allFormatted.filter((e: any) =>
       !e.isGroupShift && e.resourceId === currentUser.id
     )
-    
+
     // 統括者として設定されているシフトを取得（個別付与）
-    const supervisorEvents = allFormatted.filter((e: any) => 
+    const supervisorEvents = allFormatted.filter((e: any) =>
       !e.isGroupShift && e.supervisor_id === currentUser.id
     )
-    
+
     // 統括者として設定されているシフトの重複を除去
     const uniqueSupervisorEvents: any[] = []
     const seenKeys = new Set<string>()
-    
+
     supervisorEvents.forEach((event: any) => {
       const key = `${event.start.getTime()}-${event.end.getTime()}-${event.shiftTitle}-${event.description || ''}`
       if (!seenKeys.has(key)) {
@@ -134,31 +134,31 @@ export default function Dashboard() {
         uniqueSupervisorEvents.push(event)
       }
     })
-    
+
     // 団体付与シフト（自分が参加しているもの）
     const groupEvents = allFormatted.filter((e: any) => e.isGroupShift)
-    
+
     // すべてを結合
     const myEvents = [...myOwnEvents, ...uniqueSupervisorEvents, ...groupEvents]
     setEvents(myEvents)
 
     // 現在時刻
     const now = new Date()
-    
+
     // 進行中のシフトを探す（開始時刻 <= 現在時刻 <= 終了時刻）
     // 自分のシフト（個別付与）のみを対象
-    const myOwnShifts = myEvents.filter((e: any) => 
+    const myOwnShifts = myEvents.filter((e: any) =>
       !e.isGroupShift && e.resourceId === currentUser.id
     )
     const currentShifts = myOwnShifts.filter((e: any) => {
       return e.start <= now && e.end >= now
     })
-    
+
     // 自分の次のシフトを探す（現在時刻より後のシフト、個別付与と団体付与の両方）
     const myShifts = myEvents
       .filter((e: any) => e.start > now)
       .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
-    
+
     // 進行中のシフトがあればそれを優先、なければ次のシフト
     if (currentShifts.length > 0) {
       setNextShift({ ...currentShifts[0], isCurrent: true })
@@ -175,19 +175,19 @@ export default function Dashboard() {
       if (!user) return window.location.href = '/'
 
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      
+
       // 管理者の場合、ビューモードをチェック
-      if (profile?.role === 'admin') {
-        const viewMode = typeof window !== 'undefined' 
+      if (profile?.role === 'admin' || profile?.role === 'super_admin') {
+        const viewMode = typeof window !== 'undefined'
           ? localStorage.getItem('shift-app-view-mode') as 'admin' | 'user' | null
           : null
-        
+
         // 管理者モードの場合は管理者ページにリダイレクト
         if (viewMode === 'admin') {
           router.replace('/admin')
           return
         }
-        
+
         // ビューモードが未設定の場合は管理者モードに設定してリダイレクト
         if (!viewMode) {
           if (typeof window !== 'undefined') {
@@ -197,7 +197,7 @@ export default function Dashboard() {
           return
         }
       }
-      
+
       // メンテナンスモードをチェック
       const { data: maintenanceSetting } = await supabase
         .from('app_settings')
@@ -209,7 +209,7 @@ export default function Dashboard() {
 
       // メンテナンスモードが有効で、一般ユーザーの場合はメンテナンスページへリダイレクト（ログアウトしない）
       // 管理者が通常モードの場合はメンテナンスモードの影響を受けない
-      if (isMaintenanceMode && profile?.role !== 'admin') {
+      if (isMaintenanceMode && profile?.role !== 'admin' && profile?.role !== 'super_admin') {
         router.replace('/maintenance')
         return
       }
@@ -238,7 +238,7 @@ export default function Dashboard() {
         const isMaintenanceMode = maintenanceSetting?.value === 'true'
 
         // メンテナンスモードが有効で、一般ユーザーの場合はメンテナンスページへリダイレクト（ログアウトしない）
-        if (isMaintenanceMode && profile?.role !== 'admin') {
+        if (isMaintenanceMode && profile?.role !== 'admin' && profile?.role !== 'super_admin') {
           router.replace('/maintenance')
         }
       } catch (error) {
@@ -315,7 +315,7 @@ export default function Dashboard() {
     const checkSession = async () => {
       try {
         const { data: { user: currentUser }, error } = await supabase.auth.getUser()
-        
+
         // セッションが無効になった場合（強制ログアウトされた場合）
         if (error || !currentUser || currentUser.id !== user.id) {
           console.log('セッションが無効になりました。ログアウトします。')
@@ -368,7 +368,7 @@ export default function Dashboard() {
           .from('shift_assignments')
           .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
           .eq('shift_group_id', event.id)
-        
+
         if (assignments) {
           const coworkersList = assignments.map((a: any) => ({
             id: a.user_id,
@@ -377,7 +377,7 @@ export default function Dashboard() {
             isSupervisor: a.is_supervisor
           }))
           setCoworkers(coworkersList)
-          
+
           const supervisor = assignments.find((a: any) => a.is_supervisor)
           setSupervisorName(supervisor?.profiles?.display_name || null)
         }
@@ -423,7 +423,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar user={user} profile={profile} />
       <FcmTokenManager userId={user?.id || ''} />
-      
+
       <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
         {/* ウェルカムカード */}
         <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200">
@@ -434,20 +434,20 @@ export default function Dashboard() {
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">今日も1日頑張りましょう！</p>
             </div>
-            
+
             {nextShift ? (() => {
               const shiftColor = (nextShift as any).color || (nextShift.isCurrent ? '#ef4444' : '#3b82f6')
               const textColor = getTextColor(shiftColor)
-              
+
               return (
-                <div 
+                <div
                   className={`px-4 sm:px-6 py-4 rounded-lg flex items-center gap-3 sm:gap-4 w-full lg:w-auto border-2`}
                   style={{
                     backgroundColor: nextShift.isCurrent ? addOpacity('#ef4444', 0.1) : addOpacity(shiftColor, 0.1),
                     borderColor: nextShift.isCurrent ? '#ef4444' : shiftColor,
                   }}
                 >
-                  <div 
+                  <div
                     className="p-2 sm:p-3 rounded-lg flex-shrink-0"
                     style={{
                       backgroundColor: nextShift.isCurrent ? '#ef4444' : shiftColor,
@@ -456,7 +456,7 @@ export default function Dashboard() {
                     <Clock size={24} className="text-white sm:w-7 sm:h-7" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div 
+                    <div
                       className="text-xs font-semibold uppercase tracking-wider mb-1"
                       style={{ color: nextShift.isCurrent ? '#ef4444' : shiftColor }}
                     >
@@ -495,16 +495,16 @@ export default function Dashboard() {
         shift={
           selectedEvent
             ? {
-                id: selectedEvent.id,
-                title: selectedEvent.shiftTitle || selectedEvent.title,
-                start: selectedEvent.start,
-                end: selectedEvent.end,
-                description: selectedEvent.description,
-                supervisor_id: selectedEvent.supervisor_id,
-                isGroupShift: selectedEvent.isGroupShift || false,
-                shiftGroupId: selectedEvent.isGroupShift ? selectedEvent.id : undefined,
-                color: (selectedEvent as any).color || null,
-              }
+              id: selectedEvent.id,
+              title: selectedEvent.shiftTitle || selectedEvent.title,
+              start: selectedEvent.start,
+              end: selectedEvent.end,
+              description: selectedEvent.description,
+              supervisor_id: selectedEvent.supervisor_id,
+              isGroupShift: selectedEvent.isGroupShift || false,
+              shiftGroupId: selectedEvent.isGroupShift ? selectedEvent.id : undefined,
+              color: (selectedEvent as any).color || null,
+            }
             : null
         }
         coworkers={coworkers}
