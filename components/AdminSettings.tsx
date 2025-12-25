@@ -447,7 +447,7 @@ export default function AdminSettings({ userId }: Props) {
           <div>
             <h3 className="text-base font-bold text-red-700 flex items-center gap-2 mb-1">
               <AlertTriangle size={18} />
-              Danger Zone (管理者向け危険な操作)
+              Danger Zone
             </h3>
             <p className="text-sm text-red-600">
               以下の操作は取り消せません。十分に注意して実行してください。
