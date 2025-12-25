@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Settings, RefreshCw, AlertTriangle, Palette, Plus, X } from 'lucide-react'
+import { Settings, RefreshCw, AlertTriangle, Palette, Plus, X, Trash2 } from 'lucide-react'
 import { forceReloadPwa } from '@/lib/pwa'
 
 type ShiftTemplate = {
@@ -20,6 +20,9 @@ export default function AdminSettings({ userId }: Props) {
   const [isLoadingMaintenance, setIsLoadingMaintenance] = useState(true)
   const [isSavingMaintenance, setIsSavingMaintenance] = useState(false)
   const [isPwaUpdating, setIsPwaUpdating] = useState(false)
+  const [isResettingSystem, setIsResettingSystem] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetConfirmation, setResetConfirmation] = useState('')
   const [templates, setTemplates] = useState<ShiftTemplate[]>([])
   const [customColor, setCustomColor] = useState('#64748b')
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true)
@@ -207,6 +210,37 @@ export default function AdminSettings({ userId }: Props) {
       alert(`PWAの更新に失敗しました: ${error?.message || '詳細不明'}`)
     } finally {
       setIsPwaUpdating(false)
+    }
+  }
+
+  // システム初期化
+  const handleSystemReset = async () => {
+    if (resetConfirmation !== 'delete_all_data') return
+
+    setIsResettingSystem(true)
+    try {
+      const res = await fetch('/api/admin/system-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmationKeyword: resetConfirmation }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        alert(data.message || 'システムを初期化しました。')
+        setShowResetModal(false)
+        setResetConfirmation('')
+        // ページをリロードして状態をリセット
+        window.location.reload()
+      } else {
+        throw new Error(data.error || '初期化に失敗しました')
+      }
+    } catch (error: any) {
+      console.error('System reset error:', error)
+      alert(`システム初期化エラー: ${error?.message}`)
+    } finally {
+      setIsResettingSystem(false)
     }
   }
 
@@ -406,6 +440,110 @@ export default function AdminSettings({ userId }: Props) {
           )}
         </button>
       </div>
+
+      {/* Danger Zone */}
+      <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-4 sm:p-5">
+        <div className="flex flex-col gap-4">
+          <div>
+            <h3 className="text-base font-bold text-red-700 flex items-center gap-2 mb-1">
+              <AlertTriangle size={18} />
+              Danger Zone (管理者向け危険な操作)
+            </h3>
+            <p className="text-sm text-red-600">
+              以下の操作は取り消せません。十分に注意して実行してください。
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 border border-red-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm">システム完全初期化</h4>
+              <p className="text-xs text-slate-600 mt-1">
+                最高管理者とシステム設定を除く、すべてのデータ（ユーザー、シフト、チャット、通知など）を削除します。<br />
+                この操作は元に戻せません。
+              </p>
+            </div>
+            <button
+              onClick={() => setShowResetModal(true)}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors shadow-sm whitespace-nowrap"
+            >
+              初期化を実行
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex items-center gap-3 text-red-600 mb-4">
+                <div className="p-3 bg-red-100 rounded-full">
+                  <AlertTriangle size={24} />
+                </div>
+                <h3 className="text-xl font-bold">本当に初期化しますか？</h3>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  この操作を実行すると、以下のデータが<span className="font-bold text-red-600">すべて永久に削除</span>されます。
+                </p>
+                <ul className="list-disc list-inside text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <li>全ユーザーのアカウント（最高管理者を除く）</li>
+                  <li>すべてのシフトデータと履歴</li>
+                  <li>すべてのチャットメッセージとグループ</li>
+                  <li>すべての通知と既読ステータス</li>
+                </ul>
+                <p className="text-xs text-slate-500">
+                  ※システム設定（色設定など）とあなたのアカウントは保持されます。
+                </p>
+
+                <div className="pt-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    確認のため <span className="font-mono text-red-600 bg-red-50 px-1 rounded">delete_all_data</span> と入力してください
+                  </label>
+                  <input
+                    type="text"
+                    value={resetConfirmation}
+                    onChange={(e) => setResetConfirmation(e.target.value)}
+                    placeholder="delete_all_data"
+                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowResetModal(false)
+                    setResetConfirmation('')
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleSystemReset}
+                  disabled={resetConfirmation !== 'delete_all_data' || isResettingSystem}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                >
+                  {isResettingSystem ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      初期化中...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      初期化を実行
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
