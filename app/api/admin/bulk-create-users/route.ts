@@ -1,9 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { verifyAdminRequest } from '@/lib/auth'
 
 export const maxDuration = 60 // タイムアウトを延長
 
 export async function POST(request: Request) {
+  // 管理者認証チェック
+  const { error: authError, status: authStatus } = await verifyAdminRequest()
+  if (authError) {
+    return NextResponse.json({ error: authError }, { status: authStatus })
+  }
     // 1. 特権モードでSupabaseに接続
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -36,29 +42,20 @@ export async function POST(request: Request) {
         }
 
         // 2. 既存ユーザーを一括取得（全件取得）
-        let allAuthUsers: any[] = []
-        let page = 1
-        const perPage = 50
-        let hasMore = true
-        while (hasMore) {
-            const { data, error: authError } = await supabaseAdmin.auth.admin.listUsers({ page: page, perPage: perPage })
-            if (authError) {
-                console.error('Error listing auth users:', authError)
-                break;
-            }
-            const us = data.users || []
-            allAuthUsers = [...allAuthUsers, ...us]
-            if (us.length < perPage) hasMore = false; else page++;
-        }
-
-        // 全プロフィール取得
         const { data: allProfiles, error: profilesError } = await supabaseAdmin
             .from('profiles')
             .select('*')
 
         if (profilesError) console.error('Error fetching profiles:', profilesError)
 
-        const existingEmails = new Set(allAuthUsers.map(u => u.email))
+        const { data: allEmails, error: emailsError } = await supabaseAdmin
+            .from('user_emails')
+            .select('*')
+
+        if (emailsError) console.error('Error fetching user emails:', emailsError)
+
+        const existingEmails = new Set(allEmails?.map(u => u.email) || [])
+        const emailToIdMap = new Map(allEmails?.map(u => [u.email, u.id]) || [])
         const existingNames = new Map(allProfiles?.map((p: any) => [p.display_name, p.id]))
         const { v4: uuidv4 } = require('uuid')
 
@@ -79,9 +76,8 @@ export async function POST(request: Request) {
             let isEmailConflict = false
 
             // メール重複
-            const existingAuthUser = allAuthUsers.find(u => u.email === email)
-            if (existingAuthUser) {
-                duplicateUserId = existingAuthUser.id
+            if (existingEmails.has(email)) {
+                duplicateUserId = emailToIdMap.get(email) || null
                 isEmailConflict = true
             } else {
                 // 名前重複

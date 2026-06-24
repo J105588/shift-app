@@ -2,8 +2,14 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { verifyAdminRequest } from '@/lib/auth'
 
 export async function POST(request: Request) {
+  // 管理者認証チェック
+  const { error: authError, status: authStatus, requesterUser, role: requesterRole } = await verifyAdminRequest()
+  if (authError) {
+    return NextResponse.json({ error: authError }, { status: authStatus })
+  }
   // 1. 特権モードでSupabaseに接続
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -30,6 +36,14 @@ export async function POST(request: Request) {
       )
     }
 
+    // 自分自身を強制ログアウトすることは禁止
+    if (targetUserId === requesterUser?.id) {
+      return NextResponse.json(
+        { error: 'セキュリティ上の理由により、自分自身を強制ログアウトすることはできません' },
+        { status: 400 }
+      )
+    }
+
     if (!newPassword || newPassword.trim() === '') {
       return NextResponse.json(
         { error: '新しいパスワードは必須です' },
@@ -46,40 +60,7 @@ export async function POST(request: Request) {
 
     // Requester Check for Super Admin Protection
     // ------------------------------------------------
-    const cookieStore = await cookies()
-    const supabaseRequest = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // ignored
-            }
-          },
-        },
-      }
-    )
-
-    const { data: { user: requesterUser } } = await supabaseRequest.auth.getUser()
-    let isRequesterSuperAdmin = false
-
-    if (requesterUser) {
-      const { data: requesterProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('role')
-        .eq('id', requesterUser.id)
-        .single()
-
-      isRequesterSuperAdmin = requesterProfile?.role === 'super_admin'
-    }
+    const isRequesterSuperAdmin = requesterRole === 'super_admin'
 
     // Check Target Role
     const { data: targetProfile } = await supabaseAdmin

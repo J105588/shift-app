@@ -698,13 +698,15 @@ export default function UserManagement() {
                               <Edit2 size={16} />
                               編集
                             </button>
-                            <button
-                              onClick={() => handleForceLogout(user)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
-                            >
-                              <LogOut size={16} />
-                              強制ログアウト
-                            </button>
+                            {user.id !== currentUserProfile?.id && (
+                              <button
+                                onClick={() => handleForceLogout(user)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                              >
+                                <LogOut size={16} />
+                                強制ログアウト
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -767,13 +769,15 @@ export default function UserManagement() {
                             <Edit2 size={16} />
                             編集
                           </button>
-                          <button
-                            onClick={() => handleForceLogout(user)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
-                          >
-                            <LogOut size={16} />
-                            強制ログアウト
-                          </button>
+                          {user.id !== currentUserProfile?.id && (
+                            <button
+                              onClick={() => handleForceLogout(user)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-150"
+                            >
+                              <LogOut size={16} />
+                              強制ログアウト
+                            </button>
+                          )}
                         </>
                       )}
                     </div>

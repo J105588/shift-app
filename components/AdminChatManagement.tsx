@@ -5,6 +5,7 @@ import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
 import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle, Send, Reply, Image as ImageIcon, CheckCheck } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
+import { sendNotificationsWebhook } from '@/lib/notifications'
 
 type ChatGroup = {
   id: string
@@ -529,41 +530,10 @@ export default function AdminChatManagement() {
         notificationIds: notificationIds
       })
 
-      // GASのWebhookエンドポイントを呼び出して即座に送信
-      const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL
-
-      console.log('GAS Webhook URL:', gasWebhookUrl ? '設定されています' : '未設定')
-      console.log('通知ID:', notificationIds)
-
-      if (!gasWebhookUrl) {
-        console.warn('NEXT_PUBLIC_GAS_WEBHOOK_URLが設定されていません。通知は通常のトリガーで送信されます。')
-        return
-      }
-
-      try {
-        console.log('GAS Webhookにリクエストを送信中...', gasWebhookUrl)
-
-        const response = await fetch(gasWebhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            notification_ids: notificationIds
-          }),
-          mode: 'no-cors' // CORSエラーを回避（GASのWebhookはno-corsが必要な場合がある）
-        })
-
-        // no-corsモードではresponseを読み取れないため、成功したとみなす
-        console.log('GAS Webhookリクエスト送信完了')
-      } catch (webhookError: any) {
-        console.error('GAS Webhook呼び出しエラー:', webhookError)
-        console.error('エラー詳細:', {
-          message: webhookError?.message,
-          stack: webhookError?.stack,
-          name: webhookError?.name
-        })
-      }
+      // GASのWebhookエンドポイントを非同期に呼び出して送信（ブロッキング回避）
+      sendNotificationsWebhook(notificationIds).catch((err) => {
+        console.error('GAS Webhook送信エラー:', err)
+      })
     } catch (error) {
       console.error('通知送信エラー:', error)
     }

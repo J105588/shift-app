@@ -63,28 +63,46 @@ export default function Dashboard() {
       .select('*, shift_groups!shift_assignments_shift_group_id_fkey(*)')
       .eq('user_id', currentUser.id)
 
-    if (myAssignments) {
+    if (myAssignments && myAssignments.length > 0) {
+      const groupIds = myAssignments
+        .map(a => a.shift_group_id)
+        .filter((id): id is string => id !== null && id !== undefined)
+
+      // 該当するすべてのグループの全参加者情報を一括取得（N+1の解消）
+      const { data: allAssignments } = groupIds.length > 0
+        ? await supabase
+            .from('shift_assignments')
+            .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
+            .in('shift_group_id', groupIds)
+        : { data: [] }
+
+      // グループIDごとにアサイン情報をマッピングする
+      const assignmentsByGroup = new Map<string, any[]>()
+      if (allAssignments) {
+        allAssignments.forEach((a: any) => {
+          if (!assignmentsByGroup.has(a.shift_group_id)) {
+            assignmentsByGroup.set(a.shift_group_id, [])
+          }
+          assignmentsByGroup.get(a.shift_group_id)!.push(a)
+        })
+      }
+
       for (const assignment of myAssignments) {
         const group = assignment.shift_groups
         if (!group) continue
 
-        // 同じshift_groupの全参加者を取得
-        const { data: allAssignments } = await supabase
-          .from('shift_assignments')
-          .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
-          .eq('shift_group_id', group.id)
-
-        if (allAssignments) {
+        const groupAssignments = assignmentsByGroup.get(group.id) || []
+        if (groupAssignments.length > 0) {
           // 統括者を取得
-          const supervisor = allAssignments.find((a: any) => a.is_supervisor)
+          const supervisor = groupAssignments.find((a: any) => a.is_supervisor)
           const isSupervisor = assignment.is_supervisor
-          const memberCount = allAssignments.length
+          const memberCount = groupAssignments.length
 
           // rawShiftsに追加（詳細表示用）
           allRawShifts.push({
             ...group,
             isGroupShift: true,
-            assignments: allAssignments,
+            assignments: groupAssignments,
             supervisor_id: supervisor?.user_id || null,
             user_id: currentUser.id // 自分が参加している
           })
@@ -104,7 +122,7 @@ export default function Dashboard() {
             isGroupShift: true,
             isSupervisor: isSupervisor,
             memberCount: memberCount,
-            assignments: allAssignments,
+            assignments: groupAssignments,
             color: group.color || '#a855f7'
           })
         }

@@ -2,8 +2,14 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { verifyAdminRequest } from '@/lib/auth'
 
 export async function PUT(request: Request) {
+  // 管理者認証チェック
+  const { error: authError, status: authStatus, requesterUser, role: requesterRole } = await verifyAdminRequest()
+  if (authError) {
+    return NextResponse.json({ error: authError }, { status: authStatus })
+  }
   // 1. 特権モードでSupabaseに接続
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -42,10 +48,14 @@ export async function PUT(request: Request) {
 
     // 3. メールアドレスの更新（変更がある場合）
     if (email && email !== userData.user.email) {
-      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-      const emailExists = existingUsers?.users?.some(u => u.email === email && u.id !== userId)
+      const { data: existingEmail } = await supabaseAdmin
+        .from('user_emails')
+        .select('id')
+        .eq('email', email)
+        .neq('id', userId)
+        .maybeSingle()
 
-      if (emailExists) {
+      if (existingEmail) {
         return NextResponse.json(
           { error: 'このメールアドレスは既に使用されています' },
           { status: 409 }
@@ -89,40 +99,7 @@ export async function PUT(request: Request) {
 
     // Requester Check for Super Admin Protection
     // ------------------------------------------------
-    const cookieStore = await cookies()
-    const supabaseRequest = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // ignored
-            }
-          },
-        },
-      }
-    )
-
-    const { data: { user: requesterUser } } = await supabaseRequest.auth.getUser()
-    let isRequesterSuperAdmin = false
-
-    if (requesterUser) {
-      const { data: requesterProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('role')
-        .eq('id', requesterUser.id)
-        .single()
-
-      isRequesterSuperAdmin = requesterProfile?.role === 'super_admin'
-    }
+    const isRequesterSuperAdmin = requesterRole === 'super_admin'
 
     // Get current target profile to check if they are Super Admin
     const { data: currentTargetProfile } = await supabaseAdmin
@@ -149,17 +126,28 @@ export async function PUT(request: Request) {
 
     if (role !== undefined) {
       // roleのバリデーション
-      // PROTECTION 2: Cannot set role to Super Admin via API (DB only)
-      if (role === 'super_admin') {
+      const isTargetCurrentlySuperAdmin = currentTargetProfile?.role === 'super_admin'
+
+      // PROTECTION 2: Cannot upgrade an existing non-super_admin user to Super Admin via API (DB only)
+      if (role === 'super_admin' && !isTargetCurrentlySuperAdmin) {
         return NextResponse.json(
           { error: '権限エラー: Super Admin権限は画面からは付与できません' },
           { status: 403 }
         )
       }
 
-      if (role !== 'admin' && role !== 'staff') {
+      // PROTECTION 3: Super Admin cannot downgrade their own role
+      const isSelfUpdate = userId === requesterUser?.id
+      if (isTargetCurrentlySuperAdmin && isSelfUpdate && role !== 'super_admin') {
         return NextResponse.json(
-          { error: '権限は「admin」または「staff」である必要があります' },
+          { error: '権限エラー: Super Adminは自身の権限を下げることはできません' },
+          { status: 403 }
+        )
+      }
+
+      if (role !== 'admin' && role !== 'staff' && role !== 'super_admin') {
+        return NextResponse.json(
+          { error: '権限は「admin」、「staff」、または「super_admin」である必要があります' },
           { status: 400 }
         )
       }

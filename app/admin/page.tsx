@@ -82,21 +82,24 @@ export default function AdminPage() {
         allShifts.push(...shiftsWithSupervisor)
       }
 
-      // 2. shift_groupsから団体付与シフトを取得
+      // 2. shift_groupsから団体付与シフトを関連データとともに一括取得（N+1の解消）
       const { data: shiftGroupsData } = await supabase
         .from('shift_groups')
-        .select('*')
+        .select(`
+          *,
+          assignments:shift_assignments(
+            *,
+            profiles!shift_assignments_user_id_fkey(
+              display_name
+            )
+          )
+        `)
         .order('start_time', { ascending: true })
 
       if (shiftGroupsData) {
-        // 各shift_groupの参加者を取得
-        for (const group of shiftGroupsData) {
-          const { data: assignments } = await supabase
-            .from('shift_assignments')
-            .select('*, profiles!shift_assignments_user_id_fkey(display_name)')
-            .eq('shift_group_id', group.id)
-
-          if (assignments && assignments.length > 0) {
+        shiftGroupsData.forEach((group: any) => {
+          const assignments = group.assignments || []
+          if (assignments.length > 0) {
             // 統括者を取得
             const supervisor = assignments.find((a: any) => a.is_supervisor)
             const supervisorName = supervisor?.profiles?.display_name || null
@@ -129,7 +132,7 @@ export default function AdminPage() {
               color: group.color || null
             })
           }
-        }
+        })
       }
 
       setEvents(allEvents)

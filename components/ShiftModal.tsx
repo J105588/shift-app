@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile, Shift } from '@/lib/types'
 import { X, Users, UserCheck, Copy, UserCog } from 'lucide-react'
+import { customAlert, customConfirm } from '@/lib/alert'
 
 type Props = {
   isOpen: boolean
@@ -356,7 +357,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           }
 
           if (overlapLines.length > 0) {
-            const proceed = window.confirm(
+            const proceed = await customConfirm(
               `以下のユーザーは、この時間帯にすでにシフトが入っています。\n\n${overlapLines.join(
                 '\n'
               )}\n\nそれでも新しいシフトを作成しますか？`
@@ -377,19 +378,19 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         if (isGroupShift) {
           // 団体付与シフトの編集
           if (selectedUserIds.length === 0) {
-            alert('少なくとも1人の参加者を選択してください')
+            await customAlert('少なくとも1人の参加者を選択してください')
             setIsSubmitting(false)
             return
           }
 
           if (!supervisorId) {
-            alert('統括者を選択してください')
+            await customAlert('統括者を選択してください')
             setIsSubmitting(false)
             return
           }
 
           if (!formData.title) {
-            alert('業務内容を入力してください')
+            await customAlert('業務内容を入力してください')
             setIsSubmitting(false)
             return
           }
@@ -454,7 +455,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         } else {
           // 個別付与シフトの編集
           if (!formData.user_id) {
-            alert('担当者を選択してください')
+            await customAlert('担当者を選択してください')
             setIsSubmitting(false)
             return
           }
@@ -489,19 +490,19 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       } else if (mode === 'group') {
         // 団体付与モード: shift_groupsとshift_assignmentsを使用
         if (selectedUserIds.length === 0) {
-          alert('少なくとも1人の参加者を選択してください')
+          await customAlert('少なくとも1人の参加者を選択してください')
           setIsSubmitting(false)
           return
         }
 
         if (!supervisorId) {
-          alert('統括者を選択してください')
+          await customAlert('統括者を選択してください')
           setIsSubmitting(false)
           return
         }
 
         if (!formData.title) {
-          alert('業務内容を入力してください')
+          await customAlert('業務内容を入力してください')
           setIsSubmitting(false)
           return
         }
@@ -557,7 +558,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       } else if (mode === 'individual' && individualMode === 'single') {
         // 単一ユーザーモード
         if (!formData.user_id) {
-          alert('担当者を選択してください')
+          await customAlert('担当者を選択してください')
           setIsSubmitting(false)
           return
         }
@@ -592,15 +593,15 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           )
         }
       } else if (mode === 'individual' && individualMode === 'multiple') {
-        // 個別付与モード（複数人一括）: 既存のshiftsテーブルを使用（後方互換性）
+        // 個別付与モード（複数人一括）: 既存 of shiftsテーブルを使用（後方互換性）
         if (selectedUserIds.length === 0) {
-          alert('少なくとも1人のユーザーを選択してください')
+          await customAlert('少なくとも1人のユーザーを選択してください')
           setIsSubmitting(false)
           return
         }
 
         if (titleMode === 'same' && !formData.title) {
-          alert('業務内容を入力してください')
+          await customAlert('業務内容を入力してください')
           setIsSubmitting(false)
           return
         }
@@ -609,7 +610,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
           const missingTitles = selectedUserIds.filter(userId => !individualTitles[userId] || individualTitles[userId].trim() === '')
           if (missingTitles.length > 0) {
             const userNames = missingTitles.map(id => users.find(u => u.id === id)?.display_name).filter(Boolean).join('、')
-            alert(`以下のユーザーの業務内容が未入力です: ${userNames}`)
+            await customAlert(`以下のユーザーの業務内容が未入力です: ${userNames}`)
             setIsSubmitting(false)
             return
           }
@@ -664,7 +665,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
     } catch (error: any) {
       console.error('シフト保存エラー:', error)
       const errorMessage = error.message || error.details || 'シフトの保存に失敗しました'
-      alert(`エラー: ${errorMessage}\n\n詳細: ${JSON.stringify(error, null, 2)}`)
+      await customAlert(`エラー: ${errorMessage}\n\n詳細: ${JSON.stringify(error, null, 2)}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -703,7 +704,8 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
   }
 
   const handleDelete = async () => {
-    if (!editShift || !confirm('本当に削除しますか？')) return
+    const isConfirmed = await customConfirm('本当に削除しますか？')
+    if (!editShift || !isConfirmed) return
     
     // シフト削除時: 関連する未送信通知を削除（shift_idのCASCADE削除で自動削除されるが、明示的に削除）
     await deleteShiftNotifications(editShift.id)
@@ -713,7 +715,7 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
       onSaved()
       onClose()
     } else {
-      alert('シフトの削除に失敗しました: ' + error.message)
+      await customAlert('シフトの削除に失敗しました: ' + error.message)
     }
   }
 
@@ -741,85 +743,118 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-white overflow-y-auto flex-1">
           {/* モード選択 */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 space-y-4">
-            <label className="block text-sm font-semibold text-slate-700">付与モード</label>
-            <div className="flex gap-3">
+          <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-4 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-bold text-slate-700">付与方式を選択</label>
+              {editShift && (
+                <span className="text-xs text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 animate-pulse">
+                  編集時は変更できません
+                </span>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* 個別付与（1名） */}
               <button
                 type="button"
                 onClick={() => {
-                  if (editShift) return // 編集時はモード変更不可
+                  if (editShift) return
                   setMode('individual')
                   setIndividualMode('single')
                   setSelectedUserIds([])
                   setSupervisorId('')
                   setFormData({...formData, user_id: ''})
                 }}
-                disabled={!!editShift && mode !== 'individual'}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
-                  mode === 'individual'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
-                } ${!!editShift && mode !== 'individual' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                disabled={!!editShift && !(mode === 'individual' && individualMode === 'single')}
+                className={`flex flex-col items-center text-center p-3.5 rounded-xl border-2 transition-all ${
+                  mode === 'individual' && individualMode === 'single'
+                    ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                } ${
+                  !!editShift
+                    ? (mode === 'individual' && individualMode === 'single')
+                      ? 'opacity-100 cursor-not-allowed'
+                      : 'opacity-40 cursor-not-allowed hidden sm:flex sm:pointer-events-none'
+                    : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0'
+                }`}
               >
-                <UserCheck size={18} />
-                個別付与
+                <div className={`p-2 rounded-lg mb-2 transition-colors ${
+                  mode === 'individual' && individualMode === 'single' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <UserCheck size={20} />
+                </div>
+                <span className="font-bold text-sm text-slate-800">個別付与（1名）</span>
+                <span className="text-[11px] text-slate-500 mt-1 leading-normal">
+                  特定のスタッフ1名に対して、単体のシフトを登録します。
+                </span>
               </button>
+
+              {/* 個別付与（複数名一括） */}
               <button
                 type="button"
                 onClick={() => {
-                  if (editShift) return // 編集時はモード変更不可
+                  if (editShift) return
+                  setMode('individual')
+                  setIndividualMode('multiple')
+                  setFormData({...formData, user_id: ''})
+                }}
+                disabled={!!editShift}
+                className={`flex flex-col items-center text-center p-3.5 rounded-xl border-2 transition-all ${
+                  mode === 'individual' && individualMode === 'multiple'
+                    ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                } ${
+                  !!editShift
+                    ? 'opacity-40 cursor-not-allowed hidden sm:flex sm:pointer-events-none'
+                    : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0'
+                }`}
+              >
+                <div className={`p-2 rounded-lg mb-2 transition-colors ${
+                  mode === 'individual' && individualMode === 'multiple' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <Copy size={20} />
+                </div>
+                <span className="font-bold text-sm text-slate-800">個別一括付与</span>
+                <span className="text-[11px] text-slate-500 mt-1 leading-normal">
+                  複数のスタッフに対して、同じシフトを個別に一括登録します。
+                </span>
+              </button>
+
+              {/* 団体付与（グループ） */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (editShift) return
                   setMode('group')
                   setSelectedUserIds([])
                   setSupervisorId('')
                   setFormData({...formData, user_id: ''})
                 }}
                 disabled={!!editShift && mode !== 'group'}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
+                className={`flex flex-col items-center text-center p-3.5 rounded-xl border-2 transition-all ${
                   mode === 'group'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50'
-                } ${!!editShift && mode !== 'group' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                } ${
+                  !!editShift
+                    ? (mode === 'group')
+                      ? 'opacity-100 cursor-not-allowed'
+                      : 'opacity-40 cursor-not-allowed hidden sm:flex sm:pointer-events-none'
+                    : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0'
+                }`}
               >
-                <Users size={18} />
-                団体付与
+                <div className={`p-2 rounded-lg mb-2 transition-colors ${
+                  mode === 'group' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <Users size={20} />
+                </div>
+                <span className="font-bold text-sm text-slate-800">団体付与</span>
+                <span className="text-[11px] text-slate-500 mt-1 leading-normal">
+                  複数人を1つのグループにし、共有シフトを登録します（チャット連携）。
+                </span>
               </button>
             </div>
-              
-              {/* 個別付与モード内のサブモード選択 */}
-              {mode === 'individual' && (
-                <div className="flex gap-2 pt-2 border-t border-blue-300">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIndividualMode('single')
-                      setSelectedUserIds([])
-                      setFormData({...formData, user_id: ''})
-                    }}
-                    className={`flex-1 px-3 py-1.5 text-sm rounded-lg font-medium transition-all ${
-                      individualMode === 'single'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    1人ずつ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIndividualMode('multiple')
-                      setFormData({...formData, user_id: ''})
-                    }}
-                    className={`flex-1 px-3 py-1.5 text-sm rounded-lg font-medium transition-all ${
-                      individualMode === 'multiple'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    複数人一括
-                  </button>
-                </div>
-              )}
-            </div>
+          </div>
 
           {/* ユーザー選択 */}
           {(mode === 'individual' && individualMode === 'single') ? (

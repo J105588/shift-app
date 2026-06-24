@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Profile } from '@/lib/types'
 import { Bell, Send, Users, UserCheck } from 'lucide-react'
+import { sendNotificationsWebhook } from '@/lib/notifications'
 
 type ShiftGroup = {
   id: string
@@ -272,7 +273,10 @@ export default function AdminNotifications() {
         scheduled_at: nowIso,
       }))
 
-      const { error } = await supabase.from('notifications').insert(payloads)
+      const { data: insertedData, error } = await supabase
+        .from('notifications')
+        .insert(payloads)
+        .select('id')
       if (error) throw error
 
       const recipientText = mode === 'users'
@@ -280,6 +284,15 @@ export default function AdminNotifications() {
         : `${selectedGroupIds.length}グループ（${targetUserIds.length}人）`
 
       alert(`通知ジョブを作成しました（${recipientText}宛、ログイン中の端末に順次配信されます）。`)
+
+      // 作成された通知IDを使って、GAS Webhookを叩き、即時送信を実行する
+      if (insertedData && insertedData.length > 0) {
+        const notificationIds = insertedData.map((n: { id: string }) => n.id)
+        // GAS Webhookを非同期で実行（UIのフリーズを防ぐ）
+        sendNotificationsWebhook(notificationIds).catch((e) => {
+          console.error('GAS Webhook即時送信エラー:', e)
+        })
+      }
       setTitle('')
       setBody('')
       setSelectedUserIds([]) // 選択をリセット

@@ -5,6 +5,7 @@ import { format } from 'date-fns/format'
 import { ja } from 'date-fns/locale/ja'
 import { Send, MessageCircle, Reply, X, Image as ImageIcon, CheckCheck } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
+import { sendNotificationsWebhook } from '@/lib/notifications'
 
 type ChatMessage = ShiftGroupChatMessage
 
@@ -57,7 +58,7 @@ export default function GroupChat({
   // メッセージを取得
   const fetchMessages = async () => {
     try {
-      // まず基本のメッセージを取得
+      // 外部キー shift_group_chat_messages_reply_to_fkey を指定してリプライ先を一括取得（1クエリに集約）
       const { data, error } = await supabase
         .from('shift_group_chat_messages')
         .select(`
@@ -67,6 +68,12 @@ export default function GroupChat({
             user_id,
             created_at,
             profiles!shift_group_chat_read_receipts_user_id_fkey(id, display_name)
+          ),
+          reply_to_message:shift_group_chat_messages!shift_group_chat_messages_reply_to_fkey(
+            id,
+            message,
+            user_id,
+            profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
           )
         `)
         .eq('shift_group_id', shiftGroupId)
@@ -82,45 +89,31 @@ export default function GroupChat({
         return
       }
 
-      // リプライ先のメッセージIDを収集
-      const replyToIds = data
-        .map(msg => msg.reply_to)
-        .filter((id): id is string => id !== null && id !== undefined)
+      // レスポンスデータの profiles をフォーマット（1対1リレーションのフラット化）
+      const formattedMessages = data.map((msg: any) => {
+        const formattedProfiles = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles
+        
+        let formattedReplyTo = null
+        if (msg.reply_to_message) {
+          const replyProfiles = Array.isArray(msg.reply_to_message.profiles)
+            ? msg.reply_to_message.profiles[0]
+            : msg.reply_to_message.profiles
 
-      // リプライ先のメッセージを一括取得
-      let replyToMessages: Record<string, ChatMessage> = {}
-      if (replyToIds.length > 0) {
-        const { data: replyData } = await supabase
-          .from('shift_group_chat_messages')
-          .select(`
-            id,
-            message,
-            user_id,
-            profiles!shift_group_chat_messages_user_id_fkey(id, display_name)
-          `)
-          .in('id', replyToIds)
-
-        if (replyData) {
-          replyToMessages = replyData.reduce((acc, msg) => {
-            acc[msg.id] = {
-              ...msg,
-              shift_group_id: '',
-              created_at: '',
-              profiles: Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles
-            } as ChatMessage
-            return acc
-          }, {} as Record<string, ChatMessage>)
+          formattedReplyTo = {
+            ...msg.reply_to_message,
+            profiles: replyProfiles
+          }
         }
-      }
 
-      // メッセージにリプライ先の情報を追加
-      const messagesWithReplies = data.map(msg => ({
-        ...msg,
-        reply_to_message: msg.reply_to ? replyToMessages[msg.reply_to] || null : null
-      })) as ChatMessage[]
+        return {
+          ...msg,
+          profiles: formattedProfiles,
+          reply_to_message: formattedReplyTo
+        }
+      }) as ChatMessage[]
 
-      setMessages(messagesWithReplies)
-      markMessagesAsRead(messagesWithReplies)
+      setMessages(formattedMessages)
+      markMessagesAsRead(formattedMessages)
     } catch (error) {
       console.error('メッセージ取得エラー:', error)
     } finally {
@@ -232,9 +225,24 @@ export default function GroupChat({
         return
       }
 
-      // 送信後すぐにDBと同期するため、メッセージ一覧を再取得
-      // リアルタイム購読もあるが、即座に反映させるために明示的に取得
-      await fetchMessages()
+      // 新メッセージにプロフィールとリプライ情報を付与
+      const newMsgWithReply = {
+        ...insertedData,
+        profiles: Array.isArray(insertedData.profiles) ? insertedData.profiles[0] : insertedData.profiles,
+        reply_to_message: replyingTo || null,
+        read_receipts: []
+      } as ChatMessage
+
+      // 即座にローカルステートへ追加（重複防止付き）
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsgWithReply.id)) return prev
+        return [...prev, newMsgWithReply]
+      })
+
+      // 既読処理はバックグラウンドで非同期実行
+      markMessagesAsRead([newMsgWithReply]).catch((err) => {
+        console.error('既読処理エラー:', err)
+      })
 
       // 通知を送信（参加者全員に、送信者以外）
       // 通知は非同期で送信（送信のブロッキングを避ける）
@@ -392,42 +400,10 @@ export default function GroupChat({
         return
       }
 
-      // GASのWebhookエンドポイントを呼び出して即座に送信
-      const gasWebhookUrl = process.env.NEXT_PUBLIC_GAS_WEBHOOK_URL
-      
-      console.log('GAS Webhook URL:', gasWebhookUrl ? '設定されています' : '未設定')
-      console.log('通知ID:', notificationIds)
-
-      if (!gasWebhookUrl) {
-        console.warn('NEXT_PUBLIC_GAS_WEBHOOK_URLが設定されていません。通知は通常のトリガーで送信されます。')
-        return
-      }
-
-      try {
-        console.log('GAS Webhookにリクエストを送信中...', gasWebhookUrl)
-        
-        const response = await fetch(gasWebhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            notification_ids: notificationIds
-          }),
-          mode: 'no-cors' // CORSエラーを回避（GASのWebhookはno-corsが必要な場合がある）
-        })
-
-        // no-corsモードではresponseを読み取れないため、成功したとみなす
-        console.log('GAS Webhookリクエスト送信完了')
-      } catch (webhookError: any) {
-        // Webhook呼び出しに失敗しても、通知は作成されているので、通常のトリガーで送信される
-        console.error('GAS Webhook呼び出しエラー:', webhookError)
-        console.error('エラー詳細:', {
-          message: webhookError?.message,
-          stack: webhookError?.stack,
-          name: webhookError?.name
-        })
-      }
+      // GASのWebhookエンドポイントを非同期に呼び出して送信（ブロッキング回避）
+      sendNotificationsWebhook(notificationIds).catch((err) => {
+        console.error('GAS Webhook送信エラー:', err)
+      })
     } catch (error) {
       console.error('通知送信エラー:', error)
     }
@@ -457,10 +433,10 @@ export default function GroupChat({
       )
       .subscribe()
 
-    // 定期的にメッセージを取得（10秒ごと、リアルタイム購読の補完として）
+    // 定期的にメッセージを取得（3分ごと、リアルタイム購読の補完として）
     const messageInterval = setInterval(() => {
       fetchMessages()
-    }, 10000)
+    }, 180000)
 
     // 定期的にチャット利用可能かチェック（1分ごと）
     const availabilityInterval = setInterval(() => {
@@ -771,7 +747,7 @@ export default function GroupChat({
               />
               <label
                 htmlFor="chat-image-input"
-                className="flex items-center justify-center w-10 h-10 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
+                className="flex items-center justify-center w-11 h-11 border-2 border-dashed border-slate-200 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors flex-shrink-0 touch-manipulation"
                 title="画像を添付"
               >
                 <ImageIcon size={18} />
@@ -782,14 +758,14 @@ export default function GroupChat({
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder={replyingTo ? `${replyingTo.profiles?.display_name || '不明'}にリプライ...` : 'メッセージを入力...'}
-              className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+              className="flex-1 h-11 px-3 py-2.5 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-base sm:text-sm"
               disabled={isSending}
               maxLength={500}
             />
             <button
               type="submit"
               disabled={(!newMessage.trim() && !selectedFile) || isSending}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              className="h-11 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 flex-shrink-0 touch-manipulation min-w-[44px]"
             >
               {isSending ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

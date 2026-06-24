@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { verifyAdminRequest } from '@/lib/auth'
 
 export async function POST(request: Request) {
+  // 管理者認証チェック
+  const { error: authError, status: authStatus } = await verifyAdminRequest()
+  if (authError) {
+    return NextResponse.json({ error: authError }, { status: authStatus })
+  }
   // 1. 特権モードでSupabaseに接続
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -37,36 +43,49 @@ export async function POST(request: Request) {
     }
 
     // 2. 重複チェック (メール OR 名前)
-    // メール重複チェック
-    const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-    if (listError) console.error('Error listing users:', listError)
+    let duplicateUser: { id: string; email: string; displayName: string } | null = null
 
-    // 全ユーザー取得ループ (前回の修正と同様)
-    let allAuthUsers: any[] = []
-    let page = 1
-    const perPage = 50
-    let hasMore = true
-    while (hasMore) {
-      const { data, error: authError } = await supabaseAdmin.auth.admin.listUsers({ page: page, perPage: perPage })
-      if (authError) break;
-      const users = data.users || []
-      allAuthUsers = [...allAuthUsers, ...users]
-      if (users.length < perPage) hasMore = false; else page++;
-    }
+    // 2-1. メール重複チェック
+    const { data: emailMatch } = await supabaseAdmin
+      .from('user_emails')
+      .select('id, email')
+      .eq('email', email)
+      .maybeSingle()
 
-    let duplicateUser = allAuthUsers.find(u => u.email === email)
+    if (emailMatch) {
+      // 該当するプロフィールの表示名を取得（結合エラー回避のため別クエリ化）
+      const { data: p } = await supabaseAdmin
+        .from('profiles')
+        .select('display_name')
+        .eq('id', emailMatch.id)
+        .maybeSingle()
 
-    // 名前重複チェック (メールで重複が見つかっていない場合)
-    if (!duplicateUser) {
+      duplicateUser = {
+        id: emailMatch.id,
+        email: emailMatch.email,
+        displayName: p?.display_name || ''
+      }
+    } else {
+      // 2-2. 名前重複チェック (メールで重複が見つかっていない場合)
       const { data: nameMatch } = await supabaseAdmin
         .from('profiles')
-        .select('*')
+        .select('id, display_name')
         .eq('display_name', displayName)
-        .single()
+        .maybeSingle()
 
       if (nameMatch) {
-        // プロフィールからIDを取得し、Authユーザーを特定
-        duplicateUser = allAuthUsers.find(u => u.id === nameMatch.id)
+        // 該当するユーザーのメールを取得（結合エラー回避のため別クエリ化）
+        const { data: e } = await supabaseAdmin
+          .from('user_emails')
+          .select('email')
+          .eq('id', nameMatch.id)
+          .maybeSingle()
+
+        duplicateUser = {
+          id: nameMatch.id,
+          email: e?.email || '',
+          displayName: nameMatch.display_name || ''
+        }
       }
     }
 

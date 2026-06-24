@@ -53,22 +53,23 @@ export default function LoginPage() {
           return
         }
 
-        // メンテナンスモードをチェック
-        const { data: maintenanceSetting } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'maintenance_mode')
-          .single()
+        // メンテナンスモードとプロフィール情報を並列に取得
+        const [maintenanceResult, profileResult] = await Promise.all([
+          supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'maintenance_mode')
+            .single(),
+          supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+        ])
 
-        const isMaintenance = maintenanceSetting?.value === 'true'
+        const isMaintenance = maintenanceResult.data?.value === 'true'
         setIsMaintenanceMode(isMaintenance)
-
-        // プロフィールを取得
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
+        const profile = profileResult.data
 
         // 通常の画面に遷移
         if (isMaintenance) {
@@ -167,13 +168,13 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       alert('ログイン失敗: ' + error.message)
       setLoading(false)
     } else {
       // ログイン成功後、ロールを確認して振り分け
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = signInData?.user
       if (!user) {
         alert('ユーザー情報の取得に失敗しました')
         setLoading(false)
@@ -194,27 +195,28 @@ export default function LoginPage() {
         // localStorage が使えない場合は無視（Supabase 側のセッションに任せる）
       }
 
-      // ログインボタン押下に紐づけて通知権限を取得し、トークンと user_id を登録
-      try {
-        await setupPushNotificationsForUser(user.id)
-      } catch {
-        // 通知設定に失敗してもログイン自体は続行
-      }
 
-      // メンテナンスモードをチェック
-      const { data: maintenanceSetting } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'maintenance_mode')
-        .single()
+      // ログインボタン押下に紐づけて通知権限を取得し、トークンと user_id を登録（非同期で実行し、ログインの遷移をブロックしない）
+      setupPushNotificationsForUser(user.id).catch((err) => {
+        console.error('プッシュ通知設定エラー:', err)
+      })
 
-      const isMaintenanceMode = maintenanceSetting?.value === 'true'
+      // メンテナンスモードとプロフィール情報を並列に取得
+      const [maintenanceResult, profileResult] = await Promise.all([
+        supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'maintenance_mode')
+          .single(),
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+      ])
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+      const isMaintenanceMode = maintenanceResult.data?.value === 'true'
+      const profile = profileResult.data
 
       // メンテナンスモードが有効で、一般ユーザーの場合はメンテナンスページへリダイレクト（ログアウトしない）
       if (isMaintenanceMode && profile?.role !== 'admin' && profile?.role !== 'super_admin') {

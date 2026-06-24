@@ -3,8 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { verifyAdminRequest } from '@/lib/auth'
 
 export async function DELETE(request: Request) {
+  // 管理者認証チェック
+  const { error: authError, status: authStatus, requesterUser, role: requesterRole } = await verifyAdminRequest()
+  if (authError) {
+    return NextResponse.json({ error: authError }, { status: authStatus })
+  }
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -18,40 +24,7 @@ export async function DELETE(request: Request) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
     // Check Requester Role
-    const cookieStore = await cookies()
-    const supabaseRequest = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // ignored
-                    }
-                },
-            },
-        }
-    )
-
-    const { data: { user: requesterUser } } = await supabaseRequest.auth.getUser()
-    let isRequesterSuperAdmin = false
-
-    if (requesterUser) {
-        const { data: requesterProfile } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', requesterUser.id)
-            .single()
-
-        isRequesterSuperAdmin = requesterProfile?.role === 'super_admin'
-    }
+    const isRequesterSuperAdmin = requesterRole === 'super_admin'
 
     try {
         const { groupName } = await request.json()
