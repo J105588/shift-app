@@ -56,7 +56,7 @@ export default function PwaUpdateListener() {
       <div className="p-4 space-y-2">
         <p className="text-sm font-semibold">新しいバージョンがあります</p>
         <p className="text-xs text-blue-100">
-          アプリを再読み込みして最新のシフト表を表示します。今すぐ更新しますか？
+          アプリを再読み込みして最新のプログラムに更新しますか？
           {updateVersion && (
             <span className="ml-1 opacity-80">({updateVersion})</span>
           )}
