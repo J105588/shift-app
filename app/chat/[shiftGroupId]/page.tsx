@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { ArrowLeft } from 'lucide-react'
 import GroupChat from '@/components/GroupChat'
 import Navbar from '@/components/Navbar'
+import { customAlert } from '@/lib/alert'
 
 // 動的レンダリングを強制（Supabase認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -54,7 +55,7 @@ export default function ChatPage() {
           .single()
 
         if (!groupData) {
-          alert('シフトグループが見つかりません')
+          await customAlert('シフトグループが見つかりません')
           router.back()
           return
         }
@@ -69,7 +70,7 @@ export default function ChatPage() {
             .single()
 
           if (!assignment) {
-            alert('このシフトグループに参加していません')
+            await customAlert('このシフトグループに参加していません')
             router.back()
             return
           }
@@ -79,7 +80,7 @@ export default function ChatPage() {
         setIsAuthorized(true)
       } catch (error) {
         console.error('初期化エラー:', error)
-        alert('エラーが発生しました')
+        await customAlert('エラーが発生しました')
         router.back()
       } finally {
         setIsLoading(false)

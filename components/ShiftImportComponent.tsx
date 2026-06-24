@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { importShifts } from '@/app/actions/importShifts'
 import { Upload, AlertCircle, CheckCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react'
+import { customConfirm } from '@/lib/alert'
 
 export default function ShiftImportComponent() {
     // Default to today (JST)
@@ -14,7 +15,7 @@ export default function ShiftImportComponent() {
     const handleImport = async () => {
         if (!date) return
 
-        if (!confirm(`${date}のシフトとして自動振り分けを実行しますか？\n(注意: 同じユーザー・時間のシフトが重複して登録される可能性があります)`)) {
+        if (!await customConfirm(`${date}のシフトとして自動振り分けを実行しますか？\n(注意: 同じユーザー・時間のシフトが重複して登録される可能性があります)`)) {
             return
         }
 

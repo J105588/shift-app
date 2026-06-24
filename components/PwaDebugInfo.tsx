@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { customAlert } from '@/lib/alert'
 
 export default function PwaDebugInfo() {
   const [debugInfo, setDebugInfo] = useState<any>(null)
@@ -72,10 +73,10 @@ export default function PwaDebugInfo() {
             onClick={async () => {
               if ('Notification' in window && Notification.permission === 'default') {
                 const permission = await Notification.requestPermission()
-                alert(`Notification permission: ${permission}`)
+                await customAlert(`Notification permission: ${permission}`)
                 window.location.reload()
               } else {
-                alert(`Notification permission: ${Notification.permission}`)
+                await customAlert(`Notification permission: ${Notification.permission}`)
               }
             }}
             className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded"

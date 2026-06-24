@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Settings, RefreshCw, AlertTriangle, Palette, Plus, X, Trash2 } from 'lucide-react'
 import { forceReloadPwa } from '@/lib/pwa'
+import { customAlert, customConfirm } from '@/lib/alert'
 
 type ShiftTemplate = {
   name: string
@@ -132,10 +133,10 @@ export default function AdminSettings({ userId }: Props) {
 
       if (colorError) throw colorError
 
-      alert('シフトテンプレートの設定を保存しました。')
+      await customAlert('シフトテンプレートの設定を保存しました。')
     } catch (error: any) {
       console.error('設定保存エラー:', error)
-      alert(`設定の保存に失敗しました: ${error?.message || '詳細不明'}`)
+      await customAlert(`設定の保存に失敗しました: ${error?.message || '詳細不明'}`)
     } finally {
       setIsSavingTemplates(false)
     }
@@ -147,8 +148,8 @@ export default function AdminSettings({ userId }: Props) {
   }
 
   // テンプレートを削除
-  const handleRemoveTemplate = (index: number) => {
-    if (confirm('このテンプレートを削除しますか？')) {
+  const handleRemoveTemplate = async (index: number) => {
+    if (await customConfirm('このテンプレートを削除しますか？')) {
       setTemplates(templates.filter((_, i) => i !== index))
     }
   }
@@ -162,7 +163,7 @@ export default function AdminSettings({ userId }: Props) {
 
   // メンテナンスモードの切り替え
   const handleToggleMaintenance = async () => {
-    if (!confirm('システムメンテナンスモードを切り替えますか？')) return
+    if (!await customConfirm('システムメンテナンスモードを切り替えますか？')) return
 
     setIsSavingMaintenance(true)
     try {
@@ -181,10 +182,10 @@ export default function AdminSettings({ userId }: Props) {
       if (error) throw error
 
       setMaintenanceMode(newValue)
-      alert(`メンテナンスモードを${newValue ? '有効' : '無効'}にしました。`)
+      await customAlert(`メンテナンスモードを${newValue ? '有効' : '無効'}にしました。`)
     } catch (error: any) {
       console.error('設定保存エラー:', error)
-      alert(`設定の保存に失敗しました: ${error?.message || '詳細不明'}`)
+      await customAlert(`設定の保存に失敗しました: ${error?.message || '詳細不明'}`)
     } finally {
       setIsSavingMaintenance(false)
     }
@@ -192,7 +193,7 @@ export default function AdminSettings({ userId }: Props) {
 
   // PWAアップデート
   const handlePwaUpdate = async () => {
-    if (!confirm('すべての端末に最新バージョンの適用を通知します。実行しますか？')) return
+    if (!await customConfirm('すべての端末に最新バージョンの適用を通知します。実行しますか？')) return
 
     setIsPwaUpdating(true)
     try {
@@ -203,11 +204,11 @@ export default function AdminSettings({ userId }: Props) {
       })
       if (error) throw error
 
-      alert('すべての端末に最新バージョンの適用を通知しました。')
+      await customAlert('すべての端末に最新バージョンの適用を通知しました。')
       await forceReloadPwa()
     } catch (error: any) {
       console.error('PWA update error:', error)
-      alert(`PWAの更新に失敗しました: ${error?.message || '詳細不明'}`)
+      await customAlert(`PWAの更新に失敗しました: ${error?.message || '詳細不明'}`)
     } finally {
       setIsPwaUpdating(false)
     }
@@ -228,7 +229,7 @@ export default function AdminSettings({ userId }: Props) {
       const data = await res.json()
 
       if (res.ok && data.success) {
-        alert(data.message || 'システムを初期化しました。')
+        await customAlert(data.message || 'システムを初期化しました。')
         setShowResetModal(false)
         setResetConfirmation('')
         // ページをリロードして状態をリセット
@@ -238,7 +239,7 @@ export default function AdminSettings({ userId }: Props) {
       }
     } catch (error: any) {
       console.error('System reset error:', error)
-      alert(`システム初期化エラー: ${error?.message}`)
+      await customAlert(`システム初期化エラー: ${error?.message}`)
     } finally {
       setIsResettingSystem(false)
     }

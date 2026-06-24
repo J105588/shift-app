@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Lock, ArrowRight, CalendarDays, AlertTriangle } from 'lucide-react'
 import { setupPushNotificationsForUser } from '@/components/PushNotificationManager'
+import { customAlert } from '@/lib/alert'
 
 // 動的レンダリングを強制（認証が必要なため）
 export const dynamic = 'force-dynamic'
@@ -170,13 +171,13 @@ export default function LoginPage() {
     setLoading(true)
     const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      alert('ログイン失敗: ' + error.message)
+      await customAlert('ログイン失敗: ' + error.message)
       setLoading(false)
     } else {
       // ログイン成功後、ロールを確認して振り分け
       const user = signInData?.user
       if (!user) {
-        alert('ユーザー情報の取得に失敗しました')
+        await customAlert('ユーザー情報の取得に失敗しました')
         setLoading(false)
         return
       }

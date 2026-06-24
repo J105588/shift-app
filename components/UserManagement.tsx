@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase'
 import { Profile } from '@/lib/types'
 import { UserPlus, Edit2, X, LogOut, Copy, Check, Upload, Filter, Download, Settings, Trash2, RefreshCw } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
+import { customAlert } from '@/lib/alert'
 
 export default function UserManagement() {
   const supabase = createClient()
@@ -132,7 +133,7 @@ export default function UserManagement() {
 
       // 成功時（200-299）またはデータが書き込まれている場合
       if (res.ok || data.success) {
-        alert(data.message || 'ユーザーを作成しました！')
+        await customAlert(data.message || 'ユーザーを作成しました！')
         setEmail(''); setPassword(''); setDisplayName(''); setGroupName('');
         setIsDuplicateModalOpen(false) // モーダルを閉じる
         setDuplicateConflictData(null)
@@ -147,7 +148,7 @@ export default function UserManagement() {
       }
     } catch (err) {
       console.error('Create user error:', err)
-      alert('エラー: ' + ((err as Error).message || 'ユーザー作成中にエラーが発生しました'))
+      await customAlert('エラー: ' + ((err as Error).message || 'ユーザー作成中にエラーが発生しました'))
     } finally {
       setIsSubmitting(false)
     }
@@ -198,7 +199,7 @@ export default function UserManagement() {
       }
 
       if (res.ok && data.success) {
-        alert(data.message || 'ユーザー情報を更新しました！')
+        await customAlert(data.message || 'ユーザー情報を更新しました！')
         handleCloseEditModal()
         fetchUsers() // リスト更新
       } else {
@@ -206,7 +207,7 @@ export default function UserManagement() {
       }
     } catch (err) {
       console.error('Update user error:', err)
-      alert('エラー: ' + ((err as Error).message || 'ユーザー更新中にエラーが発生しました'))
+      await customAlert('エラー: ' + ((err as Error).message || 'ユーザー更新中にエラーが発生しました'))
     } finally {
       setIsSubmitting(false)
     }
@@ -239,7 +240,7 @@ export default function UserManagement() {
       setTimeout(() => setPasswordCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy password:', err)
-      alert('パスワードのコピーに失敗しました')
+      await customAlert('パスワードのコピーに失敗しました')
     }
   }
 
@@ -248,17 +249,17 @@ export default function UserManagement() {
     if (!logoutTargetUser) return
 
     if (!newPassword || newPassword.trim() === '') {
-      alert('新しいパスワードを入力してください')
+      await customAlert('新しいパスワードを入力してください')
       return
     }
 
     if (newPassword.length < 6) {
-      alert('パスワードは6文字以上である必要があります')
+      await customAlert('パスワードは6文字以上である必要があります')
       return
     }
 
     if (!adminPassword && currentUserProfile?.role !== 'super_admin') {
-      alert('認証パスワードを入力してください')
+      await customAlert('認証パスワードを入力してください')
       return
     }
 
@@ -295,7 +296,7 @@ export default function UserManagement() {
       }
     } catch (err) {
       console.error('Force logout error:', err)
-      alert('エラー: ' + ((err as Error).message || '強制ログアウト中にエラーが発生しました'))
+      await customAlert('エラー: ' + ((err as Error).message || '強制ログアウト中にエラーが発生しました'))
     } finally {
       setIsLoggingOut(false)
     }
@@ -328,7 +329,7 @@ export default function UserManagement() {
     setBulkStatus('parsing')
 
     const reader = new FileReader()
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const text = event.target?.result as string
         const lines = text.split(/\r\n|\n/).filter(line => line.trim())
@@ -358,7 +359,7 @@ export default function UserManagement() {
         setBulkStatus('idle')
       } catch (err) {
         console.error('CSV Parse Error:', err)
-        alert('CSVの解析に失敗しました')
+        await customAlert('CSVの解析に失敗しました')
         setBulkStatus('error')
       }
     }
@@ -387,7 +388,7 @@ export default function UserManagement() {
         throw new Error(data.error)
       }
     } catch (err) {
-      alert('一括登録エラー: ' + (err as Error).message)
+      await customAlert('一括登録エラー: ' + (err as Error).message)
       setBulkStatus('error')
     } finally {
       setIsSubmitting(false)
@@ -400,7 +401,7 @@ export default function UserManagement() {
 
     // Systemグループへの変更時はパスワード必須 (Super Adminは除外)
     if (newGroupNameInput.toLowerCase() === 'system' && !renameGroupPassword && currentUserProfile?.role !== 'super_admin') {
-      alert('Systemグループへ変更するには管理者パスワードが必要です')
+      await customAlert('Systemグループへ変更するには管理者パスワードが必要です')
       return
     }
 
@@ -420,7 +421,7 @@ export default function UserManagement() {
 
       const data = await res.json()
       if (res.ok) {
-        alert(data.message)
+        await customAlert(data.message)
         setIsRenameModalOpen(false)
         setRenameGroupPassword('') // パスワードリセット
         setFilterGroup(newGroupNameInput) // フィルターを新しい名前に更新
@@ -429,7 +430,7 @@ export default function UserManagement() {
         throw new Error(data.error)
       }
     } catch (err) {
-      alert('エラー: ' + (err as Error).message)
+      await customAlert('エラー: ' + (err as Error).message)
     } finally {
       setIsSubmitting(false)
     }
@@ -449,7 +450,7 @@ export default function UserManagement() {
 
       const data = await res.json()
       if (res.ok) {
-        alert(data.message)
+        await customAlert(data.message)
         setIsDeleteGroupModalOpen(false)
         setFilterGroup('all')
         fetchUsers()
@@ -457,7 +458,7 @@ export default function UserManagement() {
         throw new Error(data.error)
       }
     } catch (err) {
-      alert('エラー: ' + (err as Error).message)
+      await customAlert('エラー: ' + (err as Error).message)
     } finally {
       setIsSubmitting(false)
     }

@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedShift, setSelectedShift] = useState<any>(null)
+  const [isVerifying, setIsVerifying] = useState(true)
 
   const fetchShifts = async () => {
     try {
@@ -175,7 +176,8 @@ export default function AdminPage() {
 
       setUser(user)
       setProfile(data)
-      fetchShifts()
+      await fetchShifts()
+      setIsVerifying(false)
     }
     checkAdmin()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -319,7 +321,16 @@ export default function AdminPage() {
     setIsModalOpen(true)
   }
 
-  if (!profile) return null
+  if (isVerifying || !profile || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-500 font-medium animate-pulse">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">

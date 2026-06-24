@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { Profile } from '@/lib/types'
 import { Bell, Send, Users, UserCheck } from 'lucide-react'
 import { sendNotificationsWebhook } from '@/lib/notifications'
+import { customAlert } from '@/lib/alert'
 
 type ShiftGroup = {
   id: string
@@ -197,11 +198,11 @@ export default function AdminNotifications() {
     }
 
     if (!title || !title.trim()) {
-      alert('タイトルを入力してください')
+      await customAlert('タイトルを入力してください')
       return
     }
     if (!body || !body.trim()) {
-      alert('内容を入力してください')
+      await customAlert('内容を入力してください')
       return
     }
 
@@ -212,7 +213,7 @@ export default function AdminNotifications() {
 
       if (mode === 'users') {
         if (selectedUserIds.length === 0) {
-          alert('少なくとも1人の宛先を選択してください')
+          await customAlert('少なくとも1人の宛先を選択してください')
           setIsSending(false)
           return
         }
@@ -220,7 +221,7 @@ export default function AdminNotifications() {
       } else if (mode === 'user_groups') {
         // ユーザーグループ選択モード
         if (selectedUserGroupNames.length === 0) {
-          alert('少なくとも1つ等のグループを選択してください')
+          await customAlert('少なくとも1つのグループを選択してください')
           setIsSending(false)
           return
         }
@@ -230,14 +231,14 @@ export default function AdminNotifications() {
           .map(u => u.id)
 
         if (targetUserIds.length === 0) {
-          alert('選択したグループに参加者がいません')
+          await customAlert('選択したグループに参加者がいません')
           setIsSending(false)
           return
         }
       } else {
         // グループ選択モード
         if (selectedGroupIds.length === 0) {
-          alert('少なくとも1つのグループを選択してください')
+          await customAlert('少なくとも1つのグループを選択してください')
           setIsSending(false)
           return
         }
@@ -259,7 +260,7 @@ export default function AdminNotifications() {
         targetUserIds = [...new Set(targetUserIds)]
 
         if (targetUserIds.length === 0) {
-          alert('選択したグループに参加者がいません')
+          await customAlert('選択したグループに参加者がいません')
           setIsSending(false)
           return
         }
@@ -283,7 +284,7 @@ export default function AdminNotifications() {
         ? `${selectedUserIds.length}人`
         : `${selectedGroupIds.length}グループ（${targetUserIds.length}人）`
 
-      alert(`通知ジョブを作成しました（${recipientText}宛、ログイン中の端末に順次配信されます）。`)
+      await customAlert(`通知ジョブを作成しました（${recipientText}宛、ログイン中の端末に順次配信されます）。`)
 
       // 作成された通知IDを使って、GAS Webhookを叩き、即時送信を実行する
       if (insertedData && insertedData.length > 0) {
@@ -300,7 +301,7 @@ export default function AdminNotifications() {
       setSelectedUserGroupNames([]) // 選択をリセット
     } catch (err) {
       console.error('通知作成エラー:', err)
-      alert('通知の作成に失敗しました: ' + ((err as Error).message || '詳細不明'))
+      await customAlert('通知の作成に失敗しました: ' + ((err as Error).message || '詳細不明'))
     } finally {
       setIsSending(false)
     }

@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null)
   const [coworkers, setCoworkers] = useState<any[]>([])
   const [supervisorName, setSupervisorName] = useState<string | null>(null)
+  const [isVerifying, setIsVerifying] = useState(true)
 
   const loadShiftsForUser = async (currentUser: any) => {
     const allRawShifts: any[] = []
@@ -236,6 +237,7 @@ export default function Dashboard() {
       setProfile(profile)
 
       await loadShiftsForUser(user)
+      setIsVerifying(false)
     }
     init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -435,7 +437,16 @@ export default function Dashboard() {
     setIsDetailOpen(true)
   }
 
-  if (!profile || !user) return <div className="p-10 text-center">読み込み中...</div>
+  if (isVerifying || !profile || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-500 font-medium animate-pulse">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

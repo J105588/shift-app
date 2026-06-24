@@ -6,6 +6,7 @@ import { ja } from 'date-fns/locale/ja'
 import { Send, MessageCircle, Reply, X, Image as ImageIcon, CheckCheck } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 import { sendNotificationsWebhook } from '@/lib/notifications'
+import { customAlert } from '@/lib/alert'
 
 type ChatMessage = ShiftGroupChatMessage
 
@@ -156,7 +157,7 @@ export default function GroupChat({
     try {
       // チャット利用可能か再チェック
       if (!checkChatAvailability()) {
-        alert('チャット機能はシフト終了後30分まで利用できます')
+        await customAlert('チャット機能はシフト終了後30分まで利用できます')
         setIsSending(false)
         return
       }
@@ -166,7 +167,7 @@ export default function GroupChat({
 
       if (selectedFile) {
         if (!selectedFile.type.startsWith('image/')) {
-          alert('画像ファイルを選択してください')
+          await customAlert('画像ファイルを選択してください')
           setIsSending(false)
           return
         }
@@ -174,7 +175,7 @@ export default function GroupChat({
         // ファイルサイズ上限: 5MB
         const maxSize = 5 * 1024 * 1024
         if (selectedFile.size > maxSize) {
-          alert('画像サイズは5MB以下にしてください')
+          await customAlert('画像サイズは5MB以下にしてください')
           setIsSending(false)
           return
         }
@@ -194,7 +195,7 @@ export default function GroupChat({
 
         if (uploadError) {
           console.error('画像アップロードエラー:', uploadError)
-          alert('画像のアップロードに失敗しました')
+          await customAlert('画像のアップロードに失敗しました')
           setIsSending(false)
           return
         }
@@ -220,7 +221,7 @@ export default function GroupChat({
 
       if (error) {
         console.error('メッセージ送信エラー:', error)
-        alert('メッセージの送信に失敗しました')
+        await customAlert('メッセージの送信に失敗しました')
         setIsSending(false)
         return
       }
@@ -261,7 +262,7 @@ export default function GroupChat({
       setReplyingTo(null) // リプライ状態をリセット
     } catch (error) {
       console.error('メッセージ送信エラー:', error)
-      alert('メッセージの送信に失敗しました')
+      await customAlert('メッセージの送信に失敗しました')
     } finally {
       setIsSending(false)
     }

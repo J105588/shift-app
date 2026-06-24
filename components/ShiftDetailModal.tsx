@@ -4,6 +4,7 @@ import { Clock, Users, UserCog, X, CalendarDays, Edit2, Save, MessageCircle, Ext
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getShiftColor, getTextColor, addOpacity } from '@/lib/colorUtils'
+import { customAlert } from '@/lib/alert'
 
 type ShiftDetail = {
   id: string
@@ -101,7 +102,7 @@ export default function ShiftDetailModal({
 
         if (error) {
           console.error('メモ更新エラー:', error)
-          alert('メモの更新に失敗しました: ' + error.message)
+          await customAlert('メモの更新に失敗しました: ' + error.message)
           return
         }
       } else {
@@ -113,7 +114,7 @@ export default function ShiftDetailModal({
 
         if (error) {
           console.error('メモ更新エラー:', error)
-          alert('メモの更新に失敗しました: ' + error.message)
+          await customAlert('メモの更新に失敗しました: ' + error.message)
           return
         }
       }
@@ -125,7 +126,7 @@ export default function ShiftDetailModal({
       }
     } catch (error: any) {
       console.error('メモ更新エラー:', error)
-      alert('メモの更新に失敗しました')
+      await customAlert('メモの更新に失敗しました')
     } finally {
       setIsSaving(false)
     }

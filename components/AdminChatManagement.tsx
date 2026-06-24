@@ -6,6 +6,7 @@ import { ja } from 'date-fns/locale/ja'
 import { MessageCircle, Trash2, X, ChevronDown, ChevronUp, AlertTriangle, Send, Reply, Image as ImageIcon, CheckCheck } from 'lucide-react'
 import { ShiftGroupChatMessage } from '@/lib/types'
 import { sendNotificationsWebhook } from '@/lib/notifications'
+import { customAlert, customConfirm } from '@/lib/alert'
 
 type ChatGroup = {
   id: string
@@ -176,7 +177,7 @@ export default function AdminChatManagement() {
 
   // メッセージ削除
   const handleDeleteMessage = async (messageId: string) => {
-    if (!confirm('このメッセージを削除しますか？')) return
+    if (!await customConfirm('このメッセージを削除しますか？')) return
 
     try {
       const { error } = await supabase
@@ -186,7 +187,7 @@ export default function AdminChatManagement() {
 
       if (error) {
         console.error('メッセージ削除エラー:', error)
-        alert('メッセージの削除に失敗しました: ' + error.message)
+        await customAlert('メッセージの削除に失敗しました: ' + error.message)
         return
       }
 
@@ -198,10 +199,10 @@ export default function AdminChatManagement() {
       // チャットグループ一覧も更新
       await fetchChatGroups()
 
-      alert('メッセージを削除しました')
+      await customAlert('メッセージを削除しました')
     } catch (error) {
       console.error('メッセージ削除エラー:', error)
-      alert('メッセージの削除に失敗しました')
+      await customAlert('メッセージの削除に失敗しました')
     }
   }
 
@@ -210,7 +211,7 @@ export default function AdminChatManagement() {
     const group = chatGroups.find(g => g.id === groupId)
     if (!group) return
 
-    if (!confirm(`「${group.title}」のチャットを削除しますか？\n\nこの操作により、このシフトグループのチャット機能が無効化されます。\nシフトグループ自体は削除されません。`)) return
+    if (!await customConfirm(`「${group.title}」のチャットを削除しますか？\n\nこの操作により、このシフトグループのチャット機能が無効化されます。\nシフトグループ自体は削除されません。`)) return
 
     try {
       // チャットメッセージを全て削除
@@ -221,7 +222,7 @@ export default function AdminChatManagement() {
 
       if (error) {
         console.error('チャットグループ削除エラー:', error)
-        alert('チャットの削除に失敗しました: ' + error.message)
+        await customAlert('チャットの削除に失敗しました: ' + error.message)
         return
       }
 
@@ -234,10 +235,10 @@ export default function AdminChatManagement() {
       // チャットグループ一覧を更新
       await fetchChatGroups()
 
-      alert('チャットを削除しました')
+      await customAlert('チャットを削除しました')
     } catch (error) {
       console.error('チャットグループ削除エラー:', error)
-      alert('チャットの削除に失敗しました')
+      await customAlert('チャットの削除に失敗しました')
     }
   }
 
@@ -307,7 +308,7 @@ export default function AdminChatManagement() {
 
       if (selectedFile) {
         if (!selectedFile.type.startsWith('image/')) {
-          alert('画像ファイルを選択してください')
+          await customAlert('画像ファイルを選択してください')
           setIsSending(false)
           return
         }
@@ -315,7 +316,7 @@ export default function AdminChatManagement() {
         // ファイルサイズ上限: 5MB
         const maxSize = 5 * 1024 * 1024
         if (selectedFile.size > maxSize) {
-          alert('画像サイズは5MB以下にしてください')
+          await customAlert('画像サイズは5MB以下にしてください')
           setIsSending(false)
           return
         }
@@ -335,7 +336,7 @@ export default function AdminChatManagement() {
 
         if (uploadError) {
           console.error('画像アップロードエラー:', uploadError)
-          alert('画像のアップロードに失敗しました')
+          await customAlert('画像のアップロードに失敗しました')
           setIsSending(false)
           return
         }
@@ -359,7 +360,7 @@ export default function AdminChatManagement() {
 
       if (error) {
         console.error('メッセージ送信エラー:', error)
-        alert('メッセージの送信に失敗しました: ' + error.message)
+        await customAlert('メッセージの送信に失敗しました: ' + error.message)
         setIsSending(false)
         return
       }
@@ -385,7 +386,7 @@ export default function AdminChatManagement() {
       setReplyingTo(null) // リプライ状態をリセット
     } catch (error) {
       console.error('メッセージ送信エラー:', error)
-      alert('メッセージの送信に失敗しました')
+      await customAlert('メッセージの送信に失敗しました')
     } finally {
       setIsSending(false)
     }

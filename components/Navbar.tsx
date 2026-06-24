@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { LogOut, Shield, CalendarDays, User, X, Crown } from 'lucide-react'
+import { customAlert } from '@/lib/alert'
 
 const VIEW_MODE_KEY = 'shift-app-view-mode' // 'admin' or 'user'
 
@@ -87,7 +88,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('Logout error:', error)
-        alert('ログアウト中にエラーが発生しました: ' + error.message)
+        await customAlert('ログアウト中にエラーが発生しました: ' + error.message)
         setIsLoggingOut(false)
         return
       }
@@ -97,7 +98,7 @@ export default function Navbar({ user, profile }: { user: any, profile: any }) {
       window.location.href = '/'
     } catch (error) {
       console.error('Logout error:', error)
-      alert('ログアウト中にエラーが発生しました')
+      await customAlert('ログアウト中にエラーが発生しました')
       setIsLoggingOut(false)
     }
   }
