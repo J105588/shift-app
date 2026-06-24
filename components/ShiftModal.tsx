@@ -383,12 +383,6 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
             return
           }
 
-          if (!supervisorId) {
-            await customAlert('統括者を選択してください')
-            setIsSubmitting(false)
-            return
-          }
-
           if (!formData.title) {
             await customAlert('業務内容を入力してください')
             setIsSubmitting(false)
@@ -491,12 +485,6 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
         // 団体付与モード: shift_groupsとshift_assignmentsを使用
         if (selectedUserIds.length === 0) {
           await customAlert('少なくとも1人の参加者を選択してください')
-          setIsSubmitting(false)
-          return
-        }
-
-        if (!supervisorId) {
-          await customAlert('統括者を選択してください')
           setIsSubmitting(false)
           return
         }
@@ -917,13 +905,30 @@ export default function ShiftModal({ isOpen, onClose, onSaved, initialDate, edit
               {selectedUserIds.length > 0 && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    統括者を選択 <span className="text-red-600">*</span>
+                    統括者を選択（任意）
                   </label>
                   <div className="border-2 border-slate-200 rounded-lg p-3 bg-slate-50">
                     {selectedUserIds.length === 0 ? (
                       <p className="text-sm text-slate-500 text-center py-2">まず参加者を選択してください</p>
                     ) : (
                       <div className="space-y-2">
+                        <label
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-white cursor-pointer transition-colors"
+                        >
+                          <input
+                            type="radio"
+                            name="supervisor"
+                            value=""
+                            checked={supervisorId === ''}
+                            onChange={() => setSupervisorId('')}
+                            className="w-5 h-5 text-blue-600 border-2 border-slate-300 focus:ring-2 focus:ring-blue-500"
+                          />
+                          <UserCog size={16} className="text-slate-400" />
+                          <span className="flex-1 text-sm font-medium text-slate-900">統括者なし</span>
+                          {supervisorId === '' && (
+                            <span className="text-xs text-slate-500 font-semibold">未設定</span>
+                          )}
+                        </label>
                         {users
                           .filter(u => selectedUserIds.includes(u.id))
                           .map(u => (
