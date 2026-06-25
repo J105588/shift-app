@@ -174,13 +174,36 @@ export default function LoginPage() {
     e.preventDefault()
     setResetLoading(true)
     try {
+      // 1. アカウントの存在チェック
+      const checkRes = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail }),
+      })
+      const checkData = await checkRes.json()
+
+      if (!checkRes.ok || checkData.error) {
+        await customAlert('アカウント確認中にエラーが発生しました: ' + (checkData.error || '不明なエラー'))
+        return
+      }
+
+      if (!checkData.exists) {
+        await customAlert('このメールアドレスは登録されていません。正しいアドレスを入力してください。')
+        return
+      }
+
+      // 2. 存在した場合はリセットメールを送信
       const redirectTo = `${window.location.origin}/auth/callback?next=/update-password`
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
         redirectTo,
       })
 
       if (error) {
-        await customAlert('リセットメールの送信に失敗しました: ' + error.message)
+        let msg = error.message
+        if (error.status === 429 || msg.toLowerCase().includes('rate limit')) {
+          msg = '短時間に複数回リクエストされたため、送信制限に達しました。しばらく時間をおいてから再度お試しください。'
+        }
+        await customAlert('リセットメールの送信に失敗しました:\n' + msg)
       } else {
         await customAlert('パスワードリセットメールを送信しました。メール内のリンクをクリックしてパスワードを再設定してください。')
         setShowResetModal(false)
@@ -383,7 +406,7 @@ export default function LoginPage() {
               <h2 className="text-xl font-bold">パスワードの再設定</h2>
               <p className="text-blue-100 text-xs mt-1">登録されているメールアドレスを入力してください</p>
             </div>
-            
+
             <form onSubmit={handleResetPassword} className="p-6 space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">メールアドレス</label>
