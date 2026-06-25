@@ -18,6 +18,10 @@ export default function LoginPage() {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false)
   const [isVerifying, setIsVerifying] = useState(true)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+
 
   // ローカルストレージのログイン記録をチェック
   useEffect(() => {
@@ -166,6 +170,29 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setResetLoading(true)
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=/update-password`
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo,
+      })
+
+      if (error) {
+        await customAlert('リセットメールの送信に失敗しました: ' + error.message)
+      } else {
+        await customAlert('パスワードリセットメールを送信しました。メール内のリンクをクリックしてパスワードを再設定してください。')
+        setShowResetModal(false)
+        setResetEmail('')
+      }
+    } catch (err: any) {
+      await customAlert('予期せぬエラーが発生しました: ' + err.message)
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -304,7 +331,16 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">パスワード</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-slate-700">パスワード</label>
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(true)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors focus:outline-none"
+                >
+                  パスワードをお忘れですか？
+                </button>
+              </div>
               <input
                 type="password"
                 required
@@ -338,6 +374,56 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
+
+      {/* パスワードリセットモーダル */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 w-full max-w-md transform transition-all duration-300">
+            <div className="bg-blue-600 p-6 text-center text-white">
+              <h2 className="text-xl font-bold">パスワードの再設定</h2>
+              <p className="text-blue-100 text-xs mt-1">登録されているメールアドレスを入力してください</p>
+            </div>
+            
+            <form onSubmit={handleResetPassword} className="p-6 space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">メールアドレス</label>
+                <input
+                  type="email"
+                  required
+                  className="w-full p-3 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 bg-white text-slate-800"
+                  placeholder="staff@festival.com"
+                  value={resetEmail}
+                  onChange={e => setResetEmail(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetModal(false)
+                    setResetEmail('')
+                  }}
+                  className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold hover:bg-slate-200 transition-all duration-200 min-h-[44px]"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 min-h-[44px]"
+                >
+                  {resetLoading ? (
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : (
+                    '送信する'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
